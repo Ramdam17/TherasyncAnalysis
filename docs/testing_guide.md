@@ -4,7 +4,7 @@
 
 ### Prerequisites
 - Poetry installed and dependencies ready
-- Real BVP data in BIDS-compliant structure under `data/sourcedata/`
+- Real BVP data in BIDS-compliant structure under `data/raw/`
 - Configuration file set up (use `config/config.yaml` or `config/example_config.yaml` as template)
 
 ### Testing Workflow
@@ -104,7 +104,7 @@ PYTHONPATH=. poetry run python scripts/preprocess_bvp.py \
 ### Check Data Structure
 Your data should follow this structure:
 ```
-data/sourcedata/
+data/raw/
 └── sub-f01p01/
     └── ses-01/
         └── physio/

@@ -9,7 +9,7 @@ study:
 
 # Data paths and BIDS structure
 paths:
-  sourcedata: "data"
+  sourcedata: "data/raw"
   derivatives: "data/derivatives"
   logs: "log"
   

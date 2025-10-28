@@ -25,7 +25,7 @@ PYTHONPATH=. poetry run python scripts/clean_outputs.py -d -s sub-f01p01 -e ses-
 
 ```
 config/config.yaml          # Main configuration
-data/sourcedata/            # Input BVP data (BIDS format)
+data/raw/                   # Input BVP data (BIDS format)
 data/derivatives/therasync-bvp/  # Pipeline outputs
 log/                        # Log files
 scripts/preprocess_bvp.py   # Main processing script
@@ -36,7 +36,7 @@ scripts/clean_outputs.py    # Cleanup utility
 
 ### Input Structure (Expected)
 ```
-data/sourcedata/sub-f01p01/ses-01/physio/
+data/raw/sub-f01p01/ses-01/physio/
 ├── sub-f01p01_ses-01_task-restingstate_recording-bvp.tsv
 ├── sub-f01p01_ses-01_task-restingstate_recording-bvp.json
 ├── sub-f01p01_ses-01_task-therapy_recording-bvp.tsv
@@ -57,7 +57,7 @@ data/derivatives/therasync-bvp/sub-f01p01/ses-01/physio/
 | Error | Quick Fix |
 |-------|-----------|
 | Import errors | Use `PYTHONPATH=.` before commands |
-| File not found | Check BIDS naming in `data/sourcedata/` |
+| File not found | Check BIDS naming in `data/raw/` |
 | Insufficient peaks | Signal too short/noisy - check source data |
 | Config errors | Compare with `config/example_config.yaml` |
 

@@ -4,7 +4,7 @@
 # Data paths configuration
 paths:
   # Source data directory (BIDS-compliant structure expected)
-  sourcedata: "data/sourcedata"
+  sourcedata: "data/raw"
   # Derivatives output directory
   derivatives: "data/derivatives"
   # Log files directory
