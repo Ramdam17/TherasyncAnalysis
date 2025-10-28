@@ -34,11 +34,32 @@ data/
 
 ## Pipeline Components
 
-### Current Phase: Physiological Preprocessing
+### ✅ Implemented Pipelines
 
-1. **BVP Pipeline**: Blood volume pulse cleaning and metrics extraction
-2. **EDA Pipeline**: Electrodermal activity processing and feature extraction  
-3. **HR Pipeline**: Heart rate derivation and HRV analysis
+#### 1. BVP Pipeline (Sprint 2) - **PRODUCTION READY**
+- Blood volume pulse signal cleaning (NeuroKit2, Elgendi method)
+- Peak detection and quality assessment
+- 18 HRV metrics extraction (time-domain, frequency-domain, non-linear)
+- BIDS-compliant output formatting
+- **CLI**: `poetry run python scripts/preprocess_bvp.py --subject <sub> --session <ses>`
+
+#### 2. EDA Pipeline (Sprint 3) - **PRODUCTION READY**
+- Electrodermal activity signal cleaning (NeuroKit2)
+- cvxEDA tonic/phasic decomposition
+- SCR (Skin Conductance Response) detection and analysis
+- 23 comprehensive metrics (9 SCR, 5 tonic, 6 phasic, 3 metadata)
+- BIDS-compliant output (13 files per subject/session)
+- **CLI**: `PYTHONPATH=. poetry run python scripts/preprocess_eda.py --subject <sub> --session <ses>`
+- **Validated on**: 5 real subjects from 2 families
+- **Performance**: 0.5-1 second per subject/session
+
+### 🚧 Upcoming Pipelines
+
+#### 3. HR Pipeline (Sprint 4) - **PLANNED**
+- Heart rate extraction from BVP data
+- HR cleaning and artifact removal
+- HRV metrics extraction (comprehensive time/frequency/nonlinear measures)
+- Integration with BVP pipeline
 
 ### Future Phases
 
@@ -77,15 +98,77 @@ Edit `config/config.yaml` to customize processing parameters:
 
 ### Usage
 
+#### BVP Preprocessing
 ```bash
 # Process single subject/session
-python scripts/preprocess_physio.py --subject sub-f01p01 --session ses-01
+poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --verbose
 
-# Batch processing
-python scripts/preprocess_physio.py --batch --config config/config.yaml
+# Check outputs
+tree data/derivatives/therasync-bvp/sub-f01p01/ses-01/
 ```
 
+#### EDA Preprocessing
+```bash
+# Process single subject/session
+PYTHONPATH=. poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --verbose
+
+# View metrics
+cat data/derivatives/therasync-eda/sub-f01p01/ses-01/physio/*_desc-edametrics_physio.tsv
+
+# Check SCR events
+head data/derivatives/therasync-eda/sub-f01p01/ses-01/physio/*_desc-scr_events.tsv
+```
+
+#### Batch Processing
+```bash
+# Clean all outputs
+poetry run python scripts/clean_outputs.py --derivatives --force
+
+# Process multiple subjects (create custom script)
+for subject in sub-f01p01 sub-f02p01; do
+  for session in ses-01 ses-02; do
+    PYTHONPATH=. poetry run python scripts/preprocess_eda.py --subject $subject --session $session
+  done
+done
+```
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+### Essential Guides
+- **[API Reference](docs/api_reference.md)**: Complete API documentation for all modules (BVP + EDA)
+- **[Troubleshooting Guide](docs/troubleshooting.md)**: Common issues and solutions
+- **[Quick Reference](docs/quick_reference.md)**: Command reference card
+
+### Sprint Documentation
+- **[Sprint 3 Summary](docs/sprint3_summary.md)**: Complete EDA pipeline implementation details
+- **[EDA Testing Results](docs/eda_testing_results.md)**: Real data validation report (5 subjects)
+- **[Technical Decisions](docs/technical_decisions_validation.md)**: Formalized design decisions
+
+### Research & Methods
+- **[BVP Preprocessing Research](docs/bvp_preprocessing_research.md)**: Method comparison and selection
+- **[EDA Preprocessing Research](docs/eda_preprocessing_research.md)**: EDA method survey
+- **[BVP Metrics Research](docs/bvp_metrics_research.md)**: 40+ HRV metrics documented
+- **[EDA Metrics Research](docs/eda_metrics_research.md)**: 23 EDA metrics documented
+
+### Design Decisions
+- **[BVP Decisions](docs/bvp_decisions.md)**: BVP pipeline design choices
+- **[EDA Decisions](docs/eda_decisions.md)**: EDA pipeline design choices
+
 ## Development
+
+### Project Status
+
+**Current Version**: 0.2.0  
+**Last Update**: October 28, 2025
+
+| Sprint | Status | Description | Files Changed |
+|--------|--------|-------------|---------------|
+| Sprint 1 | ✅ Complete | Project setup, configuration, core utilities | - |
+| Sprint 2 | ✅ Complete | BVP preprocessing pipeline | 8 files |
+| Sprint 3 | ✅ Complete | EDA preprocessing pipeline | 18 files (+6705 lines) |
+| Sprint 4 | 🚧 Planned | HR extraction and HRV analysis | - |
 
 ### Sprint-based Development
 
