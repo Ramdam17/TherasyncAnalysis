@@ -39,22 +39,28 @@ class BVPBIDSWriter:
         self.config = ConfigLoader(config_path)
         self.bids_utils = BIDSUtils()
         
-        # Get paths and BIDS configuration
-        self.derivatives_path = Path(self.config.get('paths.derivatives'))
-        self.bids_config = self.config.get('bids', {})
+        # Get output configuration - new structure
+        derivatives_dir = Path(self.config.get('paths.derivatives', 'data/derivatives'))
+        preprocessing_dir = self.config.get('output.preprocessing_dir', 'preprocessing')
+        modality_subdir = self.config.get('output.modality_subdirs.bvp', 'bvp')
         
-        # Create derivatives directory structure
+        # Store base directories
+        self.derivatives_base = derivatives_dir
+        self.preprocessing_dir = preprocessing_dir
+        self.modality_subdir = modality_subdir
+        
+        # Pipeline metadata
         self.pipeline_name = "therasync-bvp"
         self.pipeline_version = "1.0.0"
-        self.pipeline_dir = self.derivatives_path / self.pipeline_name
         
-        # Ensure derivatives directory exists
-        self.pipeline_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure base preprocessing directory exists
+        preprocessing_base = derivatives_dir / preprocessing_dir
+        preprocessing_base.mkdir(parents=True, exist_ok=True)
         
         # Create dataset description for derivatives
         self._create_dataset_description()
         
-        logger.info(f"BVP BIDS Writer initialized: {self.pipeline_dir}")
+        logger.info(f"BVP BIDS Writer initialized (output: {derivatives_dir}/{preprocessing_dir}/sub-{{subject}}/ses-{{session}}/{modality_subdir}/)")
     
     def save_processed_data(
         self,
@@ -84,8 +90,9 @@ class BVPBIDSWriter:
             'summary': []
         }
         
-        # Create subject/session directory
-        subject_dir = self.pipeline_dir / subject_id / session_id / 'physio'
+        # Create subject/session directory - new structure: derivatives/preprocessing/sub-xxx/ses-yyy/bvp/
+        subject_dir = (self.derivatives_base / self.preprocessing_dir / 
+                      subject_id / session_id / self.modality_subdir)
         subject_dir.mkdir(parents=True, exist_ok=True)
         
         logger.info(f"Saving processed BVP data for {subject_id}/{session_id}")
@@ -209,7 +216,7 @@ class BVPBIDSWriter:
             return created_files
         
         # BIDS filename for metrics
-        base_filename = f"{subject_id}_{session_id}_desc-bvpmetrics_physio"
+        base_filename = f"{subject_id}_{session_id}_desc-bvp-metrics_physio"
         
         # Convert metrics to DataFrame
         metrics_df = pd.DataFrame.from_dict(session_metrics, orient='index')
@@ -307,7 +314,7 @@ class BVPBIDSWriter:
         """
         try:
             # BIDS filename for summary
-            summary_filename = f"{subject_id}_{session_id}_desc-summary_recording-bvp.json"
+            summary_filename = f"{subject_id}_{session_id}_desc-bvp-summary_recording-bvp.json"
             summary_file = subject_dir / summary_filename
             
             # Create processing summary
@@ -443,7 +450,8 @@ class BVPBIDSWriter:
     
     def _create_dataset_description(self) -> None:
         """Create BIDS dataset_description.json for derivatives."""
-        dataset_desc_file = self.pipeline_dir / "dataset_description.json"
+        preprocessing_base = self.derivatives_base / self.preprocessing_dir
+        dataset_desc_file = preprocessing_base / "dataset_description.json"
         
         if dataset_desc_file.exists():
             return  # Already exists
@@ -513,11 +521,14 @@ class BVPBIDSWriter:
         
         # Create DataFrame and save
         group_df = pd.DataFrame(group_data)
-        group_file = self.pipeline_dir / output_filename
+        
+        # Save to preprocessing directory
+        preprocessing_base = self.derivatives_base / self.preprocessing_dir
+        group_file = preprocessing_base / output_filename
         group_df.to_csv(group_file, sep='\t', index=False, na_rep='n/a')
         
         # Create accompanying JSON
-        group_json = self.pipeline_dir / f"{output_filename.replace('.tsv', '.json')}"
+        group_json = preprocessing_base / f"{output_filename.replace('.tsv', '.json')}"
         group_metadata = {
             "Description": "Group-level BVP metrics summary",
             "ProcessingPipeline": "therasync-bvp",

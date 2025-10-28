@@ -45,7 +45,7 @@ class HRLoader:
         self.config = config if config is not None else ConfigLoader()
         
         # Get paths from config
-        self.sourcedata_path = Path(self.config.get('paths.sourcedata', 'data/raw'))
+        self.rawdata_path = Path(self.config.get('paths.rawdata', 'data/raw'))
         
         # Get HR-specific configuration
         self.sampling_rate = self.config.get('physio.hr.sampling_rate', 1)  # Default 1 Hz for E4
@@ -88,7 +88,7 @@ class HRLoader:
         
         if not file_pairs:
             raise FileNotFoundError(
-                f"No HR files found for {subject}/{session} in {self.sourcedata_path}"
+                f"No HR files found for {subject}/{session} in {self.rawdata_path}"
             )
         
         # Filter by moment if specified
@@ -164,14 +164,17 @@ class HRLoader:
         Returns:
             List of tuples, each containing (tsv_path, json_path)
         """
-        subject_dir = self.sourcedata_path / subject / session / "physio"
+        # Ensure subject and session have BIDS prefixes
+        subject_dir = subject if subject.startswith('sub-') else f'sub-{subject}'
+        session_dir = session if session.startswith('ses-') else f'ses-{session}'
+        physio_dir = self.rawdata_path / subject_dir / session_dir / "physio"
         
-        if not subject_dir.exists():
+        if not physio_dir.exists():
             return []
         
         # Find all HR TSV files
-        tsv_pattern = f"{subject}_{session}_*_recording-hr.tsv"
-        tsv_files = list(subject_dir.glob(tsv_pattern))
+        tsv_pattern = f"{subject_dir}_{session_dir}_*_recording-hr.tsv"
+        tsv_files = list(physio_dir.glob(tsv_pattern))
         
         file_pairs = []
         for tsv_file in tsv_files:

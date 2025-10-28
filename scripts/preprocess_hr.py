@@ -1,0 +1,393 @@
+#!/usr/bin/env python
+"""
+HR Preprocessing CLI Script for TherasyncPipeline.
+
+This script provides command-line interface for processing Heart Rate (HR) data
+from Empatica devices. It integrates all HR pipeline components:
+HR Loader → HR Cleaner → HR Metrics Extractor → HR BIDS Writer
+
+Usage:
+    # Process single subject/session
+    python scripts/preprocess_hr.py --subject f01p01 --session 01
+    
+    # Process with specific moment
+    python scripts/preprocess_hr.py --subject f01p01 --session 01 --moment therapy
+    
+    # Batch process multiple subjects
+    python scripts/preprocess_hr.py --batch --config-file config/hr_batch.yaml
+    
+    # Process with custom config
+    python scripts/preprocess_hr.py --subject f01p01 --session 01 --config config/custom_hr.yaml
+
+Authors: Lena Adel, Remy Ramadour
+"""
+
+import argparse
+import logging
+import sys
+from pathlib import Path
+from typing import List, Optional
+
+import yaml
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.core.config_loader import ConfigLoader
+from src.physio.hr_loader import HRLoader
+from src.physio.hr_cleaner import HRCleaner
+from src.physio.hr_metrics_extractor import HRMetricsExtractor
+from src.physio.hr_bids_writer import HRBIDSWriter
+
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('hr_preprocessing.log')
+    ]
+)
+logger = logging.getLogger(__name__)
+
+
+class HRPreprocessor:
+    """
+    Complete HR preprocessing pipeline.
+    
+    This class orchestrates the entire HR processing workflow:
+    1. Load HR data from Empatica files
+    2. Clean signals (outlier removal, interpolation)
+    3. Extract comprehensive HR metrics (25 metrics)
+    4. Write BIDS-compliant output (7 files)
+    """
+    
+    def __init__(self, config_path: Optional[str] = None):
+        """
+        Initialize HR preprocessing pipeline.
+        
+        Args:
+            config_path: Optional path to custom configuration file
+        """
+        # Load configuration
+        self.config = ConfigLoader(config_path)
+        
+        # Initialize pipeline components
+        self.hr_loader = HRLoader(self.config)
+        self.hr_cleaner = HRCleaner(self.config)
+        self.hr_metrics = HRMetricsExtractor(self.config)
+        self.hr_writer = HRBIDSWriter(self.config)
+        
+        logger.info("HR Preprocessor initialized")
+    
+    def process_subject_session(
+        self,
+        subject: str,
+        session: str,
+        moment: Optional[str] = None
+    ) -> bool:
+        """
+        Process HR data for a single subject/session.
+        
+        Args:
+            subject: Subject identifier (e.g., 'f01p01')
+            session: Session identifier (e.g., '01')
+            moment: Optional specific moment to process
+        
+        Returns:
+            True if processing successful, False otherwise
+        """
+        logger.info(f"Processing HR data for sub-{subject} ses-{session}")
+        
+        try:
+            # Step 1: Load HR data
+            logger.info("Step 1: Loading HR data...")
+            load_result = self.hr_loader.load_subject_session(subject, session, moment)
+            
+            if load_result is None:
+                logger.warning(f"No HR data found for sub-{subject} ses-{session}")
+                return False
+            
+            # Handle both tuple return (data, metadata) and DataFrame return
+            if isinstance(load_result, tuple):
+                hr_data, load_metadata = load_result
+            else:
+                hr_data = load_result
+                load_metadata = {}
+            
+            if hr_data is None or len(hr_data) == 0:
+                logger.warning(f"Empty HR data for sub-{subject} ses-{session}")
+                return False
+            
+            logger.info(f"Loaded {len(hr_data)} HR samples")
+            
+            # Step 2: Clean HR signals
+            logger.info("Step 2: Cleaning HR signals...")
+            cleaned_data, cleaning_metadata = self.hr_cleaner.clean_signal(
+                hr_data, moment or "unknown"
+            )
+            
+            # Validate cleaning quality
+            is_valid, quality_message = self.hr_cleaner.validate_cleaning_quality(cleaning_metadata)
+            if not is_valid:
+                logger.warning(f"HR cleaning quality issues: {quality_message}")
+            else:
+                logger.info(f"HR cleaning successful: {quality_message}")
+            
+            # Step 3: Extract HR metrics
+            logger.info("Step 3: Extracting HR metrics...")
+            hr_metrics = self.hr_metrics.extract_metrics(
+                cleaned_data, moment or "unknown"
+            )
+            
+            if not hr_metrics.get('summary', {}).get('extraction_success', False):
+                logger.error("HR metrics extraction failed")
+                return False
+            
+            logger.info(
+                f"Extracted {hr_metrics['summary']['total_metrics_extracted']} HR metrics "
+                f"(quality: {hr_metrics['summary']['overall_quality_assessment']})"
+            )
+            
+            # Step 4: Write BIDS output
+            logger.info("Step 4: Writing BIDS output...")
+            output_files = self.hr_writer.write_hr_results(
+                subject, session, moment or "combined", 
+                cleaned_data, hr_metrics, cleaning_metadata
+            )
+            
+            logger.info(f"HR processing complete! Files written:")
+            for file_type, file_path in output_files.items():
+                logger.info(f"  {file_type}: {file_path}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"HR processing failed for sub-{subject} ses-{session}: {str(e)}")
+            return False
+    
+    def process_batch(self, subjects_sessions: List[tuple]) -> dict:
+        """
+        Process multiple subjects/sessions in batch.
+        
+        Args:
+            subjects_sessions: List of (subject, session) tuples
+        
+        Returns:
+            Dictionary with processing results
+        """
+        logger.info(f"Starting batch HR processing ({len(subjects_sessions)} subjects/sessions)")
+        
+        results = {
+            'successful': [],
+            'failed': [],
+            'total': len(subjects_sessions)
+        }
+        
+        for subject, session in subjects_sessions:
+            logger.info(f"Processing {subject} ses-{session}...")
+            
+            success = self.process_subject_session(subject, session)
+            
+            if success:
+                results['successful'].append((subject, session))
+                logger.info(f"✓ Successfully processed {subject} ses-{session}")
+            else:
+                results['failed'].append((subject, session))
+                logger.error(f"✗ Failed to process {subject} ses-{session}")
+        
+        # Log batch summary
+        success_rate = len(results['successful']) / results['total'] * 100
+        logger.info(
+            f"Batch HR processing complete: "
+            f"{len(results['successful'])}/{results['total']} successful "
+            f"({success_rate:.1f}% success rate)"
+        )
+        
+        if results['failed']:
+            logger.warning(f"Failed subjects/sessions: {results['failed']}")
+        
+        return results
+
+
+def discover_subjects_sessions(data_dir: Path) -> List[tuple]:
+    """
+    Auto-discover available subjects and sessions from data directory.
+    
+    Args:
+        data_dir: Path to data directory
+    
+    Returns:
+        List of (subject, session) tuples
+    """
+    subjects_sessions = []
+    
+    # Look for subject directories in data/raw
+    if not data_dir.exists():
+        logger.error(f"Data directory not found: {data_dir}")
+        return subjects_sessions
+    
+    for subject_dir in data_dir.iterdir():
+        if not subject_dir.is_dir() or not subject_dir.name.startswith('sub-'):
+            continue
+        
+        subject = subject_dir.name.replace('sub-', '')
+        
+        # Look for session directories
+        for session_dir in subject_dir.iterdir():
+            if not session_dir.is_dir() or not session_dir.name.startswith('ses-'):
+                continue
+            
+            session = session_dir.name.replace('ses-', '')
+            
+            # Check if physio directory exists
+            physio_dir = session_dir / 'physio'
+            if physio_dir.exists():
+                # Check if HR files exist
+                hr_files = list(physio_dir.glob('*recording-hr.tsv'))
+                if hr_files:
+                    subjects_sessions.append((subject, session))
+    
+    logger.info(f"Discovered {len(subjects_sessions)} subjects/sessions with HR data")
+    return subjects_sessions
+
+
+def main():
+    """Main CLI entry point."""
+    parser = argparse.ArgumentParser(
+        description="HR Preprocessing Pipeline for TherasyncPipeline",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Process single subject/session
+  python scripts/preprocess_hr.py --subject f01p01 --session 01
+  
+  # Process specific moment
+  python scripts/preprocess_hr.py --subject f01p01 --session 01 --moment therapy
+  
+  # Auto-discover and process all subjects
+  python scripts/preprocess_hr.py --batch
+  
+  # Use custom configuration
+  python scripts/preprocess_hr.py --subject f01p01 --session 01 --config config/custom.yaml
+        """
+    )
+    
+    # Subject/session selection
+    parser.add_argument(
+        '--subject', 
+        type=str,
+        help='Subject identifier (e.g., f01p01)'
+    )
+    parser.add_argument(
+        '--session',
+        type=str, 
+        help='Session identifier (e.g., 01)'
+    )
+    parser.add_argument(
+        '--moment',
+        type=str,
+        help='Specific moment to process (e.g., therapy, restingstate)'
+    )
+    
+    # Batch processing
+    parser.add_argument(
+        '--batch',
+        action='store_true',
+        help='Auto-discover and process all available subjects/sessions'
+    )
+    parser.add_argument(
+        '--batch-file',
+        type=str,
+        help='YAML file with list of subjects/sessions to process'
+    )
+    
+    # Configuration
+    parser.add_argument(
+        '--config',
+        type=str,
+        help='Path to custom configuration file'
+    )
+    parser.add_argument(
+        '--data-dir',
+        type=str,
+        help='Path to data directory (default: data/raw)'
+    )
+    
+    # Processing options
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='Enable verbose logging'
+    )
+    parser.add_argument(
+        '--quiet', '-q', 
+        action='store_true',
+        help='Suppress non-error output'
+    )
+    
+    args = parser.parse_args()
+    
+    # Configure logging level
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    elif args.quiet:
+        logging.getLogger().setLevel(logging.ERROR)
+    
+    # Initialize preprocessor
+    try:
+        preprocessor = HRPreprocessor(args.config)
+    except Exception as e:
+        logger.error(f"Failed to initialize HR preprocessor: {str(e)}")
+        sys.exit(1)
+    
+    # Determine processing mode
+    if args.batch or args.batch_file:
+        # Batch processing
+        if args.batch_file:
+            # Load subjects/sessions from file
+            try:
+                with open(args.batch_file, 'r') as f:
+                    batch_config = yaml.safe_load(f)
+                subjects_sessions = [
+                    (item['subject'], item['session']) 
+                    for item in batch_config.get('subjects_sessions', [])
+                ]
+            except Exception as e:
+                logger.error(f"Failed to load batch file {args.batch_file}: {str(e)}")
+                sys.exit(1)
+        else:
+            # Auto-discover subjects/sessions
+            data_dir = Path(args.data_dir) if args.data_dir else Path('data/raw')
+            subjects_sessions = discover_subjects_sessions(data_dir)
+            
+            if not subjects_sessions:
+                logger.error("No subjects/sessions found for batch processing")
+                sys.exit(1)
+        
+        # Process batch
+        results = preprocessor.process_batch(subjects_sessions)
+        
+        # Exit with error code if any failures
+        if results['failed']:
+            sys.exit(1)
+    
+    elif args.subject and args.session:
+        # Single subject/session processing
+        success = preprocessor.process_subject_session(args.subject, args.session, args.moment)
+        
+        if not success:
+            sys.exit(1)
+    
+    else:
+        # Invalid arguments
+        logger.error("Must specify either --subject/--session or --batch/--batch-file")
+        parser.print_help()
+        sys.exit(1)
+    
+    logger.info("HR preprocessing completed successfully!")
+
+
+if __name__ == '__main__':
+    main()

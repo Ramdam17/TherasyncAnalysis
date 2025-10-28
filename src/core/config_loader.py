@@ -85,9 +85,9 @@ class ConfigLoader:
                 },
                 "paths": {
                     "type": "object",
-                    "required": ["sourcedata", "derivatives"],
+                    "required": ["rawdata", "derivatives"],
                     "properties": {
-                        "sourcedata": {"type": "string"},
+                        "rawdata": {"type": "string"},
                         "derivatives": {"type": "string"},
                         "logs": {"type": "string"}
                     }

@@ -116,10 +116,13 @@ class BVPLoader:
             ValueError: If data validation fails
         """
         # Construct file paths using BIDS conventions
-        data_dir = Path(self.config.get('paths.sourcedata')) / subject_id / session_id / 'physio'
+        # Ensure subject and session have BIDS prefixes
+        subject_dir = subject_id if subject_id.startswith('sub-') else f'sub-{subject_id}'
+        session_dir = session_id if session_id.startswith('ses-') else f'ses-{session_id}'
+        data_dir = Path(self.config.get('paths.rawdata')) / subject_dir / session_dir / 'physio'
         
         # BIDS filename pattern: sub-{subject}_ses-{session}_task-{task}_recording-bvp.{ext}
-        base_filename = f"{subject_id}_{session_id}_task-{moment}_recording-bvp"
+        base_filename = f"{subject_dir}_{session_dir}_task-{moment}_recording-bvp"
         tsv_file = data_dir / f"{base_filename}.tsv"
         json_file = data_dir / f"{base_filename}.json"
         
@@ -244,10 +247,10 @@ class BVPLoader:
         Returns:
             Nested dictionary: {subject: {session: [moments]}}
         """
-        sourcedata_path = Path(self.config.get('paths.sourcedata'))
+        rawdata_path = Path(self.config.get('paths.rawdata'))
         available_data = {}
         
-        for subject_dir in sourcedata_path.glob(subject_pattern):
+        for subject_dir in rawdata_path.glob(subject_pattern):
             if not subject_dir.is_dir():
                 continue
                 
