@@ -41,6 +41,9 @@ class ConfigLoader:
         self.config: Dict[str, Any] = {}
         self._schema = self._load_schema()
         
+        # Automatically load the configuration
+        self.load_config()
+        
     def _resolve_config_path(self, config_path: Optional[Union[str, Path]]) -> Path:
         """
         Resolve the configuration file path.
@@ -82,12 +85,11 @@ class ConfigLoader:
                 },
                 "paths": {
                     "type": "object",
-                    "required": ["data_root", "derivatives_root"],
+                    "required": ["sourcedata", "derivatives"],
                     "properties": {
-                        "data_root": {"type": "string"},
-                        "derivatives_root": {"type": "string"},
-                        "derivatives_name": {"type": "string"},
-                        "log_dir": {"type": "string"}
+                        "sourcedata": {"type": "string"},
+                        "derivatives": {"type": "string"},
+                        "logs": {"type": "string"}
                     }
                 },
                 "moments": {

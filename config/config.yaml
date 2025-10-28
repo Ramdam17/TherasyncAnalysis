@@ -9,10 +9,9 @@ study:
 
 # Data paths and BIDS structure
 paths:
-  data_root: "data"
-  derivatives_root: "data/derivatives"
-  derivatives_name: "therasync-physio"
-  log_dir: "log"
+  sourcedata: "data"
+  derivatives: "data/derivatives"
+  logs: "log"
   
 # Moment/Task definitions - flexible for different study designs
 moments:

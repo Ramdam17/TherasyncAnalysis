@@ -166,7 +166,7 @@ class BVPBIDSWriter:
             output_data.insert(0, 'time', time_values)
         
         # Save TSV file
-        output_data.to_csv(signals_tsv, sep='\\t', index=False, na_rep='n/a')
+        output_data.to_csv(signals_tsv, sep='\t', index=False, na_rep='n/a')
         created_files.append(str(signals_tsv))
         
         # Create JSON sidecar for processed signals
@@ -218,7 +218,7 @@ class BVPBIDSWriter:
         
         # Save metrics as TSV
         metrics_tsv = subject_dir / f"{base_filename}.tsv"
-        metrics_df.to_csv(metrics_tsv, sep='\\t', index=False, na_rep='n/a')
+        metrics_df.to_csv(metrics_tsv, sep='\t', index=False, na_rep='n/a')
         created_files.append(str(metrics_tsv))
         
         # Create JSON sidecar for metrics
@@ -514,7 +514,7 @@ class BVPBIDSWriter:
         # Create DataFrame and save
         group_df = pd.DataFrame(group_data)
         group_file = self.pipeline_dir / output_filename
-        group_df.to_csv(group_file, sep='\\t', index=False, na_rep='n/a')
+        group_df.to_csv(group_file, sep='\t', index=False, na_rep='n/a')
         
         # Create accompanying JSON
         group_json = self.pipeline_dir / f"{output_filename.replace('.tsv', '.json')}"
