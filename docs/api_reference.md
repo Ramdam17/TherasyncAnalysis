@@ -13,12 +13,19 @@ This document provides comprehensive API documentation for all modules in the Th
 1. [Core Modules](#core-modules)
    - [ConfigLoader](#configloader)
 2. [Physio Modules](#physio-modules)
-   - [BVPLoader](#bvploader)
-   - [BVPCleaner](#bvpcleaner)
-   - [BVPMetrics](#bvpmetrics)
-   - [BVPBIDSWriter](#bvpbidswriter)
+   - **BVP (Blood Volume Pulse)**
+     - [BVPLoader](#bvploader)
+     - [BVPCleaner](#bvpcleaner)
+     - [BVPMetrics](#bvpmetrics)
+     - [BVPBIDSWriter](#bvpbidswriter)
+   - **EDA (Electrodermal Activity)**
+     - [EDALoader](#edaloader)
+     - [EDACleaner](#edacleaner)
+     - [EDAMetricsExtractor](#edametricsextractor)
+     - [EDABIDSWriter](#edabidswriter)
 3. [Scripts](#scripts)
    - [preprocess_bvp.py](#preprocess_bvppy)
+   - [preprocess_eda.py](#preprocess_edapy)
    - [clean_outputs.py](#clean_outputspy)
 
 ---
@@ -718,6 +725,392 @@ print(f"✓ Saved outputs to: data/derivatives/therasync-bvp/{subject}/{session}
 
 ---
 
+## EDA (Electrodermal Activity) Modules
+
+### EDALoader
+
+**Module**: `src.physio.eda_loader.py`
+
+Loads and validates Electrodermal Activity (EDA) data from Empatica E4 devices in BIDS format.
+
+#### Class: `EDALoader`
+
+```python
+from src.physio.eda_loader import EDALoader
+
+loader = EDALoader()
+```
+
+**Constructor Parameters**:
+- `config` (ConfigLoader, optional): Configuration instance. If `None`, creates new instance.
+
+**Attributes**:
+- `sourcedata_path` (Path): Path to raw data directory
+- `sampling_rate` (int): EDA sampling rate (default: 4 Hz for Empatica E4)
+
+**Methods**:
+
+##### `load_subject_session(subject: str, session: str, moment: Optional[str] = None) -> Tuple[pd.DataFrame, dict]`
+
+Loads EDA data for a subject/session, optionally filtered by moment.
+
+```python
+# Load all moments
+data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01')
+
+# Load specific moment
+data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
+```
+
+**Parameters**:
+- `subject` (str): Subject ID (e.g., `'sub-f01p01'`)
+- `session` (str): Session ID (e.g., `'ses-01'`)
+- `moment` (str, optional): Task/moment name. If `None`, loads all moments.
+
+**Returns**:
+- `data` (pd.DataFrame): EDA signal with columns `['time', 'eda']`
+- `metadata` (dict): Combined metadata from JSON sidecars
+
+**Example DataFrame**:
+```
+      time       eda
+0     0.00     1.234
+1     0.25     1.256
+2     0.50     1.278
+...
+```
+
+**Metadata Keys**:
+- `SamplingFrequency`: 4.0 (Hz)
+- `StartTime`: Start time in seconds
+- `TaskName`: Moment/task name
+- `RecordingType`: 'EDA'
+- `Units`: ['s', 'μS']
+- `DeviceManufacturer`: 'Empatica'
+- `DeviceModel`: 'E4'
+
+---
+
+### EDACleaner
+
+**Module**: `src.physio.eda_cleaner.py`
+
+Decomposes EDA signal into tonic (slow baseline) and phasic (fast SCR) components using cvxEDA.
+
+#### Class: `EDACleaner`
+
+```python
+from src.physio.eda_cleaner import EDACleaner
+
+cleaner = EDACleaner()
+```
+
+**Constructor Parameters**:
+- `config` (ConfigLoader, optional): Configuration instance
+
+**Attributes**:
+- `method` (str): Decomposition method (default: `'neurokit'` uses cvxEDA)
+- `sampling_rate` (int): Sampling rate in Hz (default: 4)
+- `scr_threshold` (float): Minimum SCR amplitude in μS (default: 0.01)
+
+**Methods**:
+
+##### `clean_signal(eda_data: pd.DataFrame, moment: Optional[str] = None) -> pd.DataFrame`
+
+Process raw EDA signal and decompose into tonic/phasic components.
+
+```python
+raw_data, _ = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
+processed = cleaner.clean_signal(raw_data, moment='restingstate')
+```
+
+**Parameters**:
+- `eda_data` (pd.DataFrame): Raw EDA with columns `['time', 'eda']`
+- `moment` (str, optional): Moment name for logging
+
+**Returns**: DataFrame with processed signals
+
+**Output Columns**:
+- `time` (float): Time in seconds
+- `EDA_Raw` (float): Original signal (μS)
+- `EDA_Clean` (float): Cleaned signal (μS)
+- `EDA_Tonic` (float): Slow-varying baseline component (μS)
+- `EDA_Phasic` (float): Fast-varying response component (μS)
+- `SCR_Peaks` (int): Binary indicator of SCR peaks (1=peak, 0=no peak)
+- `SCR_Amplitude` (float): Amplitude of detected SCRs (μS, 0 if no peak)
+- `SCR_RiseTime` (float): Rise time of SCRs (seconds, 0 if no peak)
+- `SCR_RecoveryTime` (float): Recovery time of SCRs (seconds, 0 if no peak)
+
+**Processing Steps**:
+1. Clean raw signal (artifact removal)
+2. Decompose using cvxEDA into tonic + phasic
+3. Detect SCR peaks in phasic component (threshold: 0.01 μS)
+4. Compute SCR characteristics (amplitude, rise/recovery times)
+
+**Example**:
+```python
+processed = cleaner.clean_signal(raw_data, moment='therapy')
+print(f"Detected {processed['SCR_Peaks'].sum()} SCRs")
+print(f"Mean tonic level: {processed['EDA_Tonic'].mean():.3f} μS")
+```
+
+---
+
+### EDAMetricsExtractor
+
+**Module**: `src.physio.eda_metrics.py`
+
+Extracts comprehensive EDA metrics from processed signals.
+
+#### Class: `EDAMetricsExtractor`
+
+```python
+from src.physio.eda_metrics import EDAMetricsExtractor
+
+extractor = EDAMetricsExtractor()
+```
+
+**Constructor Parameters**:
+- `config` (ConfigLoader, optional): Configuration instance
+
+**Attributes**:
+- `selected_metrics` (list): Metrics to compute (from config)
+
+**Methods**:
+
+##### `extract_eda_metrics(processed_signals: pd.DataFrame, moment: Optional[str] = None) -> pd.DataFrame`
+
+Extracts EDA metrics from processed signals.
+
+```python
+processed = cleaner.clean_signal(raw_data, moment='restingstate')
+metrics = extractor.extract_eda_metrics(processed, moment='restingstate')
+```
+
+**Parameters**:
+- `processed_signals` (pd.DataFrame): Output from `EDACleaner.clean_signal()`
+- `moment` (str, optional): Moment name (added to output)
+
+**Returns**: DataFrame with one row containing all metrics
+
+**Metric Categories** (23 metrics total):
+
+1. **SCR Metrics** (9):
+   - `SCR_Peaks_N`: Number of SCR peaks detected
+   - `SCR_Peaks_Rate`: SCR rate per minute
+   - `SCR_Peaks_Amplitude_Mean`: Mean SCR amplitude (μS)
+   - `SCR_Peaks_Amplitude_Max`: Maximum SCR amplitude (μS)
+   - `SCR_Peaks_Amplitude_Sum`: Sum of all SCR amplitudes (μS)
+   - `SCR_RiseTime_Mean`: Mean SCR rise time (seconds)
+   - `SCR_RecoveryTime_Mean`: Mean SCR recovery time (seconds)
+   - `SCR_Peaks_Amplitude_Std`: Standard deviation of SCR amplitudes
+   - `SCR_Peaks_Amplitude_Min`: Minimum SCR amplitude (μS)
+
+2. **Tonic Component Metrics** (5):
+   - `EDA_Tonic_Mean`: Mean tonic level (μS)
+   - `EDA_Tonic_Std`: Standard deviation of tonic level
+   - `EDA_Tonic_Min`: Minimum tonic level (μS)
+   - `EDA_Tonic_Max`: Maximum tonic level (μS)
+   - `EDA_Tonic_Range`: Range of tonic level (μS)
+
+3. **Phasic Component Metrics** (6):
+   - `EDA_Phasic_Mean`: Mean phasic activity (μS)
+   - `EDA_Phasic_Std`: Standard deviation of phasic activity
+   - `EDA_Phasic_Min`: Minimum phasic value (μS)
+   - `EDA_Phasic_Max`: Maximum phasic value (μS)
+   - `EDA_Phasic_Range`: Range of phasic activity (μS)
+   - `EDA_Phasic_Rate`: Rate of change of phasic component
+
+4. **Metadata** (3):
+   - `moment`: Moment/task name
+   - `EDA_Duration`: Signal duration (seconds)
+   - `EDA_SamplingRate`: Sampling rate (Hz)
+
+**Example Output**:
+```
+  moment  SCR_Peaks_N  SCR_Peaks_Rate  SCR_Peaks_Amplitude_Mean  EDA_Tonic_Mean  ...
+0  rest            22            22.0                     0.156           1.234  ...
+```
+
+##### `extract_multiple_moments(processed_results: Dict[str, pd.DataFrame]) -> pd.DataFrame`
+
+Extracts metrics for multiple moments in batch.
+
+```python
+processed_results = {
+    'restingstate': processed_rest,
+    'therapy': processed_therapy
+}
+
+all_metrics = extractor.extract_multiple_moments(processed_results)
+```
+
+**Parameters**:
+- `processed_results` (dict): Dict mapping moment names to processed DataFrames
+
+**Returns**: DataFrame with one row per moment
+
+---
+
+### EDABIDSWriter
+
+**Module**: `src.physio.eda_bids_writer.py`
+
+Writes processed EDA data and metrics in BIDS-compliant format.
+
+#### Class: `EDABIDSWriter`
+
+```python
+from src.physio.eda_bids_writer import EDABIDSWriter
+
+writer = EDABIDSWriter()
+```
+
+**Constructor Parameters**:
+- `config` (ConfigLoader, optional): Configuration instance
+
+**Attributes**:
+- `derivatives_path` (Path): Path to derivatives directory
+- `pipeline_name` (str): Pipeline name (default: `'physio_preprocessing'`)
+- `pipeline_dir` (Path): Full pipeline output directory
+
+**Methods**:
+
+##### `save_processed_data(subject_id: str, session_id: str, processed_results: Dict[str, pd.DataFrame], session_metrics: pd.DataFrame, processing_metadata: Optional[Dict] = None) -> Dict[str, List[str]]`
+
+Saves all processed EDA data and metrics for a session.
+
+```python
+# Prepare data
+processed_results = {
+    'restingstate': processed_rest,
+    'therapy': processed_therapy
+}
+
+session_metrics = extractor.extract_multiple_moments(processed_results)
+
+# Save everything
+output_files = writer.save_processed_data(
+    subject_id='sub-f01p01',
+    session_id='ses-01',
+    processed_results=processed_results,
+    session_metrics=session_metrics,
+    processing_metadata={'method': 'cvxEDA', 'threshold': 0.01}
+)
+
+print(f"Created {sum(len(files) for files in output_files.values())} files")
+```
+
+**Parameters**:
+- `subject_id` (str): Subject ID (e.g., `'sub-f01p01'`)
+- `session_id` (str): Session ID (e.g., `'ses-01'`)
+- `processed_results` (dict): Dict of moment → processed DataFrame
+- `session_metrics` (pd.DataFrame): Output from `extract_multiple_moments()`
+- `processing_metadata` (dict, optional): Additional processing info
+
+**Returns**: Dictionary with lists of created file paths
+
+**Output Structure**:
+```python
+{
+    'processed_signals': [  # TSV + JSON per moment
+        'sub-f01p01_ses-01_task-restingstate_physio.tsv.gz',
+        'sub-f01p01_ses-01_task-restingstate_physio.json',
+        'sub-f01p01_ses-01_task-therapy_physio.tsv.gz',
+        'sub-f01p01_ses-01_task-therapy_physio.json'
+    ],
+    'scr_events': [  # TSV + JSON per moment (if SCRs detected)
+        'sub-f01p01_ses-01_task-restingstate_events.tsv',
+        'sub-f01p01_ses-01_task-restingstate_events.json',
+        ...
+    ],
+    'metrics': [  # Session-level metrics
+        'sub-f01p01_ses-01_desc-edametrics_physio.tsv',
+        'sub-f01p01_ses-01_desc-edametrics_physio.json'
+    ],
+    'metadata': [  # Moment-specific metadata
+        'sub-f01p01_ses-01_task-restingstate_desc-metadata.json',
+        ...
+    ],
+    'summary': [  # Session summary
+        'sub-f01p01_ses-01_desc-summary.json'
+    ]
+}
+```
+
+**File Types**:
+
+1. **Processed Signals** (`_physio.tsv.gz` + `.json`):
+   - Columns: `time`, `EDA_Raw`, `EDA_Clean`, `EDA_Tonic`, `EDA_Phasic`, `SCR_Peaks`, `SCR_Amplitude`, `SCR_RiseTime`, `SCR_RecoveryTime`
+   - Compressed TSV with gzip
+   - JSON sidecar with column descriptions, units
+
+2. **SCR Events** (`_events.tsv` + `.json`):
+   - Columns: `onset`, `duration`, `amplitude`, `rise_time`, `recovery_time`
+   - One row per detected SCR
+   - BIDS events format
+
+3. **Metrics** (`_desc-edametrics_physio.tsv` + `.json`):
+   - All 23 metrics in one row per moment
+   - Session-level file (all moments combined)
+
+4. **Metadata** (`_desc-metadata.json`):
+   - Per-moment processing details
+   - Quality metrics, parameters used
+
+5. **Summary** (`_desc-summary.json`):
+   - Session-level overview
+   - Total SCRs, durations, processing status
+
+##### `create_dataset_description() -> None`
+
+Creates `dataset_description.json` for BIDS compliance (call once per project).
+
+```python
+writer.create_dataset_description()
+```
+
+**Example Complete Workflow**:
+
+```python
+from src.physio.eda_loader import EDALoader
+from src.physio.eda_cleaner import EDACleaner
+from src.physio.eda_metrics import EDAMetricsExtractor
+from src.physio.eda_bids_writer import EDABIDSWriter
+
+# Initialize pipeline
+loader = EDALoader()
+cleaner = EDACleaner()
+extractor = EDAMetricsExtractor()
+writer = EDABIDSWriter()
+
+# Process one subject/session
+subject, session = 'sub-f01p01', 'ses-01'
+
+# Process each moment
+processed_results = {}
+for moment in ['restingstate', 'therapy']:
+    raw_data, _ = loader.load_subject_session(subject, session, moment=moment)
+    processed = cleaner.clean_signal(raw_data, moment=moment)
+    processed_results[moment] = processed
+
+# Extract metrics for all moments
+session_metrics = extractor.extract_multiple_moments(processed_results)
+
+# Save everything
+output_files = writer.save_processed_data(
+    subject_id=subject,
+    session_id=session,
+    processed_results=processed_results,
+    session_metrics=session_metrics
+)
+
+print(f"✓ Saved {sum(len(f) for f in output_files.values())} files")
+print(f"✓ Output: data/derivatives/physio_preprocessing/{subject}/{session}/physio/")
+```
+
+---
+
 ## Scripts
 
 ### preprocess_bvp.py
@@ -862,7 +1255,123 @@ Proceed with deletion? [y/N]: y
 
 ---
 
-## Configuration Schema
+### preprocess_eda.py
+
+**Location**: `scripts/preprocess_eda.py`
+
+Command-line interface for EDA preprocessing pipeline.
+
+**Usage**:
+
+```bash
+# Basic usage
+poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01
+
+# With verbose logging
+poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --verbose
+
+# Custom config
+poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --config config/custom.yaml
+
+# Process specific moment only
+poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --moment restingstate
+
+# Batch processing
+poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --all-moments
+```
+
+**Arguments**:
+
+| Argument | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `--subject` | str | Yes | - | Subject ID (e.g., `sub-f01p01`) |
+| `--session` | str | Yes | - | Session ID (e.g., `ses-01`) |
+| `--moment` | str | No | Auto-detect | Specific moment to process |
+| `--all-moments` | flag | No | False | Process all available moments |
+| `--config` | str | No | `config/config.yaml` | Path to config file |
+| `--verbose` | flag | No | False | Enable DEBUG-level logging |
+
+**Processing Pipeline**:
+1. Load raw EDA data (4 Hz from Empatica E4)
+2. Clean signal and decompose (cvxEDA: tonic + phasic)
+3. Detect SCR peaks (threshold: 0.01 μS)
+4. Extract 23 EDA metrics (SCR, tonic, phasic)
+5. Save BIDS-compliant outputs:
+   - Processed signals (TSV + JSON)
+   - SCR events (TSV + JSON)
+   - Session metrics (TSV + JSON)
+   - Moment metadata (JSON)
+   - Session summary (JSON)
+6. Create/update dataset description
+
+**Output Structure**:
+```
+data/derivatives/physio_preprocessing/
+├── dataset_description.json
+└── sub-f01p01/
+    └── ses-01/
+        └── physio/
+            ├── sub-f01p01_ses-01_task-restingstate_physio.tsv.gz
+            ├── sub-f01p01_ses-01_task-restingstate_physio.json
+            ├── sub-f01p01_ses-01_task-restingstate_events.tsv
+            ├── sub-f01p01_ses-01_task-restingstate_events.json
+            ├── sub-f01p01_ses-01_task-restingstate_desc-metadata.json
+            ├── sub-f01p01_ses-01_task-therapy_physio.tsv.gz
+            ├── sub-f01p01_ses-01_task-therapy_physio.json
+            ├── sub-f01p01_ses-01_task-therapy_events.tsv
+            ├── sub-f01p01_ses-01_task-therapy_events.json
+            ├── sub-f01p01_ses-01_task-therapy_desc-metadata.json
+            ├── sub-f01p01_ses-01_desc-edametrics_physio.tsv
+            ├── sub-f01p01_ses-01_desc-edametrics_physio.json
+            └── sub-f01p01_ses-01_desc-summary.json
+```
+
+**Example Output**:
+```
+=== EDA Preprocessing Pipeline ===
+
+Subject: sub-f01p01
+Session: ses-01
+Moments to process: restingstate, therapy
+
+Processing moment: restingstate
+  ✓ Loaded 240 samples (60.0s at 4 Hz)
+  ✓ Decomposed into tonic + phasic components
+  ✓ Detected 22 SCRs (mean amplitude: 0.156 μS)
+  ✓ Extracted 23 metrics
+  ✓ Saved 5 output files
+
+Processing moment: therapy
+  ✓ Loaded 11064 samples (2766.0s at 4 Hz)
+  ✓ Decomposed into tonic + phasic components
+  ✓ Detected 791 SCRs (mean amplitude: 0.672 μS)
+  ✓ Extracted 23 metrics
+  ✓ Saved 5 output files
+
+✓ Session metrics saved (2 moments)
+✓ Processing complete!
+
+Total SCRs detected: 813
+Total duration: 2826.0 seconds
+Output: data/derivatives/physio_preprocessing/sub-f01p01/ses-01/physio/
+```
+
+**Exit Codes**:
+- `0`: Success
+- `1`: Error (check logs)
+
+**Logging**:
+- **Default**: INFO level to console and `log/eda_preprocessing.log`
+- **Verbose**: DEBUG level with detailed processing information, NeuroKit2 diagnostics
+
+**Typical Processing Time**:
+- Restingstate (60s): ~2 seconds
+- Therapy session (45 min): ~15-20 seconds
+- cvxEDA decomposition is computationally intensive for long signals
+
+---
+
+
 
 ### Main Configuration Structure
 

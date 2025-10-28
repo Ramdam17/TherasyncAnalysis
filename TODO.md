@@ -145,10 +145,31 @@
     * ✅ Integration: 1/1 passing (full pipeline execution)
   - Known issues: 6 tests expect dict return, API returns DataFrame
 
-- [ ] **Update API reference with EDA sections**
-  - Add EDALoader, EDACleaner, EDAMetricsExtractor, EDABIDSWriter documentation
-  - Follow pattern from BVP documentation
-  - Include examples matching BVP style
+- [x] **Update API reference with EDA sections**
+  - ✅ docs/api_reference.md updated with complete EDA documentation
+  - Added EDALoader, EDACleaner, EDAMetricsExtractor, EDABIDSWriter
+  - Includes comprehensive examples, all 23 metrics documented
+  - Added preprocess_eda.py script documentation
+  - Updated table of contents with BVP/EDA organization
+
+- [ ] **Test EDA pipeline on real data**
+  - Clean previous outputs: `poetry run python scripts/clean_outputs.py --all --force`
+  - Run on multiple subjects/sessions to validate robustness:
+    * Test sub-f01p01/ses-01 (baseline validation)
+    * Test sub-f01p01/ses-02 
+    * Test sub-f02p01/ses-01 (different family)
+    * Test sub-f02p01/ses-02
+    * Test sub-f02p01/ses-03
+  - Verify all output files created correctly
+  - Check SCR detection quality and metric consistency
+  - Compare results with known baseline (22 SCRs rest, 791 SCRs therapy)
+  - Document any issues or edge cases found
+
+- [ ] **Clean and organize Sprint 3 outputs**
+  - Remove test artifacts and temporary files
+  - Verify all documentation is complete
+  - Check all commits have clear messages
+  - Ensure config.yaml has final EDA settings
 
 - [ ] **Update troubleshooting guide with EDA sections**
   - Add EDA signal quality issues
