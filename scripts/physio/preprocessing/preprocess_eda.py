@@ -19,14 +19,14 @@ from typing import List, Optional, Dict, Any
 
 import pandas as pd
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from src.core.config_loader import ConfigLoader
-from src.physio.eda_loader import EDALoader
-from src.physio.eda_cleaner import EDACleaner
-from src.physio.eda_metrics import EDAMetricsExtractor
-from src.physio.eda_bids_writer import EDABIDSWriter
+from src.physio.preprocessing.eda_loader import EDALoader
+from src.physio.preprocessing.eda_cleaner import EDACleaner
+from src.physio.preprocessing.eda_metrics import EDAMetricsExtractor
+from src.physio.preprocessing.eda_bids_writer import EDABIDSWriter
 
 
 def setup_logging(config_path: Optional[Path] = None) -> None:

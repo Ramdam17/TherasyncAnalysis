@@ -12,8 +12,8 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.core.config_loader import ConfigLoader
 import logging

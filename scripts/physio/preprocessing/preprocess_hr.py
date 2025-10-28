@@ -31,13 +31,13 @@ from typing import List, Optional
 import yaml
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from src.core.config_loader import ConfigLoader
-from src.physio.hr_loader import HRLoader
-from src.physio.hr_cleaner import HRCleaner
-from src.physio.hr_metrics_extractor import HRMetricsExtractor
-from src.physio.hr_bids_writer import HRBIDSWriter
+from src.physio.preprocessing.hr_loader import HRLoader
+from src.physio.preprocessing.hr_cleaner import HRCleaner
+from src.physio.preprocessing.hr_metrics_extractor import HRMetricsExtractor
+from src.physio.preprocessing.hr_bids_writer import HRBIDSWriter
 
 
 # Configure logging
