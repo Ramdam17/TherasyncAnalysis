@@ -2,8 +2,12 @@
 name = "therasyncpipeline"
 version = "0.1.0"
 description = "A comprehensive pipeline for analyzing physiological data from family therapy sessions"
-authors = ["ramdam17 <remy.ramadour.labs@gmail.com>"]
+authors = [
+    "Lena Adel <lena.adel@example.com>",
+    "Remy Ramadour <remy.ramadour.labs@gmail.com>"
+]
 readme = "README.md"
+license = "MIT"
 packages = [{include = "src"}]
 
 [tool.poetry.dependencies]

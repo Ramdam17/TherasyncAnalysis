@@ -1,5 +1,7 @@
 # Sprint 2 Summary: BVP Processing Pipeline
 
+**Authors**: Lena Adel, Remy Ramadour
+
 ## 🎯 Objectives Completed
 
 Sprint 2 successfully implemented a comprehensive BVP (Blood Volume Pulse) processing pipeline for the TherasyncPipeline project, establishing the foundation for physiological data analysis in family therapy research.
