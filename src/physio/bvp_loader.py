@@ -136,7 +136,7 @@ class BVPLoader:
             metadata = json.load(f)
         
         # Load data
-        data = pd.read_csv(tsv_file, sep='\\t')
+        data = pd.read_csv(tsv_file, sep='\t')
         
         # Validate data structure
         self._validate_data_structure(data, metadata, tsv_file)
