@@ -68,6 +68,34 @@ physio:
         enabled: false       # For future Sprint implementation
         window_size: 30      # seconds
         step_size: 1         # seconds
+  
+  # EDA (Electrodermal Activity) processing
+  eda:
+    sampling_rate: 4  # Hz, from Empatica E4
+    processing:
+      method: "neurokit"  # EDA processing method (neurokit default)
+      method_scr: "neurokit"  # SCR peak detection method
+      lowcut_freq: 0.05   # Hz - high-pass filter for baseline drift
+      highcut_freq: 1.0   # Hz - low-pass filter for noise
+      scr_threshold: 0.01  # Minimum SCR amplitude (μS)
+      scr_min_amplitude: 0.01  # Minimum amplitude for valid SCR (μS)
+    metrics:
+      extract_all: false
+      selected_metrics:
+        # SCR (Skin Conductance Response) metrics
+        scr:
+          - "SCR_Peaks_N"        # Number of SCR peaks
+          - "SCR_Peaks_Amplitude_Mean"  # Mean SCR amplitude
+          - "SCR_Peaks_Amplitude_Max"   # Maximum SCR amplitude
+          - "SCR_RiseTime_Mean"   # Mean rise time (seconds)
+          - "SCR_RecoveryTime_Mean"  # Mean recovery time (seconds)
+        # Tonic/Phasic components
+        components:
+          - "EDA_Tonic_Mean"     # Mean tonic level (μS)
+          - "EDA_Tonic_SD"       # Tonic level variability
+          - "EDA_Phasic_Mean"    # Mean phasic activity
+          - "EDA_Phasic_SD"      # Phasic variability
+          - "EDA_Phasic_Rate"    # Rate of phasic responses (per minute)
         min_peaks_per_epoch: 20  # minimum beats for valid HRV
     
   # EDA (Electrodermal Activity) processing  

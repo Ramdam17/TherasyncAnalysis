@@ -1,9 +1,25 @@
 """
 Physiological data processing modules for Therasync Pipeline.
 
-This package will contain modules for processing BVP, EDA, HR and other
+This package contains modules for processing BVP, EDA, HR and other
 physiological signals from Empatica devices.
+
+Authors: Lena Adel, Remy Ramadour
 """
 
-# Modules will be added in subsequent sprints
-__all__ = []
+from src.physio.bvp_loader import BVPLoader
+from src.physio.bvp_cleaner import BVPCleaner
+from src.physio.bvp_metrics import BVPMetricsExtractor
+from src.physio.bvp_bids_writer import BVPBIDSWriter
+
+from src.physio.eda_loader import EDALoader
+
+__all__ = [
+    # BVP Pipeline
+    'BVPLoader',
+    'BVPCleaner',
+    'BVPMetricsExtractor',
+    'BVPBIDSWriter',
+    # EDA Pipeline
+    'EDALoader',
+]
