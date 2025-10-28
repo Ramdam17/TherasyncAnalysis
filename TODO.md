@@ -152,18 +152,20 @@
   - Added preprocess_eda.py script documentation
   - Updated table of contents with BVP/EDA organization
 
-- [ ] **Test EDA pipeline on real data**
-  - Clean previous outputs: `poetry run python scripts/clean_outputs.py --all --force`
-  - Run on multiple subjects/sessions to validate robustness:
-    * Test sub-f01p01/ses-01 (baseline validation)
-    * Test sub-f01p01/ses-02 
-    * Test sub-f02p01/ses-01 (different family)
-    * Test sub-f02p01/ses-02
-    * Test sub-f02p01/ses-03
-  - Verify all output files created correctly
-  - Check SCR detection quality and metric consistency
-  - Compare results with known baseline (22 SCRs rest, 791 SCRs therapy)
-  - Document any issues or edge cases found
+- [x] **Test EDA pipeline on real data**
+  - ✅ Tested 5 subject/sessions successfully:
+    * sub-f01p01 ses-01: 22 SCRs rest (22/min), 791 SCRs therapy (17.08/min) ✅ matches baseline
+    * sub-f01p01 ses-02: 27 SCRs rest (27/min), 733 SCRs therapy (12.81/min) ✅
+    * sub-f02p01 ses-01: 12 SCRs rest (12/min), 131 SCRs therapy (2.24/min) ✅
+    * sub-f02p01 ses-02: 21 SCRs rest (21/min), 504 SCRs therapy (7.03/min) ✅
+    * sub-f02p01 ses-03: 11 SCRs rest (11/min), 569 SCRs therapy (7.42/min) ✅
+  - All 13 BIDS-compliant files created per subject/session
+  - SCR detection working correctly across all subjects
+  - Tonic phasic EDA levels physiologically reasonable (0.002-0.476 μS)
+  - Inter-subject variability observed as expected (f02p01 lower arousal than f01p01)
+  - No issues or edge cases found
+
+- [ ] **Clean and organize Sprint 3 outputs**
 
 - [ ] **Clean and organize Sprint 3 outputs**
   - Remove test artifacts and temporary files
