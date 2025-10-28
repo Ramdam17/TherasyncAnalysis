@@ -1,0 +1,672 @@
+"""
+EDA BIDS Writer for TherasyncPipeline.
+
+This module provides functionality to save processed EDA data and extracted metrics
+in BIDS-compliant format under data/derivatives/.
+"""
+
+import json
+import logging
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union, Any
+from datetime import datetime
+
+import pandas as pd
+import numpy as np
+
+from src.core.config_loader import ConfigLoader
+from src.core.bids_utils import BIDSUtils
+
+
+logger = logging.getLogger(__name__)
+
+
+class EDABIDSWriter:
+    """
+    Save processed EDA data and metrics in BIDS-compliant format.
+    
+    This class handles saving processed signals (tonic, phasic, SCR events), 
+    extracted metrics, and metadata following BIDS derivatives specifications 
+    for physiological data.
+    """
+    
+    def __init__(self, config_path: Optional[Union[str, Path]] = None):
+        """
+        Initialize the EDA BIDS writer with configuration.
+        
+        Args:
+            config_path: Path to configuration file. If None, uses default config.
+        """
+        self.config = ConfigLoader(config_path)
+        self.bids_utils = BIDSUtils()
+        
+        # Get paths and BIDS configuration
+        self.derivatives_path = Path(self.config.get('paths.derivatives'))
+        self.bids_config = self.config.get('bids', {})
+        
+        # Create derivatives directory structure
+        self.pipeline_name = "therasync-eda"
+        self.pipeline_version = "1.0.0"
+        self.pipeline_dir = self.derivatives_path / self.pipeline_name
+        
+        # Ensure derivatives directory exists
+        self.pipeline_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create dataset description for derivatives
+        self._create_dataset_description()
+        
+        logger.info(f"EDA BIDS Writer initialized: {self.pipeline_dir}")
+    
+    def save_processed_data(
+        self,
+        subject_id: str,
+        session_id: str,
+        processed_results: Dict[str, pd.DataFrame],
+        session_metrics: pd.DataFrame,
+        processing_metadata: Optional[Dict] = None
+    ) -> Dict[str, List[str]]:
+        """
+        Save processed EDA data and metrics in BIDS format.
+        
+        Args:
+            subject_id: Subject identifier (e.g., 'sub-f01p01')
+            session_id: Session identifier (e.g., 'ses-01')
+            processed_results: Dict of processed DataFrames from EDACleaner 
+                             (keys: moment names, values: processed signals)
+            session_metrics: DataFrame with extracted metrics from EDAMetricsExtractor
+            processing_metadata: Additional metadata about processing
+            
+        Returns:
+            Dictionary with lists of created file paths
+        """
+        created_files = {
+            'processed_signals': [],
+            'scr_events': [],
+            'metrics': [],
+            'metadata': [],
+            'summary': []
+        }
+        
+        # Create subject/session directory
+        subject_dir = self.pipeline_dir / subject_id / session_id / 'physio'
+        subject_dir.mkdir(parents=True, exist_ok=True)
+        
+        logger.info(f"Saving processed EDA data for {subject_id}/{session_id}")
+        
+        # Save processed signals for each moment
+        for moment, processed_signals in processed_results.items():
+            # Save processed signals (tonic, phasic components)
+            signal_files = self._save_processed_signals(
+                subject_dir, subject_id, session_id, moment, processed_signals
+            )
+            created_files['processed_signals'].extend(signal_files)
+            
+            # Save SCR events if peaks detected
+            if 'SCR_Peaks' in processed_signals.columns:
+                scr_files = self._save_scr_events(
+                    subject_dir, subject_id, session_id, moment, processed_signals
+                )
+                created_files['scr_events'].extend(scr_files)
+            
+            # Save moment-specific metadata
+            metadata_file = self._save_moment_metadata(
+                subject_dir, subject_id, session_id, moment, processed_signals
+            )
+            if metadata_file:
+                created_files['metadata'].append(metadata_file)
+        
+        # Save extracted metrics
+        metrics_files = self._save_session_metrics(
+            subject_dir, subject_id, session_id, session_metrics
+        )
+        created_files['metrics'].extend(metrics_files)
+        
+        # Save processing summary
+        summary_file = self._save_processing_summary(
+            subject_dir, subject_id, session_id, 
+            processed_results, session_metrics, processing_metadata
+        )
+        if summary_file:
+            created_files['summary'].append(summary_file)
+        
+        total_files = sum(len(files) for files in created_files.values())
+        logger.info(f"Created {total_files} BIDS-compliant files for {subject_id}/{session_id}")
+        
+        return created_files
+    
+    def _save_processed_signals(
+        self,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        moment: str,
+        processed_signals: pd.DataFrame
+    ) -> List[str]:
+        """
+        Save processed EDA signals (tonic, phasic) in BIDS format.
+        
+        Args:
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            moment: Moment/task name
+            processed_signals: Processed signals DataFrame with tonic/phasic
+            
+        Returns:
+            List of created file paths
+        """
+        created_files = []
+        
+        # BIDS filename pattern for processed physio data
+        base_filename = f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-eda"
+        
+        # Save processed signals as TSV
+        signals_tsv = subject_dir / f"{base_filename}.tsv"
+        
+        # Prepare signals data for saving
+        output_data = processed_signals.copy()
+        
+        # Add time column if not present
+        if 'time' not in output_data.columns:
+            # Get sampling rate from config or use default 4 Hz
+            sampling_rate = self.config.get('physio.eda.sampling_rate', 4)
+            time_values = np.arange(len(output_data)) / sampling_rate
+            output_data.insert(0, 'time', time_values)
+        
+        # Select columns to save (exclude SCR_Peaks binary if present)
+        columns_to_save = ['time', 'EDA_Raw', 'EDA_Clean', 'EDA_Tonic', 'EDA_Phasic']
+        columns_available = [col for col in columns_to_save if col in output_data.columns]
+        output_data_filtered = output_data[columns_available]
+        
+        # Save TSV file
+        output_data_filtered.to_csv(signals_tsv, sep='\t', index=False, na_rep='n/a')
+        created_files.append(str(signals_tsv))
+        
+        # Create JSON sidecar for processed signals
+        signals_json = subject_dir / f"{base_filename}.json"
+        signals_metadata = self._create_processed_signals_metadata(
+            processed_signals, moment
+        )
+        
+        with open(signals_json, 'w') as f:
+            json.dump(signals_metadata, f, indent=2, default=self._json_serializer)
+        created_files.append(str(signals_json))
+        
+        logger.debug(f"Saved processed signals: {signals_tsv}")
+        
+        return created_files
+    
+    def _save_scr_events(
+        self,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        moment: str,
+        processed_signals: pd.DataFrame
+    ) -> List[str]:
+        """
+        Save SCR (Skin Conductance Response) events in BIDS format.
+        
+        Args:
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            moment: Moment/task name
+            processed_signals: Processed signals with SCR peak information
+            
+        Returns:
+            List of created file paths
+        """
+        created_files = []
+        
+        # Check if SCR peaks detected
+        if 'SCR_Peaks' not in processed_signals.columns:
+            return created_files
+        
+        # Get SCR peak indices
+        scr_peaks = processed_signals[processed_signals['SCR_Peaks'] == 1]
+        
+        if len(scr_peaks) == 0:
+            logger.debug(f"No SCR peaks detected for {moment}")
+            return created_files
+        
+        # BIDS filename for events
+        base_filename = f"{subject_id}_{session_id}_task-{moment}_desc-scr_events"
+        
+        # Create events DataFrame
+        sampling_rate = self.config.get('physio.eda.sampling_rate', 4)
+        
+        events_data = []
+        for idx, row in scr_peaks.iterrows():
+            event = {
+                'onset': row.get('time', idx / sampling_rate),
+                'duration': row.get('SCR_RecoveryTime', 0),
+                'amplitude': row.get('SCR_Amplitude', np.nan),
+                'rise_time': row.get('SCR_RiseTime', np.nan),
+                'recovery_time': row.get('SCR_RecoveryTime', np.nan)
+            }
+            events_data.append(event)
+        
+        events_df = pd.DataFrame(events_data)
+        
+        # Save events as TSV
+        events_tsv = subject_dir / f"{base_filename}.tsv"
+        events_df.to_csv(events_tsv, sep='\t', index=False, na_rep='n/a')
+        created_files.append(str(events_tsv))
+        
+        # Create JSON sidecar for events
+        events_json = subject_dir / f"{base_filename}.json"
+        events_metadata = {
+            "Description": "Skin Conductance Response (SCR) events detected in EDA signal",
+            "Columns": {
+                "onset": "Event onset time in seconds",
+                "duration": "SCR recovery time in seconds", 
+                "amplitude": "SCR amplitude in microsiemens",
+                "rise_time": "SCR rise time in seconds",
+                "recovery_time": "SCR recovery time in seconds"
+            },
+            "Units": {
+                "onset": "s",
+                "duration": "s",
+                "amplitude": "μS",
+                "rise_time": "s",
+                "recovery_time": "s"
+            },
+            "NumberOfEvents": len(events_df),
+            "ProcessingPipeline": "therasync-eda",
+            "ProcessingVersion": self.pipeline_version
+        }
+        
+        with open(events_json, 'w') as f:
+            json.dump(events_metadata, f, indent=2, default=self._json_serializer)
+        created_files.append(str(events_json))
+        
+        logger.debug(f"Saved SCR events: {events_tsv} ({len(events_df)} events)")
+        
+        return created_files
+    
+    def _save_session_metrics(
+        self,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        session_metrics: pd.DataFrame
+    ) -> List[str]:
+        """
+        Save extracted EDA metrics in BIDS format.
+        
+        Args:
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            session_metrics: Extracted metrics DataFrame
+            
+        Returns:
+            List of created file paths
+        """
+        created_files = []
+        
+        if session_metrics.empty:
+            logger.warning("No session metrics to save")
+            return created_files
+        
+        # BIDS filename for metrics
+        base_filename = f"{subject_id}_{session_id}_desc-edametrics_physio"
+        
+        # Save metrics as TSV
+        metrics_tsv = subject_dir / f"{base_filename}.tsv"
+        session_metrics.to_csv(metrics_tsv, sep='\t', index=False, na_rep='n/a')
+        created_files.append(str(metrics_tsv))
+        
+        # Create JSON sidecar for metrics
+        metrics_json = subject_dir / f"{base_filename}.json"
+        metrics_metadata = self._create_metrics_metadata(session_metrics)
+        
+        with open(metrics_json, 'w') as f:
+            json.dump(metrics_metadata, f, indent=2, default=self._json_serializer)
+        created_files.append(str(metrics_json))
+        
+        logger.debug(f"Saved EDA metrics: {metrics_tsv}")
+        
+        return created_files
+    
+    def _save_moment_metadata(
+        self,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        moment: str,
+        processed_signals: pd.DataFrame
+    ) -> Optional[str]:
+        """
+        Save moment-specific processing metadata.
+        
+        Args:
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            moment: Moment/task name
+            processed_signals: Processed signals DataFrame
+            
+        Returns:
+            Path to created metadata file, or None if failed
+        """
+        try:
+            # BIDS filename for moment metadata
+            metadata_filename = f"{subject_id}_{session_id}_task-{moment}_desc-processing_recording-eda.json"
+            metadata_file = subject_dir / metadata_filename
+            
+            # Get processing parameters
+            eda_config = self.config.get('physio.eda', {})
+            processing_config = eda_config.get('processing', {})
+            
+            # Count SCR peaks if present
+            num_scr_peaks = int(processed_signals['SCR_Peaks'].sum()) if 'SCR_Peaks' in processed_signals.columns else 0
+            
+            # Create comprehensive metadata
+            metadata = {
+                "TaskName": moment,
+                "ProcessingMethod": processing_config.get('method', 'cvxEDA'),
+                "SamplingFrequency": eda_config.get('sampling_rate', 4),
+                "NumberOfSamples": len(processed_signals),
+                "Duration": len(processed_signals) / eda_config.get('sampling_rate', 4),
+                "NumberOfSCRPeaks": num_scr_peaks,
+                "SCRDetectionThreshold": processing_config.get('scr_threshold', 0.01),
+                "FilteringApplied": processing_config.get('filter', True),
+                "ProcessingTimestamp": datetime.now().isoformat(),
+                "ProcessingPipeline": "therasync-eda",
+                "ProcessingVersion": self.pipeline_version
+            }
+            
+            with open(metadata_file, 'w') as f:
+                json.dump(metadata, f, indent=2, default=self._json_serializer)
+            
+            logger.debug(f"Saved moment metadata: {metadata_file}")
+            return str(metadata_file)
+            
+        except Exception as e:
+            logger.error(f"Failed to save moment metadata for {moment}: {e}")
+            return None
+    
+    def _save_processing_summary(
+        self,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        processed_results: Dict[str, pd.DataFrame],
+        session_metrics: pd.DataFrame,
+        processing_metadata: Optional[Dict] = None
+    ) -> Optional[str]:
+        """
+        Save overall processing summary.
+        
+        Args:
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            processed_results: Processed results dictionary
+            session_metrics: Session metrics DataFrame
+            processing_metadata: Additional processing metadata
+            
+        Returns:
+            Path to created summary file, or None if failed
+        """
+        try:
+            # BIDS filename for summary
+            summary_filename = f"{subject_id}_{session_id}_desc-summary_recording-eda.json"
+            summary_file = subject_dir / summary_filename
+            
+            # Calculate total SCR peaks across all moments
+            total_scr_peaks = 0
+            for processed_signals in processed_results.values():
+                if 'SCR_Peaks' in processed_signals.columns:
+                    total_scr_peaks += int(processed_signals['SCR_Peaks'].sum())
+            
+            # Calculate total duration
+            sampling_rate = self.config.get('physio.eda.sampling_rate', 4)
+            total_duration = sum(
+                len(signals) / sampling_rate
+                for signals in processed_results.values()
+            )
+            
+            # Create processing summary
+            summary = {
+                "SubjectID": subject_id,
+                "SessionID": session_id,
+                "ProcessingDate": datetime.now().isoformat(),
+                "ProcessingPipeline": "therasync-eda",
+                "ProcessingVersion": self.pipeline_version,
+                "MomentsProcessed": list(processed_results.keys()),
+                "MetricsExtracted": len(session_metrics.columns) - 1 if 'moment' in session_metrics.columns else len(session_metrics.columns),
+                "TotalSignalDuration": total_duration,
+                "TotalSCRPeaks": total_scr_peaks,
+                "QualityAssessment": self._assess_overall_quality(processed_results, session_metrics)
+            }
+            
+            # Add custom metadata if provided
+            if processing_metadata:
+                summary["AdditionalMetadata"] = processing_metadata
+            
+            with open(summary_file, 'w') as f:
+                json.dump(summary, f, indent=2, default=self._json_serializer)
+            
+            logger.debug(f"Saved processing summary: {summary_file}")
+            return str(summary_file)
+            
+        except Exception as e:
+            logger.error(f"Failed to save processing summary: {e}")
+            return None
+    
+    def _create_processed_signals_metadata(
+        self,
+        processed_signals: pd.DataFrame,
+        moment: str
+    ) -> Dict:
+        """Create metadata for processed signals."""
+        sampling_rate = self.config.get('physio.eda.sampling_rate', 4)
+        eda_config = self.config.get('physio.eda', {})
+        processing_config = eda_config.get('processing', {})
+        
+        metadata = {
+            "Description": "Processed EDA signals from TherasyncPipeline with tonic-phasic decomposition",
+            "TaskName": moment,
+            "SamplingFrequency": sampling_rate,
+            "StartTime": 0,
+            "ProcessingMethod": processing_config.get('method', 'cvxEDA'),
+            "Columns": [col for col in processed_signals.columns if col in 
+                       ['time', 'EDA_Raw', 'EDA_Clean', 'EDA_Tonic', 'EDA_Phasic']],
+            "Units": {
+                "time": "s",
+                "EDA_Raw": "μS",
+                "EDA_Clean": "μS",
+                "EDA_Tonic": "μS",
+                "EDA_Phasic": "μS"
+            },
+            "ProcessingPipeline": "therasync-eda",
+            "ProcessingVersion": self.pipeline_version,
+            "DecompositionNote": "Tonic = slowly varying baseline, Phasic = rapid SCR responses"
+        }
+        
+        return metadata
+    
+    def _create_metrics_metadata(self, session_metrics: pd.DataFrame) -> Dict:
+        """Create metadata for extracted metrics."""
+        # Get all metric column names (exclude 'moment' column)
+        metric_columns = [col for col in session_metrics.columns if col != 'moment']
+        
+        metadata = {
+            "Description": "EDA-derived SCR and autonomic nervous system metrics from TherasyncPipeline",
+            "ProcessingPipeline": "therasync-eda",
+            "ProcessingVersion": self.pipeline_version,
+            "MetricsExtracted": metric_columns,
+            "Columns": {
+                "moment": "Task/moment identifier",
+            },
+            "Units": {
+                "moment": "categorical",
+                # SCR metrics
+                "SCR_Peaks_N": "count",
+                "SCR_Peaks_Rate": "per minute",
+                "SCR_Peaks_Amplitude_Mean": "μS",
+                "SCR_Peaks_Amplitude_Max": "μS",
+                "SCR_Peaks_Amplitude_SD": "μS",
+                "SCR_Peaks_RiseTime_Mean": "s",
+                "SCR_Peaks_RiseTime_SD": "s",
+                "SCR_Peaks_RecoveryTime_Mean": "s",
+                "SCR_Peaks_RecoveryTime_SD": "s",
+                # Tonic metrics
+                "EDA_Tonic_Mean": "μS",
+                "EDA_Tonic_SD": "μS",
+                "EDA_Tonic_Min": "μS",
+                "EDA_Tonic_Max": "μS",
+                "EDA_Tonic_Range": "μS",
+                # Phasic metrics
+                "EDA_Phasic_Mean": "μS",
+                "EDA_Phasic_SD": "μS",
+                "EDA_Phasic_Min": "μS",
+                "EDA_Phasic_Max": "μS",
+                "EDA_Phasic_Range": "μS",
+                "EDA_Phasic_Rate": "per minute",
+                # Metadata
+                "EDA_Duration": "s",
+                "EDA_SamplingRate": "Hz"
+            },
+            "MetricCategories": {
+                "SCR": "Skin Conductance Response (phasic event) metrics",
+                "Tonic": "Slowly varying baseline skin conductance level",
+                "Phasic": "Rapidly changing skin conductance responses"
+            }
+        }
+        
+        return metadata
+    
+    def _assess_overall_quality(
+        self,
+        processed_results: Dict[str, pd.DataFrame],
+        session_metrics: pd.DataFrame
+    ) -> Dict:
+        """Assess overall quality of processing."""
+        sampling_rate = self.config.get('physio.eda.sampling_rate', 4)
+        
+        # Count total SCR peaks
+        total_scr_peaks = 0
+        for processed_signals in processed_results.values():
+            if 'SCR_Peaks' in processed_signals.columns:
+                total_scr_peaks += int(processed_signals['SCR_Peaks'].sum())
+        
+        # Calculate mean SCR rate if available
+        if 'SCR_Peaks_Rate' in session_metrics.columns:
+            scr_rates = session_metrics['SCR_Peaks_Rate'].dropna()
+            mean_scr_rate = float(scr_rates.mean()) if len(scr_rates) > 0 else None
+        else:
+            mean_scr_rate = None
+        
+        # Calculate mean tonic level if available
+        if 'EDA_Tonic_Mean' in session_metrics.columns:
+            tonic_means = session_metrics['EDA_Tonic_Mean'].dropna()
+            mean_tonic_level = float(tonic_means.mean()) if len(tonic_means) > 0 else None
+        else:
+            mean_tonic_level = None
+        
+        quality_assessment = {
+            "moments_processed": len(processed_results),
+            "moments_with_metrics": len(session_metrics),
+            "total_scr_peaks_detected": total_scr_peaks,
+            "mean_scr_rate": mean_scr_rate,
+            "mean_tonic_level": mean_tonic_level
+        }
+        
+        return quality_assessment
+    
+    def _create_dataset_description(self) -> None:
+        """Create BIDS dataset_description.json for derivatives."""
+        dataset_desc_file = self.pipeline_dir / "dataset_description.json"
+        
+        if dataset_desc_file.exists():
+            return  # Already exists
+        
+        dataset_description = {
+            "Name": "TherasyncPipeline EDA Processing",
+            "BIDSVersion": "1.8.0",
+            "DatasetType": "derivative",
+            "GeneratedBy": [{
+                "Name": "TherasyncPipeline",
+                "Version": self.pipeline_version,
+                "Description": "EDA processing pipeline for family therapy physiological data",
+                "CodeURL": "https://github.com/ppsp-team/TherasyncPipeline"
+            }],
+            "SourceDatasets": [{
+                "Description": "Therasync family therapy physiological data"
+            }],
+            "HowToAcknowledge": "Please cite the TherasyncPipeline paper when using this processed data."
+        }
+        
+        with open(dataset_desc_file, 'w') as f:
+            json.dump(dataset_description, f, indent=2)
+        
+        logger.info(f"Created dataset description: {dataset_desc_file}")
+    
+    def _json_serializer(self, obj):
+        """JSON serializer for numpy types."""
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif pd.isna(obj):
+            return None
+        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+    
+    def create_group_summary(
+        self,
+        subjects_data: Dict[str, Dict[str, pd.DataFrame]],
+        output_filename: str = "group_eda_metrics.tsv"
+    ) -> str:
+        """
+        Create group-level summary of EDA metrics across subjects.
+        
+        Args:
+            subjects_data: Nested dict {subject_id: {session_id: metrics_df}}
+            output_filename: Name of output file
+            
+        Returns:
+            Path to created group summary file
+        """
+        group_data = []
+        
+        for subject_id, sessions in subjects_data.items():
+            for session_id, metrics_df in sessions.items():
+                for _, row in metrics_df.iterrows():
+                    row_dict = row.to_dict()
+                    row_dict['subject_id'] = subject_id
+                    row_dict['session_id'] = session_id
+                    group_data.append(row_dict)
+        
+        # Create DataFrame and save
+        group_df = pd.DataFrame(group_data)
+        
+        # Reorder columns to put identifiers first
+        id_cols = ['subject_id', 'session_id', 'moment']
+        other_cols = [col for col in group_df.columns if col not in id_cols]
+        group_df = group_df[id_cols + other_cols]
+        
+        group_file = self.pipeline_dir / output_filename
+        group_df.to_csv(group_file, sep='\t', index=False, na_rep='n/a')
+        
+        # Create accompanying JSON
+        group_json = self.pipeline_dir / f"{output_filename.replace('.tsv', '.json')}"
+        group_metadata = {
+            "Description": "Group-level EDA metrics summary",
+            "ProcessingPipeline": "therasync-eda",
+            "ProcessingVersion": self.pipeline_version,
+            "NumberOfSubjects": len(subjects_data),
+            "TotalSessions": sum(len(sessions) for sessions in subjects_data.values()),
+            "CreationDate": datetime.now().isoformat()
+        }
+        
+        with open(group_json, 'w') as f:
+            json.dump(group_metadata, f, indent=2)
+        
+        logger.info(f"Created group summary: {group_file}")
+        return str(group_file)
