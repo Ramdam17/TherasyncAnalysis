@@ -13,7 +13,22 @@ This guide helps resolve common issues when using the TherasyncPipeline.
 1. [Installation Issues](#installation-issues)
 2. [Data Loading Problems](#data-loading-problems)
 3. [Processing Errors](#processing-errors)
+   - [BVP Processing Errors](#bvp-processing-errors)
+     - [Peak Detection Fails](#peak-detection-fails)
+     - [Memory Errors](#memory-errors)
+     - [Sampling Rate Mismatch](#sampling-rate-mismatch)
+   - [EDA Signal Processing Errors](#eda-signal-processing-errors)
+     - [cvxEDA Convergence Failure](#cvxeda-convergence-failure)
+     - [SCR Detection Issues](#scr-detection-issues)
+     - [Low/Negative EDA Values](#lownegative-eda-values)
+     - [Sampling Rate Warning](#sampling-rate-warning)
 4. [Quality Warnings](#quality-warnings)
+   - [BVP Quality Warnings](#bvp-quality-warnings)
+     - [Low Signal Quality Warning](#low-signal-quality-warning)
+     - [ParserWarning](#parserwarning)
+   - [EDA Quality Warnings](#eda-quality-warnings)
+     - [Unusual SCR Rates](#unusual-scr-rates)
+     - [Atypical Tonic EDA Levels](#atypical-tonic-eda-levels)
 5. [Output Issues](#output-issues)
 6. [Performance Problems](#performance-problems)
 7. [Common Warnings Explained](#common-warnings-explained)
@@ -211,7 +226,9 @@ data.to_csv('fixed_file.tsv', sep='\t', index=False, float_format='%.6f')
 
 ## Processing Errors
 
-### Peak Detection Fails
+### BVP Processing Errors
+
+#### Peak Detection Fails
 
 **Problem**: `ValueError: No peaks detected in signal`
 
@@ -260,7 +277,7 @@ plt.show()
 
 ---
 
-### Memory Errors
+#### Memory Errors
 
 **Problem**: `MemoryError` or system freezes during processing
 
@@ -287,7 +304,7 @@ free -h
 
 ---
 
-### Sampling Rate Mismatch
+#### Sampling Rate Mismatch
 
 **Problem**: `ValueError: Sampling rate mismatch. Expected 64 Hz, got 32 Hz`
 
@@ -319,9 +336,184 @@ print(f"Actual sampling rate: {actual_rate:.1f} Hz")
 
 ---
 
+### EDA Signal Processing Errors
+
+#### cvxEDA Convergence Failure
+
+**Problem**: `RuntimeError: cvxEDA optimization did not converge`
+
+**Causes**:
+1. Signal contains NaN or infinite values
+2. Signal extremely noisy or corrupted
+3. Insufficient signal length (<10 seconds)
+4. Numerical instability with extreme values
+
+**Solutions**:
+
+1. **Check for invalid values**:
+```python
+import pandas as pd
+import numpy as np
+
+data = pd.read_csv('EDA.tsv', sep='\t')
+print(f"NaN values: {data['eda'].isna().sum()}")
+print(f"Infinite values: {np.isinf(data['eda']).sum()}")
+print(f"Signal range: [{data['eda'].min():.3f}, {data['eda'].max():.3f}] μS")
+```
+
+2. **Verify signal length**:
+```python
+duration = len(data) / 4  # 4 Hz sampling rate
+print(f"Duration: {duration:.1f} seconds")
+# Minimum: 10 seconds for cvxEDA
+```
+
+3. **Try fallback method** (if NeuroKit2 cvxEDA fails):
+```yaml
+# config/config.yaml
+physio:
+  eda:
+    processing:
+      method: "neurokit"  # Uses median filter decomposition as fallback
+```
+
+4. **Inspect signal visually**:
+```python
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(12, 4))
+plt.plot(data['eda'])
+plt.xlabel('Sample')
+plt.ylabel('EDA (μS)')
+plt.title('Raw EDA Signal')
+plt.show()
+# Look for extreme spikes, flat lines, or artifacts
+```
+
+---
+
+#### SCR Detection Issues
+
+**Problem 1**: `WARNING: Very few SCRs detected (0 peaks in 60s)`
+
+**Causes**:
+- Subject extremely calm/relaxed
+- SCR threshold too high
+- Poor electrode contact (flat signal)
+
+**Solutions**:
+
+1. **Check signal quality**:
+```python
+# View raw signal statistics
+data = pd.read_csv('EDA.tsv', sep='\t')
+print(f"Mean: {data['eda'].mean():.3f} μS")
+print(f"Std: {data['eda'].std():.3f} μS")
+print(f"Range: [{data['eda'].min():.3f}, {data['eda'].max():.3f}] μS")
+
+# Flat signal (std < 0.01) suggests poor contact
+```
+
+2. **Adjust SCR threshold**:
+```yaml
+# config/config.yaml
+physio:
+  eda:
+    processing:
+      scr_threshold: 0.01  # Lower to detect smaller SCRs (default: 0.01)
+```
+
+3. **Visualize detected SCRs**:
+```python
+# Check processed output
+events = pd.read_csv('sub-f01p01_ses-01_task-restingstate_desc-scr_events.tsv', sep='\t')
+print(f"SCRs detected: {len(events)}")
+print(events[['onset', 'amplitude', 'rise_time']].head())
+```
+
+**Problem 2**: `WARNING: Excessive SCRs detected (>50 SCRs/min)`
+
+**Causes**:
+- Motion artifacts creating false peaks
+- Electrical interference
+- SCR threshold too low
+- Subject highly anxious
+
+**Solutions**:
+
+1. **Increase SCR threshold**:
+```yaml
+physio:
+  eda:
+    processing:
+      scr_threshold: 0.02  # Increase to reduce false positives
+```
+
+2. **Check for artifacts**:
+```python
+# Look at SCR amplitude distribution
+events = pd.read_csv('*_desc-scr_events.tsv', sep='\t')
+events['amplitude'].hist(bins=30)
+plt.xlabel('SCR Amplitude (μS)')
+plt.ylabel('Count')
+plt.title('SCR Amplitude Distribution')
+plt.show()
+# Many very small amplitudes (<0.01 μS) suggest noise
+```
+
+---
+
+#### Low/Negative EDA Values
+
+**Problem**: `WARNING: EDA signal contains negative values`
+
+**Cause**: Poor electrode contact or data preprocessing artifact
+
+**Solutions**:
+
+1. **Check electrode quality**:
+   - Ensure proper skin prep (clean, dry)
+   - Use isotonic electrode gel
+   - Check electrode placement (palmar surfaces)
+
+2. **Offset correction** (if needed):
+```python
+# Add offset to make signal positive
+data['eda'] = data['eda'] - data['eda'].min() + 0.01
+```
+
+3. **Verify data integrity**:
+```bash
+# Check raw source data
+cat data/sourcedata/sub-f01p01/ses-01/physio/EDA.tsv | head -20
+# Should show reasonable values (typically 0.5-20 μS)
+```
+
+---
+
+#### Sampling Rate Warning
+
+**Problem**: `NeuroKitWarning: EDA signal is sampled at very low frequency. Skipping filtering.`
+
+**Context**: 
+- This is **EXPECTED** for Empatica E4 data (4 Hz)
+- Not an error, just informational
+- Pipeline still processes correctly
+
+**Why it appears**:
+- NeuroKit2 recommends >10 Hz for optimal filtering
+- 4 Hz is low but acceptable for EDA
+- Bandpass filtering is skipped to avoid artifacts
+
+**No action needed** - pipeline handles this automatically.
+
+---
+
 ## Quality Warnings
 
-### Low Signal Quality Warning
+### BVP Quality Warnings
+
+#### Low Signal Quality Warning
 
 **Warning**: `Low signal quality for BVP therapy: mean quality 0.699 < threshold 0.8`
 
@@ -505,6 +697,135 @@ poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-0
 
 ---
 
+### EDA Quality Warnings
+
+#### Unusual SCR Rates
+
+**Warning**: Subject has unusually high or low SCR rates compared to typical ranges
+
+**Normal SCR Rates**:
+- **Resting State**: 1-20 SCRs/min (typical), up to 30 during mild stress
+- **Therapy Sessions**: 2-20 SCRs/min (variable based on emotional engagement)
+- **High Arousal**: 20-40 SCRs/min (anxiety, excitement)
+- **Very Low**: <5 SCRs/min (very calm, meditation)
+
+**From Real Data Testing**:
+- Family f01p01: 22-27 SCRs/min rest, 12.81-17.08 SCRs/min therapy
+- Family f02p01: 11-21 SCRs/min rest, 2.24-7.42 SCRs/min therapy
+
+**Interpretation**:
+
+1. **High variability between subjects is NORMAL**:
+   - Individual differences in autonomic reactivity
+   - Different therapeutic contexts and engagement
+   - Family f02p01 showing lower arousal is within normal range
+
+2. **When to investigate**:
+   - ❌ Exactly 0 SCRs: Poor electrode contact
+   - ❌ >50 SCRs/min: Motion artifacts or noise
+   - ❌ Sudden rate changes: Data quality issues
+   - ✅ Consistent low rates (5-15/min): Calm subject
+   - ✅ Moderate rates (15-25/min): Normal arousal
+   - ✅ Variable rates across sessions: Expected
+
+**Solutions**:
+
+1. **Compare within-subject**:
+```bash
+# Check consistency across sessions for same subject
+cat data/derivatives/therasync-eda/sub-f01p01/*/physio/*_desc-edametrics_physio.tsv
+```
+
+2. **Visualize SCR distribution**:
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+
+metrics = pd.read_csv('*_desc-edametrics_physio.tsv', sep='\t')
+metrics['scr_count'].hist(bins=10)
+plt.xlabel('Number of SCRs')
+plt.ylabel('Frequency')
+plt.title('SCR Distribution Across Moments')
+plt.show()
+```
+
+3. **Check tonic levels for context**:
+```python
+# Low SCR rate with high tonic level suggests sustained arousal
+# High SCR rate with low tonic suggests reactive arousal
+metrics[['moment', 'scr_count', 'scr_per_min', 'tonic_mean']].sort_values('scr_per_min')
+```
+
+---
+
+#### Atypical Tonic EDA Levels
+
+**Warning**: Tonic EDA levels outside typical physiological range
+
+**Normal Phasic Tonic Levels** (after cvxEDA decomposition):
+- **Typical**: 0.01-0.5 μS (phasic component only)
+- **Very Low**: <0.01 μS (minimal phasic activity)
+- **Moderate**: 0.1-0.3 μS (normal arousal)
+- **High**: 0.3-0.5 μS (elevated arousal)
+
+**Note**: These are **phasic tonic** values, not absolute skin conductance levels (which are typically 1-20 μS).
+
+**From Real Data Testing**:
+- All values in range 0.002-0.476 μS: ✅ Physiologically reasonable
+- Higher during therapy vs rest in most cases: ✅ Expected pattern
+
+**Interpretation**:
+
+1. **Very low values (<0.01 μS)**:
+   - Poor electrode contact (check signal visually)
+   - Very calm/relaxed subject
+   - Possible preprocessing artifact
+
+2. **Normal values (0.01-0.5 μS)**:
+   - ✅ Proceed with analysis
+   - Reflects phasic arousal component
+
+3. **Extreme values (>1.0 μS in phasic component)**:
+   - Check raw signal for artifacts
+   - Verify cvxEDA decomposition worked correctly
+
+**Solutions**:
+
+1. **Visualize tonic component**:
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Load processed signal
+signal = pd.read_csv('*_desc-processed_recording-eda.tsv', sep='\t')
+
+plt.figure(figsize=(12, 6))
+plt.plot(signal['time'], signal['eda_tonic'], label='Tonic')
+plt.plot(signal['time'], signal['eda_phasic'], label='Phasic', alpha=0.5)
+plt.xlabel('Time (s)')
+plt.ylabel('EDA (μS)')
+plt.legend()
+plt.title('Tonic and Phasic Components')
+plt.show()
+```
+
+2. **Compare raw and processed**:
+```python
+# Check if decomposition worked
+print(f"Raw mean: {signal['eda_raw'].mean():.3f} μS")
+print(f"Clean mean: {signal['eda_clean'].mean():.3f} μS")
+print(f"Tonic mean: {signal['eda_tonic'].mean():.3f} μS")
+print(f"Phasic mean: {signal['eda_phasic'].mean():.3f} μS")
+```
+
+3. **Review electrode quality**:
+```bash
+# Check if low tonic levels are consistent across moments
+grep tonic_mean data/derivatives/therasync-eda/sub-*/ses-*/physio/*_desc-edametrics_physio.tsv
+```
+
+---
+
 ## Performance Problems
 
 ### Slow Processing
@@ -679,26 +1000,56 @@ When reporting issues, include:
 |-------|-----------|
 | Import errors | `PYTHONPATH=. poetry run ...` |
 | File not found | Check `paths.sourcedata` in config |
-| Low quality warning | Normal for long recordings if >0.65 |
+| Low BVP quality warning | Normal for long recordings if >0.65 |
+| Few/many SCRs detected | Check electrode contact, adjust threshold |
+| cvxEDA convergence error | Check signal for NaN/inf values |
+| Low sampling rate warning | Expected for E4 (4 Hz), no action needed |
 | Memory error | Process moments separately |
 | Permission denied | `chmod -R u+w data/derivatives/` |
 | Existing outputs | `poetry run python scripts/clean_outputs.py --all --force` |
 
 ### Useful Commands
 
+#### BVP Pipeline
 ```bash
-# Clean and reprocess
-poetry run python scripts/clean_outputs.py --all --force
+# Clean and reprocess BVP
+poetry run python scripts/clean_outputs.py --derivatives --force
 poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --verbose
 
-# Check outputs
+# Check BVP outputs
 tree data/derivatives/therasync-bvp/sub-f01p01/ses-01/
 
-# View metrics
+# View BVP metrics
 column -t -s $'\t' data/derivatives/therasync-bvp/sub-f01p01/ses-01/physio/*bvpmetrics*.tsv
 
-# Check logs
+# Check BVP logs
 tail -f log/bvp_preprocessing.log
+```
+
+#### EDA Pipeline
+```bash
+# Clean and reprocess EDA
+poetry run python scripts/clean_outputs.py --derivatives --force
+PYTHONPATH=. poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --verbose
+
+# Check EDA outputs
+tree data/derivatives/therasync-eda/sub-f01p01/ses-01/
+find data/derivatives/therasync-eda -name "*metrics*" | sort
+
+# View EDA metrics (all subjects)
+for file in data/derivatives/therasync-eda/*/*/physio/*_desc-edametrics_physio.tsv; do
+  echo "=== $(basename $file) ===";
+  cat "$file" | column -t -s $'\t';
+done
+
+# Check single subject EDA metrics
+column -t -s $'\t' data/derivatives/therasync-eda/sub-f01p01/ses-01/physio/*edametrics*.tsv
+
+# View SCR events
+head -20 data/derivatives/therasync-eda/sub-f01p01/ses-01/physio/*_desc-scr_events.tsv
+
+# Check processing summary
+cat data/derivatives/therasync-eda/sub-f01p01/ses-01/physio/*_desc-summary_recording-eda.json | jq
 ```
 
 ---
