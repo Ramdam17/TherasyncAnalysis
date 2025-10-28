@@ -9,10 +9,9 @@ study:
 
 # Data paths and BIDS structure
 paths:
-  data_root: "data"
-  derivatives_root: "data/derivatives"
-  derivatives_name: "therasync-physio"
-  log_dir: "log"
+  sourcedata: "data/raw"
+  derivatives: "data/derivatives"
+  logs: "log"
   
 # Moment/Task definitions - flexible for different study designs
 moments:
@@ -36,14 +35,40 @@ physio:
   # BVP (Blood Volume Pulse) processing
   bvp:
     sampling_rate: 64  # Hz, from Empatica E4
-    cleaning:
-      method: "neurokit"  # Method to be selected during decision phase
-      parameters:
-        # Parameters will be added after method selection
+    processing:
+      method: "elgendi"  # Peak detection method for nk.ppg_process
+      method_quality: "templatematch"  # Quality assessment method
+      lowcut_freq: 0.5   # Hz - for additional filtering if needed
+      highcut_freq: 8.0  # Hz - for additional filtering if needed
+      quality_threshold: 0.8  # Minimum quality for accepting peaks (0-1 scale)
+                              # Note: Longer recordings (>30 min) often have lower scores (0.65-0.75) but remain usable
     metrics:
-      # Metrics list will be populated after decision phase
       extract_all: false
-      selected_metrics: []
+      selected_metrics:
+        # Essential Set - Time Domain (5 metrics)
+        time_domain:
+          - "HRV_MeanNN"     # Average heart rate
+          - "HRV_SDNN"       # Overall HRV
+          - "HRV_RMSSD"      # Parasympathetic activity
+          - "HRV_pNN50"      # Parasympathetic activity
+          - "HRV_CVNN"       # Normalized variability
+        # Essential Set - Frequency Domain (4 metrics)  
+        frequency_domain:
+          - "HRV_LF"         # Sympathetic + parasympathetic
+          - "HRV_HF"         # Parasympathetic (RSA)
+          - "HRV_LFHF"       # Autonomic balance
+          - "HRV_TP"         # Total power
+        # Essential Set - Non-Linear (3 metrics)
+        nonlinear:
+          - "HRV_SD1"        # Short-term variability
+          - "HRV_SD2"        # Long-term variability
+          - "HRV_SampEn"     # Signal complexity
+      # Future: Epoched analysis configuration
+      epoched_analysis:
+        enabled: false       # For future Sprint implementation
+        window_size: 30      # seconds
+        step_size: 1         # seconds
+        min_peaks_per_epoch: 20  # minimum beats for valid HRV
     
   # EDA (Electrodermal Activity) processing  
   eda:

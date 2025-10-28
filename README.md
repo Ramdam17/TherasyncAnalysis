@@ -2,6 +2,8 @@
 
 A comprehensive pipeline for analyzing physiological data from family therapy sessions.
 
+**Authors**: Lena Adel, Remy Ramadour
+
 ## Overview
 
 The Therasync project records families during therapeutic sessions to analyze physiological synchrony and emotional dynamics. This pipeline processes multi-modal data including:
@@ -130,7 +132,9 @@ This pipeline supports research into:
 
 ## License
 
-*License information to be determined*
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+**Copyright (c) 2025 Lena Adel, Remy Ramadour**
 
 ---
 

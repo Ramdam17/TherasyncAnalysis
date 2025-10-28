@@ -1,54 +1,61 @@
-[project]
+[tool.poetry]
 name = "therasyncpipeline"
 version = "0.1.0"
 description = "A comprehensive pipeline for analyzing physiological data from family therapy sessions"
 authors = [
-    {name = "ramdam17",email = "remy.ramadour.labs@gmail.com"}
+    "Lena Adel <lena.adel@example.com>",
+    "Remy Ramadour <remy.ramadour.labs@gmail.com>"
 ]
 readme = "README.md"
-requires-python = ">=3.8"
-dependencies = [
-    # Core scientific computing
-    "numpy>=1.20.0",
-    "pandas>=1.3.0",
-    "scipy>=1.7.0",
-    
-    # Physiological signal processing
-    "neurokit2>=0.2.7",
-    
-    # Configuration and I/O
-    "pyyaml>=6.0",
-    "jsonschema>=4.0.0",
-    
-    # Plotting and visualization
-    "matplotlib>=3.5.0",
-    "seaborn>=0.11.0",
-    "plotly>=5.0.0",
-    
-    # Parallel processing
-    "joblib>=1.1.0",
-    
-    # Progress bars
-    "tqdm>=4.62.0",
-    
-    # Logging enhancements
-    "colorlog>=6.0.0",
-    
-    # Testing (for runtime use)
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "pytest-mock>=3.6.0",
-    
-    # Code quality
-    "black>=22.0.0",
-    "isort>=5.10.0",
-    "flake8>=5.0.0",
-    "pylint>=2.15.0",
-    
-    # Documentation
-    "sphinx>=5.0.0",
-    "sphinx-rtd-theme>=1.0.0",
-]
+license = "MIT"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<4.0"
+# Core scientific computing
+numpy = ">=1.20.0"
+pandas = ">=1.3.0"
+scipy = ">=1.7.0"
+
+# Physiological signal processing
+neurokit2 = ">=0.2.7"
+
+# Configuration and I/O
+pyyaml = ">=6.0"
+jsonschema = ">=4.0.0"
+
+# Plotting and visualization
+matplotlib = ">=3.5.0"
+seaborn = ">=0.11.0"
+plotly = ">=5.0.0"
+
+# Parallel processing
+joblib = ">=1.1.0"
+
+# Progress bars
+tqdm = ">=4.62.0"
+
+# Logging enhancements
+colorlog = ">=6.0.0"
+
+[tool.poetry.group.dev.dependencies]
+# Testing
+pytest = ">=7.0.0"
+pytest-cov = ">=4.0.0"
+pytest-mock = ">=3.6.0"
+
+# Code quality
+black = ">=22.0.0"
+isort = ">=5.10.0"
+flake8 = ">=5.0.0"
+pylint = ">=2.15.0"
+
+# Documentation
+sphinx = ">=5.0.0"
+sphinx-rtd-theme = ">=1.0.0"
+
+[tool.poetry.scripts]
+preprocess-bvp = "scripts.preprocess_bvp:main"
 
 
 [build-system]
