@@ -1,0 +1,82 @@
+# Configuration for TherasyncPipeline BVP Processing
+# This is an example configuration file showing all available options
+
+# Data paths configuration
+paths:
+  # Source data directory (BIDS-compliant structure expected)
+  sourcedata: "data/sourcedata"
+  # Derivatives output directory
+  derivatives: "data/derivatives"
+  # Log files directory
+  logs: "log"
+
+# Moments/tasks to process
+moments:
+  - name: "restingstate"
+  - name: "therapy"
+  # Add more moments as needed
+
+# BVP processing configuration
+physio:
+  bvp:
+    # Sampling rate (Hz) - will be read from metadata if available
+    sampling_rate: 64
+    
+    # Signal processing parameters
+    processing:
+      # Peak detection method (elgendi recommended for PPG/BVP)
+      method: "elgendi"
+      # Quality assessment method
+      method_quality: "templatematch" 
+      # Quality threshold (0-1, higher = stricter)
+      quality_threshold: 0.8
+    
+    # HRV metrics configuration
+    metrics:
+      # Selected metrics for analysis (essential set for performance)
+      selected_metrics:
+        # Time-domain metrics
+        time_domain:
+          - "HRV_MeanNN"     # Mean of RR intervals
+          - "HRV_SDNN"       # Standard deviation of RR intervals
+          - "HRV_RMSSD"      # Root mean square of successive differences
+          - "HRV_pNN50"      # Percentage of RR intervals > 50ms different
+          - "HRV_CVNN"       # Coefficient of variation
+        
+        # Frequency-domain metrics  
+        frequency_domain:
+          - "HRV_LF"         # Low frequency power
+          - "HRV_HF"         # High frequency power
+          - "HRV_LFHF"       # LF/HF ratio
+          - "HRV_TP"         # Total power
+        
+        # Nonlinear metrics
+        nonlinear:
+          - "HRV_SD1"        # Poincaré plot SD1
+          - "HRV_SD2"        # Poincaré plot SD2
+          - "HRV_SampEn"     # Sample entropy
+
+# BIDS configuration
+bids:
+  # Dataset description
+  dataset_description:
+    Name: "Therasync BVP Processing"
+    BIDSVersion: "1.8.0"
+    DatasetType: "derivative"
+    GeneratedBy:
+      - Name: "TherasyncPipeline"
+        Version: "0.1.0"
+        CodeURL: "https://github.com/your-repo/therasync-pipeline"
+
+# Logging configuration
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  level: "INFO"
+  # Enable colored console output
+  use_colors: true
+  # Log file rotation
+  rotation:
+    # Maximum file size before rotation (MB)
+    max_size: 10
+    # Number of backup files to keep
+    backup_count: 5
