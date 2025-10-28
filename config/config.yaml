@@ -40,7 +40,8 @@ physio:
       method_quality: "templatematch"  # Quality assessment method
       lowcut_freq: 0.5   # Hz - for additional filtering if needed
       highcut_freq: 8.0  # Hz - for additional filtering if needed
-      quality_threshold: 0.8  # Minimum quality for accepting peaks
+      quality_threshold: 0.8  # Minimum quality for accepting peaks (0-1 scale)
+                              # Note: Longer recordings (>30 min) often have lower scores (0.65-0.75) but remain usable
     metrics:
       extract_all: false
       selected_metrics:

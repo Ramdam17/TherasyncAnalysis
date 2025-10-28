@@ -29,6 +29,7 @@ physio:
       # Quality assessment method
       method_quality: "templatematch" 
       # Quality threshold (0-1, higher = stricter)
+      # Note: Longer recordings (>30 min) typically score 0.65-0.75 but remain usable for analysis
       quality_threshold: 0.8
     
     # HRV metrics configuration

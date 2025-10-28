@@ -271,7 +271,8 @@ class BVPCleaner:
                 if mean_quality < self.quality_threshold:
                     logger.warning(
                         f"Low signal quality for BVP {moment}: "
-                        f"mean quality {mean_quality:.3f} < threshold {self.quality_threshold}"
+                        f"mean quality {mean_quality:.3f} < threshold {self.quality_threshold}. "
+                        f"Note: Lower quality scores are common for longer recordings and may still be acceptable for analysis."
                     )
     
     def get_clean_signal(self, processed_signals: pd.DataFrame) -> pd.Series:
