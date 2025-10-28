@@ -1,0 +1,105 @@
+# Therasync Pipeline Configuration
+# Configuration for physiological data preprocessing and analysis
+
+# Study Configuration
+study:
+  name: "therasync"
+  version: "1.0.0"
+  description: "Family therapy session physiological analysis"
+
+# Data paths and BIDS structure
+paths:
+  data_root: "data"
+  derivatives_root: "data/derivatives"
+  derivatives_name: "therasync-physio"
+  log_dir: "log"
+  
+# Moment/Task definitions - flexible for different study designs
+moments:
+  # Current study has 2 moments
+  - name: "restingstate"
+    description: "Baseline resting state recording (~1 minute)"
+    duration_expected: 60  # seconds, approximate
+  - name: "therapy"
+    description: "Therapeutic session recording (40-120 minutes)"
+    duration_expected: 3600  # seconds, approximate
+  
+  # Example for future 5-moment study:
+  # - name: "baseline"
+  # - name: "task1"
+  # - name: "break"
+  # - name: "task2"
+  # - name: "recovery"
+
+# Physiological data processing parameters
+physio:
+  # BVP (Blood Volume Pulse) processing
+  bvp:
+    sampling_rate: 64  # Hz, from Empatica E4
+    cleaning:
+      method: "neurokit"  # Method to be selected during decision phase
+      parameters:
+        # Parameters will be added after method selection
+    metrics:
+      # Metrics list will be populated after decision phase
+      extract_all: false
+      selected_metrics: []
+    
+  # EDA (Electrodermal Activity) processing  
+  eda:
+    sampling_rate: 4   # Hz, from Empatica E4
+    cleaning:
+      method: "neurokit"  # Method to be selected during decision phase
+      parameters:
+        # Parameters will be added after method selection
+    metrics:
+      # Metrics list will be populated after decision phase
+      extract_all: false
+      selected_metrics: []
+  
+  # HR (Heart Rate) processing
+  hr:
+    source: "bvp"  # Derived from BVP signal
+    processing:
+      method: "neurokit"  # Method to be selected during decision phase (e.g., template_matching)
+      parameters:
+        # Parameters will be added after method selection
+    metrics:
+      # Metrics list will be populated after decision phase
+      extract_all: false
+      selected_metrics: []
+
+# BIDS output configuration
+bids:
+  # Naming conventions following BIDS specification
+  subject_prefix: "sub-"
+  session_prefix: "ses-"
+  task_prefix: "task-"
+  
+  # Metadata that will be included in JSON sidecars
+  metadata:
+    include_acquisition_time: true
+    include_sampling_rate: true
+    include_processing_parameters: true
+    include_quality_metrics: true
+
+# Processing options
+processing:
+  # Parallel processing
+  n_jobs: 1  # Number of parallel jobs (-1 for all cores)
+  
+  # Quality control
+  quality_check: true
+  min_signal_duration: 30  # seconds, minimum duration for valid processing
+  
+  # Output options
+  save_intermediate: false  # Save intermediate processing steps
+  save_plots: true         # Save diagnostic plots
+  
+# Logging configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_rotation: true
+  max_file_size: "10MB"
+  backup_count: 5
