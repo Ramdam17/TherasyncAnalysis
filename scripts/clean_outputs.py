@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Clean BVP processing outputs for fresh pipeline runs.
+Clean physiological signal processing outputs for fresh pipeline runs.
 
-This utility script safely removes processed BVP derivatives and logs,
+This utility script safely removes processed derivatives (BVP, EDA, HR) and logs,
 allowing for clean re-runs during testing and development.
 """
 
@@ -44,18 +44,20 @@ def confirm_deletion(path: Path, force: bool = False) -> bool:
     return response in ['y', 'yes']
 
 
-def clean_bvp_derivatives(
+def clean_derivatives(
     config: ConfigLoader,
+    modality: Optional[str] = None,
     subject: Optional[str] = None,
     session: Optional[str] = None,
     force: bool = False,
     dry_run: bool = False
 ) -> int:
     """
-    Clean BVP processing derivatives.
+    Clean physiological processing derivatives.
     
     Args:
         config: Configuration loader instance
+        modality: Specific modality to clean (bvp, eda, hr, or None = all)
         subject: Specific subject to clean (None = all subjects)
         session: Specific session to clean (None = all sessions)
         force: Skip confirmation prompts
@@ -65,32 +67,60 @@ def clean_bvp_derivatives(
         Number of items deleted
     """
     derivatives_path = Path(config.get('paths.derivatives'))
-    bvp_derivatives = derivatives_path / 'therasync-bvp'
+    preprocessing_dir = config.get('output.preprocessing_dir', 'preprocessing')
+    preprocessing_path = derivatives_path / preprocessing_dir
     
-    if not bvp_derivatives.exists():
-        logger.info(f"No BVP derivatives found at {bvp_derivatives}")
+    if not preprocessing_path.exists():
+        logger.info(f"No preprocessing derivatives found at {preprocessing_path}")
         return 0
     
     deleted_count = 0
     
+    # Determine which modalities to clean
+    if modality:
+        modalities = [modality]
+    else:
+        modality_subdirs = config.get('output.modality_subdirs', {})
+        modalities = list(modality_subdirs.values())  # ['bvp', 'eda', 'hr']
+    
     # Clean specific subject/session
     if subject:
-        subject_path = bvp_derivatives / subject
+        # Add 'sub-' prefix if not present
+        if not subject.startswith('sub-'):
+            subject = f'sub-{subject}'
+            
+        subject_path = preprocessing_path / subject
         
         if not subject_path.exists():
             logger.warning(f"Subject {subject} not found in derivatives")
             return 0
         
         if session:
-            # Clean specific session
-            session_path = subject_path / session
-            if session_path.exists():
-                logger.info(f"{'[DRY RUN] Would delete' if dry_run else 'Deleting'}: {session_path}")
+            # Add 'ses-' prefix if not present
+            if not session.startswith('ses-'):
+                session = f'ses-{session}'
                 
-                if not dry_run and confirm_deletion(session_path, force):
-                    shutil.rmtree(session_path)
-                    deleted_count += 1
-                    logger.info(f"Deleted session: {session_path}")
+            session_path = subject_path / session
+            
+            if not session_path.exists():
+                logger.warning(f"Session {session} not found for {subject}")
+                return 0
+            
+            # Clean specific modalities within session
+            for mod in modalities:
+                modality_path = session_path / mod
+                if modality_path.exists():
+                    logger.info(f"{'[DRY RUN] Would delete' if dry_run else 'Deleting'}: {modality_path}")
+                    
+                    if not dry_run and confirm_deletion(modality_path, force):
+                        shutil.rmtree(modality_path)
+                        deleted_count += 1
+                        logger.info(f"Deleted modality: {modality_path}")
+            
+            # If session is empty after cleaning, remove it
+            if not dry_run and session_path.exists() and not any(session_path.iterdir()):
+                session_path.rmdir()
+                logger.info(f"Removed empty session directory: {session_path}")
         else:
             # Clean all sessions for subject
             logger.info(f"{'[DRY RUN] Would delete' if dry_run else 'Deleting'} all sessions for {subject}")
@@ -100,13 +130,40 @@ def clean_bvp_derivatives(
                 deleted_count += 1
                 logger.info(f"Deleted subject: {subject_path}")
     else:
-        # Clean all derivatives
-        logger.info(f"{'[DRY RUN] Would delete' if dry_run else 'Deleting'} all BVP derivatives")
+        # Clean all derivatives (or specific modality across all subjects)
+        if modality:
+            logger.info(f"{'[DRY RUN] Would delete' if dry_run else 'Deleting'} all {modality} derivatives")
+        else:
+            logger.info(f"{'[DRY RUN] Would delete' if dry_run else 'Deleting'} all preprocessing derivatives")
         
-        if not dry_run and confirm_deletion(bvp_derivatives, force):
-            shutil.rmtree(bvp_derivatives)
-            deleted_count += 1
-            logger.info(f"Deleted all BVP derivatives: {bvp_derivatives}")
+        if modality:
+            # Clean specific modality across all subjects/sessions
+            for subject_dir in preprocessing_path.glob('sub-*'):
+                for session_dir in subject_dir.glob('ses-*'):
+                    modality_path = session_dir / modality
+                    if modality_path.exists():
+                        logger.info(f"{'[DRY RUN] Would delete' if dry_run else 'Deleting'}: {modality_path}")
+                        
+                        if not dry_run and confirm_deletion(modality_path, force):
+                            shutil.rmtree(modality_path)
+                            deleted_count += 1
+                            logger.info(f"Deleted: {modality_path}")
+                        
+                        # Clean up empty session directories
+                        if not dry_run and session_dir.exists() and not any(session_dir.iterdir()):
+                            session_dir.rmdir()
+                            logger.info(f"Removed empty session: {session_dir}")
+                
+                # Clean up empty subject directories
+                if not dry_run and subject_dir.exists() and not any(subject_dir.iterdir()):
+                    subject_dir.rmdir()
+                    logger.info(f"Removed empty subject: {subject_dir}")
+        else:
+            # Clean entire preprocessing directory
+            if not dry_run and confirm_deletion(preprocessing_path, force):
+                shutil.rmtree(preprocessing_path)
+                deleted_count += 1
+                logger.info(f"Deleted all preprocessing derivatives: {preprocessing_path}")
     
     return deleted_count
 
@@ -218,7 +275,7 @@ def clean_cache(
 def main():
     """Main execution function."""
     parser = argparse.ArgumentParser(
-        description="Clean BVP processing outputs for fresh pipeline runs",
+        description="Clean physiological signal processing outputs for fresh pipeline runs",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -228,8 +285,11 @@ Examples:
   # Clean all derivatives and logs (with confirmation)
   python scripts/clean_outputs.py --derivatives --logs
   
+  # Clean specific modality
+  python scripts/clean_outputs.py --derivatives --modality hr
+  
   # Clean specific subject/session
-  python scripts/clean_outputs.py --derivatives --subject sub-f01p01 --session ses-01
+  python scripts/clean_outputs.py --derivatives --subject f01p01 --session 01
   
   # Force clean without confirmation
   python scripts/clean_outputs.py --all --force
@@ -243,7 +303,13 @@ Examples:
     parser.add_argument(
         '--derivatives', '-d',
         action='store_true',
-        help='Clean BVP processing derivatives'
+        help='Clean processing derivatives'
+    )
+    
+    parser.add_argument(
+        '--modality', '-m',
+        choices=['bvp', 'eda', 'hr'],
+        help='Clean specific modality only (bvp, eda, or hr)'
     )
     
     parser.add_argument(
@@ -267,12 +333,12 @@ Examples:
     # Scope filters
     parser.add_argument(
         '--subject', '-s',
-        help='Clean specific subject only (for derivatives)'
+        help='Clean specific subject only (for derivatives). Can be with or without "sub-" prefix.'
     )
     
     parser.add_argument(
         '--session', '-e',
-        help='Clean specific session only (requires --subject)'
+        help='Clean specific session only (requires --subject). Can be with or without "ses-" prefix.'
     )
     
     # Options
@@ -310,6 +376,9 @@ Examples:
     if args.session and not args.subject:
         parser.error("--session requires --subject")
     
+    if args.modality and not args.derivatives:
+        parser.error("--modality requires --derivatives")
+    
     if not any([args.derivatives, args.logs, args.cache, args.all]):
         parser.error("Must specify at least one of: --derivatives, --logs, --cache, or --all")
     
@@ -329,9 +398,10 @@ Examples:
         
         # Clean derivatives
         if args.all or args.derivatives:
-            logger.info("Cleaning BVP derivatives...")
-            count = clean_bvp_derivatives(
+            logger.info("Cleaning preprocessing derivatives...")
+            count = clean_derivatives(
                 config,
+                modality=args.modality,
                 subject=args.subject,
                 session=args.session,
                 force=args.force,

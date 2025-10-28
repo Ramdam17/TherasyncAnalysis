@@ -9,9 +9,18 @@ study:
 
 # Data paths and BIDS structure
 paths:
-  sourcedata: "data/raw"
+  rawdata: "data/raw"
   derivatives: "data/derivatives"
   logs: "log"
+
+# Output structure for preprocessing derivatives
+output:
+  # Base directory structure: derivatives/preprocessing/sub-xxx/ses-yyy/{modality}/
+  preprocessing_dir: "preprocessing"  # derivatives/preprocessing/
+  modality_subdirs:
+    bvp: "bvp"     # derivatives/preprocessing/sub-xxx/ses-yyy/bvp/
+    eda: "eda"     # derivatives/preprocessing/sub-xxx/ses-yyy/eda/
+    hr: "hr"       # derivatives/preprocessing/sub-xxx/ses-yyy/hr/
   
 # Moment/Task definitions - flexible for different study designs
 moments:

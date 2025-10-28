@@ -45,7 +45,7 @@ class EDALoader:
         self.config = config if config is not None else ConfigLoader()
         
         # Get paths from config
-        self.sourcedata_path = Path(self.config.get('paths.sourcedata', 'data/raw'))
+        self.rawdata_path = Path(self.config.get('paths.rawdata', 'data/raw'))
         
         # Get EDA-specific configuration
         self.sampling_rate = self.config.get('physio.eda.sampling_rate', 4)  # Default 4 Hz for E4
@@ -88,7 +88,7 @@ class EDALoader:
         
         if not file_pairs:
             raise FileNotFoundError(
-                f"No EDA files found for {subject}/{session} in {self.sourcedata_path}"
+                f"No EDA files found for {subject}/{session} in {self.rawdata_path}"
             )
         
         # Filter by moment if specified
@@ -154,15 +154,18 @@ class EDALoader:
             >>> print(f"Found {len(files)} EDA recordings")
         """
         # Construct path to physio directory
-        physio_dir = self.sourcedata_path / subject / session / 'physio'
+        # Ensure subject and session have BIDS prefixes
+        subject_dir = subject if subject.startswith('sub-') else f'sub-{subject}'
+        session_dir = session if session.startswith('ses-') else f'ses-{session}'
+        physio_dir = self.rawdata_path / subject_dir / session_dir / 'physio'
         
         if not physio_dir.exists():
             raise FileNotFoundError(
                 f"Physio directory not found: {physio_dir}"
             )
         
-        # Find all EDA TSV files
-        eda_tsv_files = list(physio_dir.glob(f"{subject}_{session}_*_recording-eda.tsv"))
+        # Find all EDA TSV files  
+        eda_tsv_files = list(physio_dir.glob(f"{subject_dir}_{session_dir}_*_recording-eda.tsv"))
         
         if not eda_tsv_files:
             logger.warning(f"No EDA files found in {physio_dir}")

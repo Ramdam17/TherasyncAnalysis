@@ -20,7 +20,7 @@ from typing import List, Optional, Dict, Any
 import pandas as pd
 
 # Add src to path for imports
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.core.config_loader import ConfigLoader
 from src.physio.bvp_loader import BVPLoader
@@ -367,20 +367,24 @@ Examples:
             return 0 if successful == total else 1
             
         else:
-            logger.info(f"Starting single subject BVP processing: {args.subject}/{args.session}")
+            # Ensure subject and session have BIDS prefixes
+            subject_id = args.subject if args.subject.startswith('sub-') else f'sub-{args.subject}'
+            session_id = args.session if args.session.startswith('ses-') else f'ses-{args.session}'
+            
+            logger.info(f"Starting single subject BVP/HRV processing: {subject_id}/{session_id}")
             success = process_single_subject(
-                args.subject,
-                args.session,
+                subject_id,
+                session_id,
                 config_path=args.config,
                 moments=args.moments,
                 verbose=args.verbose
             )
             
             if success:
-                print(f"Successfully processed {args.subject}/{args.session}")
+                print(f"Successfully processed {subject_id}/{session_id}")
                 return 0
             else:
-                print(f"Failed to process {args.subject}/{args.session}")
+                print(f"Failed to process {subject_id}/{session_id}")
                 return 1
                 
     except KeyboardInterrupt:
