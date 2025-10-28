@@ -17,6 +17,8 @@ from src.physio.eda_cleaner import EDACleaner
 from src.physio.eda_metrics import EDAMetricsExtractor
 from src.physio.eda_bids_writer import EDABIDSWriter
 
+from src.physio.hr_loader import HRLoader
+
 __all__ = [
     # BVP Pipeline
     'BVPLoader',
@@ -28,4 +30,6 @@ __all__ = [
     'EDACleaner',
     'EDAMetricsExtractor',
     'EDABIDSWriter',
+    # HR Pipeline
+    'HRLoader',
 ]
