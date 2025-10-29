@@ -1,15 +1,15 @@
 # EDA Pipeline - Validated Technical Decisions
 
 **Date:** October 28, 2025  
-**Sprint:** Sprint 3 - EDA Preprocessing  
-**Branch:** sprint-3/eda-preprocessing  
-**Status:** ✅ VALIDATED
+**Version:** v0.3.0 (Modular Architecture)  
+**Status:** ✅ IMPLEMENTED, TESTED & PRODUCTION-READY  
+**Implementation:** `src/physio/preprocessing/eda_*.py`
 
 ---
 
 ## Decision Summary
 
-This document formalizes the technical decisions made for the EDA (Electrodermal Activity) preprocessing pipeline after user validation.
+This document formalizes the technical decisions made for the EDA (Electrodermal Activity) preprocessing pipeline. All decisions have been user-validated, implemented, tested (34/34 tests passing), and validated on real data (5+ subjects).
 
 ---
 

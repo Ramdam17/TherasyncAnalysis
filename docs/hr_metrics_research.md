@@ -2,7 +2,9 @@
 
 **Authors**: Lena Adel, Remy Ramadour  
 **Date**: October 28, 2025  
-**Context**: Sprint 4 - HR Pipeline Development
+**Version**: v0.3.0 (Modular Architecture)  
+**Status:** ✅ IMPLEMENTED & PRODUCTION-READY  
+**Implementation:** `src/physio/preprocessing/hr_*.py`
 
 ## Overview
 

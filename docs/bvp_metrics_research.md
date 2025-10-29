@@ -1,8 +1,14 @@
 # NeuroKit2 BVP Metrics Extraction - Research Findings
 
+**Last Updated:** October 28, 2025  
+**Status:** ✅ Decision Made - Extended Set (~18 metrics) Implemented  
+**Implementation:** `src/physio/preprocessing/bvp_metrics.py`
+
 ## Overview
 
 Based on research of NeuroKit2 documentation, here are the available BVP-derived metrics and analysis functions for our TherasyncPipeline project. BVP data from PPG processing can provide rich cardiovascular and autonomic nervous system insights.
+
+**Decision Outcome:** Extended Set (~18 HRV metrics) was selected and implemented. See `docs/bvp_decisions.md` for rationale.
 
 ## Available BVP/PPG Analysis Functions
 

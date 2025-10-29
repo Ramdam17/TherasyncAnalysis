@@ -54,10 +54,6 @@ pylint = ">=2.15.0"
 sphinx = ">=5.0.0"
 sphinx-rtd-theme = ">=1.0.0"
 
-[tool.poetry.scripts]
-preprocess-bvp = "scripts.preprocess_bvp:main"
-
-
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"

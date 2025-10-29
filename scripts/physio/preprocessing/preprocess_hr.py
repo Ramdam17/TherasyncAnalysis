@@ -40,15 +40,31 @@ from src.physio.preprocessing.hr_metrics_extractor import HRMetricsExtractor
 from src.physio.preprocessing.hr_bids_writer import HRBIDSWriter
 
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('hr_preprocessing.log')
-    ]
-)
+def setup_logging(config_path: Optional[Path] = None) -> None:
+    """
+    Setup logging configuration.
+    
+    Args:
+        config_path: Path to configuration file
+    """
+    config = ConfigLoader(config_path)
+    log_level = config.get('logging.level', 'INFO')
+    
+    # Create logs directory if it doesn't exist
+    log_dir = Path(config.get('paths.log', 'log'))
+    log_dir.mkdir(exist_ok=True)
+    
+    # Configure logging
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper()),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_dir / 'hr_preprocessing.log'),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -328,6 +344,9 @@ Examples:
     )
     
     args = parser.parse_args()
+    
+    # Setup logging with proper log directory
+    setup_logging(args.config)
     
     # Configure logging level
     if args.verbose:

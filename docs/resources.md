@@ -3,9 +3,9 @@
 This document tracks all available resources (data files, images, configs, metadata) that can be used for building interactive viewers, dashboards, and visualizations.
 
 **Authors**: Lena Adel, Remy Ramadour  
-**Last Updated**: October 27, 2025  
-**Pipeline Version**: 0.1.0  
-**Status**: Sprint 2 - BVP Processing Complete
+**Last Updated**: October 28, 2025  
+**Pipeline Version**: v0.3.0 (Modular Architecture)  
+**Status**: All preprocessing pipelines complete (BVP, EDA, HR)
 
 ---
 
@@ -49,22 +49,30 @@ This document tracks all available resources (data files, images, configs, metad
 
 ### Data Structure
 ```
-data/raw/
-├── sourcedata/          # Family session recordings (shared data)
-│   └── sub-f*shared/
+data/
+├── sourcedata/          # Raw BIDS data
+│   ├── sub-f*shared/    # Family session recordings (shared data)
+│   │   └── ses-*/
+│   │       ├── moi_tables/      # Moment of Interest timing tables
+│   │       ├── transcripts/     # Session transcripts
+│   │       └── video/           # Video recordings
+│   │
+│   └── sub-f*p*/        # Individual participant data
 │       └── ses-*/
-│           ├── moi_tables/      # Moment of Interest timing tables
-│           ├── transcripts/     # Session transcripts
-│           └── video/           # Video recordings
+│           └── physio/
+│               ├── *_recording-bvp.{tsv,json}   # Blood Volume Pulse
+│               ├── *_recording-eda.{tsv,json}   # Electrodermal Activity
+│               ├── *_recording-hr.{tsv,json}    # Heart Rate
+│               ├── *_recording-temp.{tsv,json}  # Temperature
+│               └── *_recording-acc.{tsv,json}   # Accelerometer
 │
-└── sub-f*p*/           # Individual participant data
-    └── ses-*/
-        └── physio/
-            ├── *_recording-bvp.{tsv,json}   # Blood Volume Pulse
-            ├── *_recording-eda.{tsv,json}   # Electrodermal Activity
-            ├── *_recording-hr.{tsv,json}    # Heart Rate
-            ├── *_recording-temp.{tsv,json}  # Temperature
-            └── *_recording-acc.{tsv,json}   # Accelerometer
+└── derivatives/         # Processed outputs
+    └── preprocessing/
+        └── sub-{subject}/
+            └── ses-{session}/
+                ├── bvp/         # BVP preprocessing outputs (9 files)
+                ├── eda/         # EDA preprocessing outputs (13 files)
+                └── hr/          # HR preprocessing outputs (7 files)
 ```
 
 ### Available Physiological Signals (Raw)

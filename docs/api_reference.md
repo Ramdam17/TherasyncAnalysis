@@ -1,7 +1,7 @@
 # API Reference - TherasyncPipeline
 
 **Authors**: Lena Adel, Remy Ramadour  
-**Version**: 0.1.0  
+**Version**: 0.3.0 (Modular Architecture)  
 **Last Updated**: October 28, 2025
 
 This document provides comprehensive API documentation for all modules in the TherasyncPipeline project.
@@ -12,7 +12,7 @@ This document provides comprehensive API documentation for all modules in the Th
 
 1. [Core Modules](#core-modules)
    - [ConfigLoader](#configloader)
-2. [Physio Modules](#physio-modules)
+2. [Preprocessing Modules](#preprocessing-modules)
    - **BVP (Blood Volume Pulse)**
      - [BVPLoader](#bvploader)
      - [BVPCleaner](#bvpcleaner)
@@ -23,9 +23,15 @@ This document provides comprehensive API documentation for all modules in the Th
      - [EDACleaner](#edacleaner)
      - [EDAMetricsExtractor](#edametricsextractor)
      - [EDABIDSWriter](#edabidswriter)
+   - **HR (Heart Rate)**
+     - [HRLoader](#hrloader)
+     - [HRCleaner](#hrcleaner)
+     - [HRMetrics](#hrmetrics)
+     - [HRBIDSWriter](#hrbidswriter)
 3. [Scripts](#scripts)
    - [preprocess_bvp.py](#preprocess_bvppy)
    - [preprocess_eda.py](#preprocess_edapy)
+   - [preprocess_hr.py](#preprocess_hrpy)
    - [clean_outputs.py](#clean_outputspy)
 
 ---
@@ -133,24 +139,29 @@ if config.get('custom_setting') is not None:
 
 ---
 
-## Physio Modules
+## Preprocessing Modules
+
+All preprocessing modules follow a consistent initialization pattern:
+- Accept `config_path: Optional[Union[str, Path]]` parameter
+- Create ConfigLoader internally
+- Located in `src/physio/preprocessing/`
 
 ### BVPLoader
 
-**Module**: `src.physio.bvp_loader.py`
+**Module**: `src.physio.preprocessing.bvp_loader`
 
 Loads Blood Volume Pulse (BVP) data from BIDS-compliant TSV/JSON files with moment-based segmentation.
 
 #### Class: `BVPLoader`
 
 ```python
-from src.physio.bvp_loader import BVPLoader
+from src.physio.preprocessing.bvp_loader import BVPLoader
 
-loader = BVPLoader()
+loader = BVPLoader(config_path='config/config.yaml')
 ```
 
 **Constructor Parameters**:
-- `config` (ConfigLoader, optional): Configuration object. If None, loads default config.
+- `config_path` (Optional[Union[str, Path]]): Path to configuration file. If None, uses default config.
 
 **Attributes**:
 - `config` (ConfigLoader): Configuration loader instance
@@ -238,7 +249,7 @@ print(f"Baseline duration: {duration:.1f} seconds")
 
 ### BVPCleaner
 
-**Module**: `src.physio.bvp_cleaner.py`
+**Module**: `src.physio.preprocessing.bvp_cleaner`
 
 Cleans and processes BVP signals using NeuroKit2 with peak detection and quality assessment.
 
@@ -377,7 +388,7 @@ print(f"Heart rate range: {processed['PPG_Rate'].min():.1f}-{processed['PPG_Rate
 
 ### BVPMetrics
 
-**Module**: `src.physio.bvp_metrics.py`
+**Module**: `src.physio.preprocessing.bvp_metrics`
 
 Extracts Heart Rate Variability (HRV) metrics from processed BVP signals.
 
@@ -525,7 +536,7 @@ print(comparison[['moment', 'HRV_MeanNN', 'HRV_RMSSD', 'HRV_HF', 'HRV_LFHF']])
 
 ### BVPBIDSWriter
 
-**Module**: `src.physio.bvp_bids_writer.py`
+**Module**: `src.physio.preprocessing.bvp_bids_writer`
 
 Writes processed BVP data in BIDS-compliant format with comprehensive metadata.
 
@@ -729,7 +740,7 @@ print(f"✓ Saved outputs to: data/derivatives/therasync-bvp/{subject}/{session}
 
 ### EDALoader
 
-**Module**: `src.physio.eda_loader.py`
+**Module**: `src.physio.preprocessing.eda_loader`
 
 Loads and validates Electrodermal Activity (EDA) data from Empatica E4 devices in BIDS format.
 
@@ -793,7 +804,7 @@ data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01', moment='res
 
 ### EDACleaner
 
-**Module**: `src.physio.eda_cleaner.py`
+**Module**: `src.physio.preprocessing.eda_cleaner`
 
 Decomposes EDA signal into tonic (slow baseline) and phasic (fast SCR) components using cvxEDA.
 
@@ -858,7 +869,7 @@ print(f"Mean tonic level: {processed['EDA_Tonic'].mean():.3f} μS")
 
 ### EDAMetricsExtractor
 
-**Module**: `src.physio.eda_metrics.py`
+**Module**: `src.physio.preprocessing.eda_metrics`
 
 Extracts comprehensive EDA metrics from processed signals.
 
@@ -954,7 +965,7 @@ all_metrics = extractor.extract_multiple_moments(processed_results)
 
 ### EDABIDSWriter
 
-**Module**: `src.physio.eda_bids_writer.py`
+**Module**: `src.physio.preprocessing.eda_bids_writer`
 
 Writes processed EDA data and metrics in BIDS-compliant format.
 
@@ -1115,25 +1126,24 @@ print(f"✓ Output: data/derivatives/physio_preprocessing/{subject}/{session}/ph
 
 ### preprocess_bvp.py
 
-**Location**: `scripts/preprocess_bvp.py`
+**Location**: `scripts/physio/preprocessing/preprocess_bvp.py`
 
 Command-line interface for BVP preprocessing pipeline.
 
 **Usage**:
 
 ```bash
-# Basic usage
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01
+# Basic usage (no prefix needed for subject/session)
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
 
 # With verbose logging
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --verbose
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01 --verbose
 
 # Custom config
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --config config/custom.yaml
-
-# Process specific moment only
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --moment restingstate
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01 --config config/custom.yaml
 ```
+
+**Note**: No PYTHONPATH needed - scripts handle path setup internally.
 
 **Arguments**:
 
@@ -1159,20 +1169,15 @@ poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-0
 
 **Output Structure**:
 ```
-data/derivatives/therasync-bvp/
-├── dataset_description.json
+data/derivatives/preprocessing/
 └── sub-f01p01/
     └── ses-01/
-        └── physio/
-            ├── sub-f01p01_ses-01_task-restingstate_desc-processed_recording-bvp.tsv
-            ├── sub-f01p01_ses-01_task-restingstate_desc-processed_recording-bvp.json
-            ├── sub-f01p01_ses-01_task-restingstate_desc-processing_recording-bvp.json
-            ├── sub-f01p01_ses-01_task-therapy_desc-processed_recording-bvp.tsv
-            ├── sub-f01p01_ses-01_task-therapy_desc-processed_recording-bvp.json
-            ├── sub-f01p01_ses-01_task-therapy_desc-processing_recording-bvp.json
-            ├── sub-f01p01_ses-01_desc-bvpmetrics_physio.tsv
-            ├── sub-f01p01_ses-01_desc-bvpmetrics_physio.json
-            └── sub-f01p01_ses-01_desc-summary_recording-bvp.json
+        └── bvp/
+            ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-processed_physio.tsv.gz
+            ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-processed_physio.json
+            ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-metrics_physio.tsv
+            ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-metrics_physio.json
+            └── ... (9 files total)
 ```
 
 **Exit Codes**:
@@ -1180,70 +1185,118 @@ data/derivatives/therasync-bvp/
 - `1`: Error (check logs)
 
 **Logging**:
-- **Default**: INFO level to console and `log/bvp_preprocessing.log`
+- **Default**: INFO level to console and `log/preprocessing_bvp_YYYYMMDD_HHMMSS.log`
 - **Verbose**: DEBUG level with detailed processing information
+
+---
+
+### preprocess_eda.py
+
+**Location**: `scripts/physio/preprocessing/preprocess_eda.py`
+
+Command-line interface for EDA preprocessing pipeline.
+
+**Usage**:
+
+```bash
+# Basic usage (no prefix needed for subject/session)
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01
+
+# With verbose logging
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01 --verbose
+```
+
+**Output Structure**:
+```
+data/derivatives/preprocessing/
+└── sub-f01p01/
+    └── ses-01/
+        └── eda/
+            ├── sub-f01p01_ses-01_task-restingstate_desc-eda-processed_physio.tsv.gz
+            ├── sub-f01p01_ses-01_task-restingstate_desc-scr_events.tsv
+            ├── sub-f01p01_ses-01_task-restingstate_desc-eda-metrics_physio.tsv
+            └── ... (13 files total)
+```
+
+---
+
+### preprocess_hr.py
+
+**Location**: `scripts/physio/preprocessing/preprocess_hr.py`
+
+Command-line interface for HR preprocessing pipeline.
+
+**Usage**:
+
+```bash
+# Basic usage (no prefix needed for subject/session)
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01
+
+# With verbose logging
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01 --verbose
+```
+
+**Output Structure**:
+```
+data/derivatives/preprocessing/
+└── sub-f01p01/
+    └── ses-01/
+        └── hr/
+            ├── sub-f01p01_ses-01_task-restingstate_desc-hr-processed_physio.tsv.gz
+            ├── sub-f01p01_ses-01_task-restingstate_desc-hr-metrics_physio.tsv
+            └── ... (7 files total)
+```
 
 ---
 
 ### clean_outputs.py
 
-**Location**: `scripts/clean_outputs.py`
+**Location**: `scripts/utils/clean_outputs.py`
 
 Utility script for cleaning derivatives, logs, and cache files between test iterations.
 
 **Usage**:
 
 ```bash
-# Dry run (preview what would be deleted)
-poetry run python scripts/clean_outputs.py --all
-
-# Clean everything (with confirmation)
-poetry run python scripts/clean_outputs.py --all --force
-
 # Clean specific subject/session
-poetry run python scripts/clean_outputs.py --subject sub-f01p01 --session ses-01 --force
+poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01
 
-# Clean only derivatives
-poetry run python scripts/clean_outputs.py --derivatives --force
+# Clean specific modality
+poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01 --modality bvp
 
-# Clean only logs
-poetry run python scripts/clean_outputs.py --logs --force
-
-# Clean only cache
-poetry run python scripts/clean_outputs.py --cache --force
+# Clean all outputs (with confirmation)
+poetry run python scripts/utils/clean_outputs.py --all
 ```
 
 **Arguments**:
 
 | Argument | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `--all` | flag | No | False | Clean all outputs (derivatives + logs + cache) |
-| `--derivatives` | flag | No | False | Clean only derivatives |
-| `--logs` | flag | No | False | Clean only logs |
-| `--cache` | flag | No | False | Clean only cache (`__pycache__`, `.pytest_cache`) |
-| `--subject` | str | No | All subjects | Specific subject to clean |
-| `--session` | str | No | All sessions | Specific session to clean |
-| `--force` | flag | No | False | Skip confirmation prompt |
+| `--subject` | str | No | All subjects | Specific subject to clean (no prefix) |
+| `--session` | str | No | All sessions | Specific session to clean (no prefix) |
+| `--modality` | str | No | All modalities | Specific modality (bvp, eda, hr) |
+| `--all` | flag | No | False | Clean all outputs |
+| `--dry-run` | flag | No | False | Preview what would be deleted |
 
 **What Gets Cleaned**:
 
 | Target | Location | Description |
 |--------|----------|-------------|
-| Derivatives | `data/derivatives/therasync-bvp/` | All processed BVP outputs |
-| Logs | `log/*.log` | All log files |
-| Cache | `**/__pycache__/`, `.pytest_cache/` | Python cache directories |
+| Preprocessing outputs | `data/derivatives/preprocessing/` | All processed outputs (BVP, EDA, HR) |
+| Logs | `log/*.log` | Processing log files |
 
 **Safety Features**:
-- Confirmation prompt unless `--force` specified
-- Dry run by default (shows what would be deleted)
-- Preserves raw data (never touches `data/raw/`)
+- Confirmation prompt for destructive operations
+- Dry run option to preview deletions
+- Preserves raw data (never touches `data/sourcedata/`)
 - Detailed deletion reporting
 
 **Example Output**:
 ```
 === Cleanup Summary ===
-📁 Derivatives: 2 directories, 9 files
-📄 Logs: 1 file
+📁 Derivatives: sub-f01p01/ses-01/bvp (9 files)
+📁 Derivatives: sub-f01p01/ses-01/eda (13 files)
+� Derivatives: sub-f01p01/ses-01/hr (7 files)
 🗑️  Cache: 229 directories
 
 Total to delete: 232 directories, 10 files
