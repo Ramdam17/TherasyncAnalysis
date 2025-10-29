@@ -1,8 +1,14 @@
 # NeuroKit2 BVP Preprocessing Methods - Research Findings
 
+**Last Updated:** October 28, 2025  
+**Status:** ✅ Decision Made - Option 1 (Automatic) Implemented  
+**Implementation:** `src/physio/preprocessing/bvp_cleaner.py`
+
 ## Overview
 
 Based on research of NeuroKit2 documentation, here are the available BVP (Blood Volume Pulse) preprocessing methods and options for our TherasyncPipeline project.
+
+**Decision Outcome:** Option 1 (Automatic NeuroKit2 Pipeline) was selected and implemented. See `docs/bvp_decisions.md` for rationale.
 
 ## Main BVP Functions Available
 

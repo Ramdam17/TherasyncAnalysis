@@ -19,14 +19,14 @@ from typing import List, Optional, Dict, Any
 
 import pandas as pd
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from src.core.config_loader import ConfigLoader
-from src.physio.bvp_loader import BVPLoader
-from src.physio.bvp_cleaner import BVPCleaner
-from src.physio.bvp_metrics import BVPMetricsExtractor
-from src.physio.bvp_bids_writer import BVPBIDSWriter
+from src.physio.preprocessing.bvp_loader import BVPLoader
+from src.physio.preprocessing.bvp_cleaner import BVPCleaner
+from src.physio.preprocessing.bvp_metrics import BVPMetricsExtractor
+from src.physio.preprocessing.bvp_bids_writer import BVPBIDSWriter
 
 
 def setup_logging(config_path: Optional[Path] = None) -> None:

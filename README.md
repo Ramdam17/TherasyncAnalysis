@@ -14,58 +14,78 @@ The Therasync project records families during therapeutic sessions to analyze ph
 
 ## Data Structure
 
-The project follows a specialized BIDS format:
+The project follows a BIDS-inspired format with modular preprocessing outputs:
 - **Subjects**: `sub-fXXpYY` (family XX, participant YY)
 - **Sessions**: `ses-01`, `ses-02`, etc.
 - **Tasks/Moments**: `task-restingstate`, `task-therapy`
 
 ```
 data/
-├── sub-fXXpYY/           # Family XX, participant YY
-│   └── ses-XX/           # Session number
-│       └── physio/       # Physiological recordings
-│           ├── *_task-restingstate_recording-bvp.tsv
-│           ├── *_task-restingstate_recording-bvp.json
-│           ├── *_task-therapy_recording-bvp.tsv
-│           └── *_task-therapy_recording-bvp.json
+├── raw/                  # Raw BIDS-formatted data
+│   └── sub-fXXpYY/      # Family XX, participant YY
+│       └── ses-XX/      # Session number
+│           └── physio/  # Physiological recordings
+│               ├── *_task-restingstate_recording-bvp.tsv
+│               ├── *_task-restingstate_recording-eda.tsv
+│               └── *_task-therapy_recording-*.tsv
 └── derivatives/          # Processed data outputs
-    └── therasync-physio/ # This pipeline's outputs
+    └── preprocessing/    # Preprocessing derivatives (modular structure)
+        └── sub-fXXpYY/
+            └── ses-XX/
+                ├── bvp/  # BVP/HRV preprocessing outputs
+                ├── eda/  # EDA preprocessing outputs
+                └── hr/   # Heart rate preprocessing outputs
 ```
 
 ## Pipeline Components
 
-### ✅ Implemented Pipelines
+### ✅ Implemented Pipelines (Production Ready)
 
-#### 1. BVP Pipeline (Sprint 2) - **PRODUCTION READY**
+#### 1. BVP Pipeline (Sprint 2)
 - Blood volume pulse signal cleaning (NeuroKit2, Elgendi method)
 - Peak detection and quality assessment
-- 18 HRV metrics extraction (time-domain, frequency-domain, non-linear)
-- BIDS-compliant output formatting
-- **CLI**: `poetry run python scripts/preprocess_bvp.py --subject <sub> --session <ses>`
+- 20 HRV metrics extraction (time-domain, frequency-domain, non-linear)
+- BIDS-compliant output formatting (9 files per subject/session)
+- **CLI**: `poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject <id> --session <num>`
 
-#### 2. EDA Pipeline (Sprint 3) - **PRODUCTION READY**
+#### 2. EDA Pipeline (Sprint 3)
 - Electrodermal activity signal cleaning (NeuroKit2)
 - cvxEDA tonic/phasic decomposition
 - SCR (Skin Conductance Response) detection and analysis
-- 23 comprehensive metrics (9 SCR, 5 tonic, 6 phasic, 3 metadata)
+- 23 comprehensive metrics (SCR peaks, tonic/phasic components, temporal patterns)
 - BIDS-compliant output (13 files per subject/session)
-- **CLI**: `PYTHONPATH=. poetry run python scripts/preprocess_eda.py --subject <sub> --session <ses>`
+- **CLI**: `poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject <id> --session <num>`
 - **Validated on**: 5 real subjects from 2 families
 - **Performance**: 0.5-1 second per subject/session
 
-### 🚧 Upcoming Pipelines
+#### 3. HR Pipeline (Sprint 4)
+- Heart rate extraction and validation
+- Outlier detection and gap interpolation
+- 26 comprehensive HR metrics (mean, variability, stability, quality)
+- Integrated with BVP pipeline for HRV analysis
+- BIDS-compliant output (7 files per subject/session)
+- **CLI**: `poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject <id> --session <num>`
 
-#### 3. HR Pipeline (Sprint 4) - **PLANNED**
-- Heart rate extraction from BVP data
-- HR cleaning and artifact removal
-- HRV metrics extraction (comprehensive time/frequency/nonlinear measures)
-- Integration with BVP pipeline
+### 🔄 Modular Architecture
 
-### Future Phases
+The codebase is organized for extensibility:
 
-- **DPPA Analysis**: Dyadic Poincaré Plot Analysis for synchrony
-- **Emotion Analysis**: Integration with transcript and alliance data
-- **Visualization**: Comprehensive plotting and reporting tools
+```
+src/physio/preprocessing/   # Preprocessing modules (current focus)
+├── bvp_*.py               # BVP pipeline components
+├── eda_*.py               # EDA pipeline components  
+└── hr_*.py                # HR pipeline components
+
+scripts/physio/preprocessing/  # CLI scripts
+├── preprocess_bvp.py     # BVP preprocessing
+├── preprocess_eda.py     # EDA preprocessing
+└── preprocess_hr.py      # HR preprocessing
+
+Future modules (planned):
+├── src/physio/synchrony/      # Dyadic synchrony analysis
+├── src/physio/emotion/        # Emotion recognition
+└── src/visualization/         # Plotting and reporting
+```
 
 ## Quick Start
 
@@ -100,34 +120,48 @@ Edit `config/config.yaml` to customize processing parameters:
 
 #### BVP Preprocessing
 ```bash
-# Process single subject/session
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --verbose
+# Process single subject/session (subject ID without 'sub-' prefix)
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
+
+# Process with custom config
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01 --config config/config.yaml
 
 # Check outputs
-tree data/derivatives/therasync-bvp/sub-f01p01/ses-01/
+tree data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/
 ```
 
 #### EDA Preprocessing
 ```bash
-# Process single subject/session
-PYTHONPATH=. poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --verbose
+# Process single subject/session  
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01
 
 # View metrics
-cat data/derivatives/therasync-eda/sub-f01p01/ses-01/physio/*_desc-edametrics_physio.tsv
+cat data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_desc-eda-metrics_physio.tsv
 
 # Check SCR events
-head data/derivatives/therasync-eda/sub-f01p01/ses-01/physio/*_desc-scr_events.tsv
+head data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_desc-scr_events.tsv
+```
+
+#### HR Preprocessing
+```bash
+# Process single subject/session
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01
+
+# View metrics
+cat data/derivatives/preprocessing/sub-f01p01/ses-01/hr/*_hr-metrics.tsv
 ```
 
 #### Batch Processing
 ```bash
 # Clean all outputs
-poetry run python scripts/clean_outputs.py --derivatives --force
+poetry run python scripts/utils/clean_outputs.py --derivatives --force
 
-# Process multiple subjects (create custom script)
-for subject in sub-f01p01 sub-f02p01; do
-  for session in ses-01 ses-02; do
-    PYTHONPATH=. poetry run python scripts/preprocess_eda.py --subject $subject --session $session
+# Process multiple subjects
+for subject in f01p01 f02p01; do
+  for session in 01 02; do
+    poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject $subject --session $session
+    poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject $subject --session $session
+    poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject $subject --session $session
   done
 done
 ```
@@ -160,7 +194,7 @@ Comprehensive documentation is available in the `docs/` directory:
 
 ### Project Status
 
-**Current Version**: 0.2.0  
+**Current Version**: 0.3.0  
 **Last Update**: October 28, 2025
 
 | Sprint | Status | Description | Files Changed |
@@ -168,7 +202,10 @@ Comprehensive documentation is available in the `docs/` directory:
 | Sprint 1 | ✅ Complete | Project setup, configuration, core utilities | - |
 | Sprint 2 | ✅ Complete | BVP preprocessing pipeline | 8 files |
 | Sprint 3 | ✅ Complete | EDA preprocessing pipeline | 18 files (+6705 lines) |
-| Sprint 4 | 🚧 Planned | HR extraction and HRV analysis | - |
+| Sprint 4 | ✅ Complete | HR extraction and metrics analysis | 8 files (+2500 lines) |
+| **Refactor** | ✅ **Complete** | **Modular architecture restructuring** | **30+ files** |
+
+**Latest**: Restructured codebase into modular architecture with `src/physio/preprocessing/` and `scripts/physio/preprocessing/` for better extensibility and future development (synchrony analysis, emotion recognition, visualization modules).
 
 ### Sprint-based Development
 

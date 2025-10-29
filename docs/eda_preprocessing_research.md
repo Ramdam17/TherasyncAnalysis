@@ -1,8 +1,14 @@
 # NeuroKit2 EDA Preprocessing Methods - Research Findings
 
+**Last Updated:** October 28, 2025  
+**Status:** ✅ Decision Made - cvxEDA Method Implemented  
+**Implementation:** `src/physio/preprocessing/eda_cleaner.py`
+
 ## Overview
 
 Based on research of NeuroKit2 documentation, here are the available EDA (Electrodermal Activity) preprocessing methods and options for our TherasyncPipeline project.
+
+**Decision Outcome:** cvxEDA decomposition method was selected and implemented. See `docs/eda_decisions.md` for rationale.
 
 ## Main EDA Functions Available
 

@@ -409,7 +409,7 @@ class HRBIDSWriter:
         file_path = output_dir / f"{prefix}_hr-metrics.json"
         
         # Import HRMetricsExtractor to get descriptions
-        from src.physio.hr_metrics_extractor import HRMetricsExtractor
+        from src.physio.preprocessing.hr_metrics_extractor import HRMetricsExtractor
         extractor = HRMetricsExtractor()
         descriptions = extractor.get_metrics_description()
         

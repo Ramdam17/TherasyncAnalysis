@@ -1,8 +1,14 @@
 # NeuroKit2 EDA Metrics Extraction - Research Findings
 
+**Last Updated:** October 28, 2025  
+**Status:** ✅ Decision Made - Extended Set (23 metrics) Implemented  
+**Implementation:** `src/physio/preprocessing/eda_metrics.py`
+
 ## Overview
 
 Based on research of NeuroKit2 documentation, here are the available EDA-derived metrics and analysis functions for our TherasyncPipeline project. EDA data provides rich insights into autonomic nervous system activity and emotional/cognitive processing.
+
+**Decision Outcome:** Extended Set (23 EDA metrics: 9 SCR + 5 Tonic + 6 Phasic + 3 Metadata) was selected and implemented. See `docs/eda_decisions.md` for rationale.
 
 ## Available EDA Analysis Functions
 

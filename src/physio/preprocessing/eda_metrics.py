@@ -32,22 +32,37 @@ class EDAMetricsExtractor:
     Metrics can be extracted for full recordings or individual moments.
     """
     
-    def __init__(self, config: Optional[ConfigLoader] = None):
+    def __init__(self, config_path: Optional[Union[str, Path]] = None):
         """
         Initialize the EDA metrics extractor with configuration.
         
         Args:
-            config: ConfigLoader instance. If None, creates new instance with default config.
+            config_path: Path to configuration file. If None, uses default config.
         """
-        self.config = config if config is not None else ConfigLoader()
+        self.config = ConfigLoader(config_path)
         
         # Get EDA configuration
         self.sampling_rate = self.config.get('physio.eda.sampling_rate', 4)
         self.metrics_config = self.config.get('physio.eda.metrics', {})
         
-        # Get selected metrics
-        self.selected_metrics = self.metrics_config.get('selected_metrics', {})
-        self.extract_all = self.metrics_config.get('extract_all', False)
+        # Get selected metrics - handle both dict and list formats for backward compatibility
+        if isinstance(self.metrics_config, list):
+            # Old format: metrics is a list of metric names
+            self.selected_metrics = {}
+            self.extract_all = True  # If list provided, extract those metrics
+        elif isinstance(self.metrics_config, dict):
+            # New format: metrics is a dict with extract_all and selected_metrics
+            selected_metrics_raw = self.metrics_config.get('selected_metrics', {})
+            if isinstance(selected_metrics_raw, list):
+                # Empty list or list of strings - use default empty dict
+                self.selected_metrics = {}
+            else:
+                self.selected_metrics = selected_metrics_raw
+            self.extract_all = self.metrics_config.get('extract_all', False)
+        else:
+            # Fallback
+            self.selected_metrics = {}
+            self.extract_all = False
         
         logger.info(
             f"EDA Metrics Extractor initialized "

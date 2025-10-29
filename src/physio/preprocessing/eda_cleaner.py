@@ -36,14 +36,14 @@ class EDACleaner:
     while the phasic component represents rapid SCRs (sympathetic arousal responses).
     """
     
-    def __init__(self, config: Optional[ConfigLoader] = None):
+    def __init__(self, config_path: Optional[Union[str, Path]] = None):
         """
         Initialize the EDA cleaner with configuration.
         
         Args:
-            config: ConfigLoader instance. If None, creates new instance with default config.
+            config_path: Path to configuration file. If None, uses default config.
         """
-        self.config = config if config is not None else ConfigLoader()
+        self.config = ConfigLoader(config_path)
         
         # Get EDA processing configuration
         self.sampling_rate = self.config.get('physio.eda.sampling_rate', 4)

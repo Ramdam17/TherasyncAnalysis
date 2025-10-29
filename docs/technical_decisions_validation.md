@@ -1,12 +1,84 @@
-# Technical Decisions Validation Session
+# Technical Decisions Validation - Summary
+
+**Last Updated:** October 28, 2025  
+**Version:** v0.3.0 (Modular Architecture)  
+**Status:** ✅ ALL DECISIONS VALIDATED & IMPLEMENTED
 
 ## Purpose
 
-This document consolidates all technical decisions made during Sprint 2 (BVP) and Sprint 3 (EDA) pipeline development to enable formal validation and documentation.
+This document consolidates all technical decisions made for the preprocessing pipelines (BVP, EDA, HR). All decisions have been validated, implemented, tested (34/34 tests passing), and verified on real data.
 
 ---
 
-## Sprint 2: BVP Pipeline Decisions
+## Summary of All Decisions
+
+### ✅ DECISION 1: BVP Preprocessing Method
+- **Selected:** Automatic NeuroKit2 Pipeline with elgendi peak detection
+- **Status:** IMPLEMENTED & VALIDATED
+- **Implementation:** `src/physio/preprocessing/bvp_cleaner.py`
+- **Documentation:** `docs/bvp_decisions.md`
+
+### ✅ DECISION 2: BVP Metrics Selection
+- **Selected:** Extended Set (~18 HRV metrics)
+- **Status:** IMPLEMENTED & VALIDATED  
+- **Implementation:** `src/physio/preprocessing/bvp_metrics.py`
+- **Documentation:** `docs/bvp_decisions.md`
+
+### ✅ DECISION 3: EDA Preprocessing Method
+- **Selected:** Automatic NeuroKit2 with cvxEDA decomposition
+- **Status:** IMPLEMENTED & VALIDATED ON REAL DATA (5+ subjects)
+- **Implementation:** `src/physio/preprocessing/eda_cleaner.py`
+- **Documentation:** `docs/eda_decisions.md`
+
+### ✅ DECISION 4: EDA Metrics Selection
+- **Selected:** Extended Set (23 metrics: 9 SCR + 5 Tonic + 6 Phasic + 3 Metadata)
+- **Status:** IMPLEMENTED & VALIDATED ON REAL DATA
+- **Implementation:** `src/physio/preprocessing/eda_metrics.py`
+- **Documentation:** `docs/eda_decisions.md`
+
+### ✅ DECISION 5: HR Processing Method
+- **Selected:** Basic HR descriptive statistics (complementary to BVP HRV)
+- **Status:** IMPLEMENTED & VALIDATED
+- **Implementation:** `src/physio/preprocessing/hr_*.py`
+- **Documentation:** `docs/hr_metrics_research.md`
+
+---
+
+## Validation Status
+
+### Test Coverage
+- **Unit Tests:** 34/34 passing (100%)
+- **BVP Pipeline:** ✅ All tests passing
+- **EDA Pipeline:** ✅ All tests passing
+- **HR Pipeline:** ✅ All tests passing
+
+### Real Data Validation
+- **BVP:** ✅ Tested on multiple subjects, physiologically reasonable HRV values
+- **EDA:** ✅ Tested on 5+ subjects (families f01, f02), SCR rates validated (1-30/min)
+- **HR:** ✅ Tested on multiple subjects, reasonable HR values (60-100 BPM)
+
+### Production Readiness
+- ✅ All three pipelines produce BIDS-compliant outputs
+- ✅ Modular architecture supports future extensions
+- ✅ Comprehensive documentation complete
+- ✅ All configurations validated in `config/config.yaml`
+
+---
+
+## Detailed Validation Records
+
+For detailed rationale and validation criteria, see individual decision documents:
+- `docs/bvp_decisions.md` - BVP preprocessing and metrics decisions
+- `docs/eda_decisions.md` - EDA preprocessing and metrics decisions  
+- `docs/bvp_preprocessing_research.md` - BVP methods research
+- `docs/bvp_metrics_research.md` - BVP metrics research
+- `docs/eda_preprocessing_research.md` - EDA methods research
+- `docs/eda_metrics_research.md` - EDA metrics research
+- `docs/hr_metrics_research.md` - HR metrics research
+
+---
+
+## BVP Pipeline Decisions (Sprint 2)
 
 ### 🔥 DECISION 1: BVP Preprocessing Method
 

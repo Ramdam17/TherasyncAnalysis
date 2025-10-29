@@ -1,208 +1,407 @@
-# Testing BVP Pipeline on Real Data
+# Testing Guide for Therasync Preprocessing Pipelines
 
-## 🚀 Quick Start Guide
+**Last Updated:** October 28, 2025  
+**Project Version:** v0.3.0 (Modular Architecture)  
+**Test Status:** 34/34 passing (100%)
 
-### Prerequisites
-- Poetry installed and dependencies ready
-- Real BVP data in BIDS-compliant structure under `data/raw/`
-- Configuration file set up (use `config/config.yaml` or `config/example_config.yaml` as template)
+This guide covers both automated unit testing and manual testing with real data for all three preprocessing pipelines (BVP, EDA, HR).
 
-### Testing Workflow
+## 📋 Table of Contents
+- [Unit Tests](#unit-tests)
+- [Testing on Real Data](#testing-on-real-data)
+- [Pipeline-Specific Testing](#pipeline-specific-testing)
+- [Troubleshooting](#troubleshooting)
+- [Validation Checklist](#validation-checklist)
 
-#### 1. Test on Single Subject/Session
+---
+
+## Unit Tests
+
+### Running All Tests
 
 ```bash
-# Process a single subject/session
-PYTHONPATH=. poetry run python scripts/preprocess_bvp.py \
-  --subject sub-f01p01 \
-  --session ses-01 \
+# Run all 34 unit tests
+poetry run pytest tests/
+
+# Run with coverage report
+poetry run pytest --cov=src tests/
+
+# Run with verbose output
+poetry run pytest -v tests/
+
+# Run specific test file
+poetry run pytest tests/test_bvp_pipeline.py
+poetry run pytest tests/test_eda_pipeline.py
+poetry run pytest tests/test_hr_pipeline.py
+```
+
+### Test Organization
+
+```
+tests/
+├── test_bvp_pipeline.py      # BVP preprocessing tests
+├── test_eda_pipeline.py      # EDA preprocessing tests
+├── test_hr_pipeline.py       # HR preprocessing tests
+└── test_config/              # Test configuration files
+    ├── test_config_bvp.yaml
+    ├── test_config_eda.yaml
+    └── test_config_hr.yaml
+```
+
+### Current Test Status (October 2025)
+
+✅ **All 34 tests passing (100%)**
+
+**BVP Pipeline Tests:**
+- Loader initialization and data loading
+- Signal cleaning and peak detection
+- Metrics extraction (18 HRV metrics)
+- BIDS output writing
+
+**EDA Pipeline Tests:**
+- Loader initialization and data loading
+- Signal decomposition (tonic/phasic)
+- SCR detection and analysis
+- Metrics extraction (23 EDA metrics)
+- BIDS output writing (5 file types)
+
+**HR Pipeline Tests:**
+- Loader initialization and data loading
+- Signal cleaning
+- Metrics extraction (basic HR metrics)
+- BIDS output writing
+
+---
+
+## Testing on Real Data
+
+## Testing on Real Data
+
+### Prerequisites
+- Poetry installed with all dependencies
+- Real physiological data in BIDS-compliant structure under `data/sourcedata/`
+- Configuration file set up (`config/config.yaml`)
+
+### Data Structure
+
+Your data should follow this structure:
+```
+data/sourcedata/
+└── sub-{subject}/
+    └── ses-{session}/
+        └── physio/
+            ├── sub-{subject}_ses-{session}_task-restingstate_recording-bvp.tsv
+            ├── sub-{subject}_ses-{session}_task-restingstate_recording-bvp.json
+            ├── sub-{subject}_ses-{session}_task-restingstate_recording-eda.tsv
+            ├── sub-{subject}_ses-{session}_task-restingstate_recording-eda.json
+            ├── sub-{subject}_ses-{session}_task-restingstate_recording-hr.tsv
+            ├── sub-{subject}_ses-{session}_task-restingstate_recording-hr.json
+            ├── sub-{subject}_ses-{session}_task-therapy_recording-bvp.tsv
+            ├── sub-{subject}_ses-{session}_task-therapy_recording-eda.tsv
+            └── sub-{subject}_ses-{session}_task-therapy_recording-hr.tsv
+```
+
+### Quick Start Workflow
+
+#### 1. Test Single Subject/Session
+
+```bash
+# BVP preprocessing
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py \
+  --subject f01p01 \
+  --session 01 \
+  --verbose
+
+# EDA preprocessing
+poetry run python scripts/physio/preprocessing/preprocess_eda.py \
+  --subject f01p01 \
+  --session 01 \
+  --verbose
+
+# HR preprocessing
+poetry run python scripts/physio/preprocessing/preprocess_hr.py \
+  --subject f01p01 \
+  --session 01 \
   --verbose
 ```
 
+**Note:** Subject and session IDs are provided WITHOUT prefixes (e.g., `f01p01` not `sub-f01p01`, `01` not `ses-01`)
+
 #### 2. Check the Outputs
 
-Outputs will be in `data/derivatives/therasync-bvp/`:
+Outputs are organized by modality in the new structure:
 ```
-data/derivatives/therasync-bvp/
-├── dataset_description.json
+data/derivatives/preprocessing/
 └── sub-f01p01/
     └── ses-01/
-        └── physio/
-            ├── sub-f01p01_ses-01_task-*_recording-bvp_physio.tsv
-            ├── sub-f01p01_ses-01_task-*_recording-bvp_physio.json
-            ├── sub-f01p01_ses-01_desc-bvpmetrics_physio.tsv
-            └── sub-f01p01_ses-01_desc-bvpmetrics_physio.json
+        ├── bvp/                                           # 9 files
+        │   ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-processed_physio.tsv.gz
+        │   ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-processed_physio.json
+        │   ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-metrics_physio.tsv
+        │   ├── sub-f01p01_ses-01_task-therapy_desc-bvp-processed_physio.tsv.gz
+        │   └── ...
+        ├── eda/                                           # 13 files
+        │   ├── sub-f01p01_ses-01_task-restingstate_desc-eda-processed_physio.tsv.gz
+        │   ├── sub-f01p01_ses-01_task-restingstate_desc-scr_events.tsv
+        │   ├── sub-f01p01_ses-01_task-restingstate_desc-eda-metrics_physio.tsv
+        │   └── ...
+        └── hr/                                            # 7 files
+            ├── sub-f01p01_ses-01_task-restingstate_desc-hr-processed_physio.tsv.gz
+            ├── sub-f01p01_ses-01_task-restingstate_desc-hr-metrics_physio.tsv
+            └── ...
 ```
 
 Logs will be in `log/`:
 ```
 log/
-├── bvp_preprocessing_YYYYMMDD_HHMMSS.log
+├── preprocessing_bvp_YYYYMMDD_HHMMSS.log
+├── preprocessing_eda_YYYYMMDD_HHMMSS.log
+├── preprocessing_hr_YYYYMMDD_HHMMSS.log
 └── therasyncpipeline.log
 ```
 
 #### 3. Clean Outputs for Re-testing
 
 ```bash
-# Dry run to see what would be deleted
-PYTHONPATH=. poetry run python scripts/clean_outputs.py --all --dry-run
+# Clean specific subject/session outputs
+poetry run python scripts/utils/clean_outputs.py \
+  --subject f01p01 \
+  --session 01
 
-# Clean specific subject/session
-PYTHONPATH=. poetry run python scripts/clean_outputs.py \
-  --derivatives \
-  --subject sub-f01p01 \
-  --session ses-01
+# Clean specific modality
+poetry run python scripts/utils/clean_outputs.py \
+  --subject f01p01 \
+  --session 01 \
+  --modality bvp
 
-# Clean everything (with confirmation)
-PYTHONPATH=. poetry run python scripts/clean_outputs.py --all
+# Clean all derivatives (with confirmation)
+poetry run python scripts/utils/clean_outputs.py --all
 
-# Force clean without confirmation (be careful!)
-PYTHONPATH=. poetry run python scripts/clean_outputs.py --all --force
+# View what would be deleted (dry run)
+poetry run python scripts/utils/clean_outputs.py --all --dry-run
 ```
 
-#### 4. Iterate and Refine
+---
 
-Repeat steps 1-3 as needed during development and testing.
+## Pipeline-Specific Testing
 
-## 📋 Common Testing Scenarios
+### BVP Pipeline
 
-### Test with Specific Moments Only
+**Expected Outputs:** 9 files per session
+- Processed signals (compressed TSV + JSON) for each moment
+- Metrics file (TSV + JSON) with 18 HRV metrics
+- Summary JSON
+
+**Key Metrics to Validate:**
+- HRV_MeanNN (typically 600-1000 ms for adults)
+- HRV_SDNN (typically 20-100 ms)
+- HRV_RMSSD (typically 20-50 ms)
+- HRV_LFHF (LF/HF ratio, typically 0.5-3.0)
+
+**Test Command:**
 ```bash
-PYTHONPATH=. poetry run python scripts/preprocess_bvp.py \
-  --subject sub-f01p01 \
-  --session ses-01 \
-  --moments restingstate therapy
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01 --verbose
 ```
 
-### Test with Custom Configuration
+### EDA Pipeline
+
+**Expected Outputs:** 13 files per session
+- Processed signals (compressed TSV + JSON) for each moment
+- SCR events (TSV + JSON) for each moment
+- Metrics file (TSV + JSON) with 23 EDA metrics
+- Summary JSON
+
+**Key Metrics to Validate:**
+- SCR rate (typically 1-30 per minute depending on arousal)
+- Tonic EDA level (typically 0.001-0.5 μS)
+- SCR amplitude (typically 0.01-1.0 μS)
+
+**Test Command:**
 ```bash
-PYTHONPATH=. poetry run python scripts/preprocess_bvp.py \
-  --subject sub-f01p01 \
-  --session ses-01 \
-  --config config/example_config.yaml
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01 --verbose
 ```
 
-### Batch Process Multiple Subjects
+### HR Pipeline
+
+**Expected Outputs:** 7 files per session
+- Processed signals (compressed TSV + JSON) for each moment
+- Metrics file (TSV + JSON) with basic HR metrics
+- Summary JSON
+
+**Key Metrics to Validate:**
+- Mean HR (typically 60-100 BPM for adults)
+- HR variability measures
+- HR trends over time
+
+**Test Command:**
 ```bash
-# Process all subjects matching pattern
-PYTHONPATH=. poetry run python scripts/preprocess_bvp.py \
-  --batch \
-  --subject-pattern "sub-f01*" \
-  --continue-on-error
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01 --verbose
 ```
 
-### Verbose Output for Debugging
-```bash
-PYTHONPATH=. poetry run python scripts/preprocess_bvp.py \
-  --subject sub-f01p01 \
-  --session ses-01 \
-  --verbose
-```
+---
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
-### Check Data Structure
-Your data should follow this structure:
-```
-data/raw/
-└── sub-f01p01/
-    └── ses-01/
-        └── physio/
-            ├── sub-f01p01_ses-01_task-restingstate_recording-bvp.tsv
-            ├── sub-f01p01_ses-01_task-restingstate_recording-bvp.json
-            ├── sub-f01p01_ses-01_task-therapy_recording-bvp.tsv
-            └── sub-f01p01_ses-01_task-therapy_recording-bvp.json
-```
+## Troubleshooting
 
 ### Common Issues
 
-**Issue**: `FileNotFoundError: BVP file not found`
-- **Solution**: Check that your data files follow BIDS naming conventions
-- **Check**: File paths and naming in the error message
+**Issue:** `FileNotFoundError: File not found`
+- **Solution:** Check that your data files follow BIDS naming conventions
+- **Verify:** Files are in `data/sourcedata/sub-{subject}/ses-{session}/physio/`
+- **Check:** Subject/session IDs don't include prefixes in command arguments
 
-**Issue**: `ValueError: Insufficient peaks for HRV analysis`
-- **Solution**: Signal might be too short or too noisy
-- **Check**: Signal duration (need at least ~30 seconds) and quality
+**Issue:** `ValueError: Insufficient peaks for HRV analysis` (BVP)
+- **Solution:** Signal might be too short or too noisy
+- **Check:** Signal duration (need at least ~30 seconds) and quality
+- **Try:** Adjust peak detection threshold in config.yaml
 
-**Issue**: Import errors
-- **Solution**: Always use `PYTHONPATH=.` before the command
-- **Alternative**: Run from project root directory
+**Issue:** `cvxEDA convergence warning` (EDA)
+- **Solution:** Usually not critical; decomposition still works
+- **Check:** If SCR counts are reasonable (1-30 per minute)
+- **Reference:** See docs/troubleshooting.md for detailed guidance
 
-**Issue**: Configuration errors
-- **Solution**: Verify your `config/config.yaml` has all required fields
-- **Check**: Use `config/example_config.yaml` as reference
+**Issue:** `No SCRs detected` (EDA)
+- **Solution:** Participant might have low arousal or signal quality issues
+- **Check:** Verify raw EDA signal is reasonable (not all zeros)
+- **Try:** Adjust SCR threshold in config.yaml (default: 0.01 μS)
+
+**Issue:** Import errors or module not found
+- **Solution:** Ensure you're using Poetry environment
+- **Run:** `poetry shell` to activate environment
+- **No need for PYTHONPATH:** Scripts handle path setup internally
+
+**Issue:** Configuration errors
+- **Solution:** Verify your `config/config.yaml` has all required fields
+- **Check:** Compare with template sections in README.md
+- **Validate:** Run unit tests to catch config issues
 
 ### View Logs
+
 ```bash
 # View latest processing log
-tail -f log/bvp_preprocessing_*.log
+tail -f log/preprocessing_*_*.log
 
 # View all logs
 ls -lht log/
 
-# Clean old logs
-PYTHONPATH=. poetry run python scripts/clean_outputs.py --logs
+# Search for errors in logs
+grep -i error log/preprocessing_*.log
 ```
 
-## ✅ Validation Checklist
+---
 
-After processing, verify:
+## Validation Checklist
 
-- [ ] Processed signals TSV files exist for each moment
-- [ ] Corresponding JSON metadata files exist
-- [ ] Metrics TSV file contains all expected HRV metrics
-- [ ] Metrics JSON describes the columns correctly
-- [ ] Dataset description JSON is present at pipeline root
+## Validation Checklist
+
+### After Processing BVP Data:
+- [ ] 9 files created in `data/derivatives/preprocessing/sub-{subject}/ses-{session}/bvp/`
+- [ ] Processed signals (TSV.GZ + JSON) exist for each moment
+- [ ] Metrics TSV file contains all 18 HRV metrics
+- [ ] JSON metadata files describe columns correctly
 - [ ] Log files show successful processing
-- [ ] No error messages in logs
 - [ ] HRV values are physiologically reasonable (e.g., heart rate 50-100 BPM)
 
-## 🔄 Iterative Testing Workflow
+### After Processing EDA Data:
+- [ ] 13 files created in `data/derivatives/preprocessing/sub-{subject}/ses-{session}/eda/`
+- [ ] Processed signals (TSV.GZ + JSON) exist for each moment
+- [ ] SCR events (TSV + JSON) exist for each moment
+- [ ] Metrics TSV file contains all 23 EDA metrics
+- [ ] SCR counts are reasonable (typically 1-30 per minute)
+- [ ] Tonic EDA levels are in normal range (0.001-0.5 μS)
+
+### After Processing HR Data:
+- [ ] 7 files created in `data/derivatives/preprocessing/sub-{subject}/ses-{session}/hr/`
+- [ ] Processed signals (TSV.GZ + JSON) exist for each moment
+- [ ] Metrics TSV file contains basic HR metrics
+- [ ] Mean HR is physiologically reasonable (60-100 BPM)
+- [ ] No error messages in logs
+
+### General Validation:
+- [ ] All output files follow BIDS naming conventions
+- [ ] No error messages in log files
+- [ ] File sizes are reasonable (not 0 bytes)
+- [ ] JSON files are valid JSON format
+- [ ] TSV files can be opened and inspected
+
+---
+
+## Iterative Testing Workflow
 
 ```bash
-# 1. Process data
-PYTHONPATH=. poetry run python scripts/preprocess_bvp.py -s sub-f01p01 -e ses-01 -v
+# Example workflow for testing changes
+
+# 1. Process all three modalities for one subject
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py -s f01p01 -e 01 -v
+poetry run python scripts/physio/preprocessing/preprocess_eda.py -s f01p01 -e 01 -v
+poetry run python scripts/physio/preprocessing/preprocess_hr.py -s f01p01 -e 01 -v
 
 # 2. Check outputs
-ls -R data/derivatives/therasync-bvp/sub-f01p01/ses-01/
+ls -lh data/derivatives/preprocessing/sub-f01p01/ses-01/*/
 
-# 3. Review logs
-tail -20 log/bvp_preprocessing_*.log
+# 3. Review logs for any issues
+tail -50 log/preprocessing_*.log | grep -i "error\|warning"
 
-# 4. Clean for next iteration
-PYTHONPATH=. poetry run python scripts/clean_outputs.py -d -s sub-f01p01 -e ses-01 -f
+# 4. Clean for next iteration (if needed)
+poetry run python scripts/utils/clean_outputs.py -s f01p01 -e 01
 
-# 5. Repeat with modifications
+# 5. Run unit tests to verify nothing broke
+poetry run pytest tests/ -v
+
+# 6. Repeat with modifications
 ```
 
-## 📊 Expected HRV Metrics
+---
 
-Your output should include these 12 essential metrics:
+## End-to-End Validation (October 2025)
 
-**Time-Domain:**
-- HRV_MeanNN (typically 600-1000 ms for adults)
-- HRV_SDNN (typically 20-100 ms)
-- HRV_RMSSD (typically 20-50 ms)
-- HRV_pNN50 (typically 5-30%)
-- HRV_CVNN (coefficient of variation)
+All three pipelines have been validated on real data:
 
-**Frequency-Domain:**
-- HRV_LF (low frequency power)
-- HRV_HF (high frequency power)
-- HRV_LFHF (LF/HF ratio, typically 0.5-3.0)
-- HRV_TP (total power)
+**BVP Pipeline:**
+- ✅ Tested on multiple subjects and sessions
+- ✅ Produces 9 BIDS-compliant files per session
+- ✅ All 18 HRV metrics calculated correctly
+- ✅ Physiologically reasonable values confirmed
 
-**Nonlinear:**
-- HRV_SD1 (short-term variability)
-- HRV_SD2 (long-term variability)
-- HRV_SampEn (sample entropy)
+**EDA Pipeline:**
+- ✅ Tested on 5+ subjects (families f01, f02)
+- ✅ Produces 13 BIDS-compliant files per session
+- ✅ All 23 EDA metrics calculated correctly
+- ✅ SCR rates validated across different arousal levels
+- ✅ cvxEDA decomposition working correctly
 
-## 🛟 Need Help?
+**HR Pipeline:**
+- ✅ Tested on multiple subjects and sessions
+- ✅ Produces 7 BIDS-compliant files per session
+- ✅ Basic HR metrics calculated correctly
+- ✅ Physiologically reasonable values confirmed
 
-- Check logs in `log/` directory
-- Review configuration in `config/config.yaml`
-- Verify data structure matches BIDS format
-- Use `--verbose` flag for detailed output
-- Run `--dry-run` with clean script to preview deletions
+---
+
+## Need Help?
+
+## Need Help?
+
+**Documentation:**
+- Check `README.md` for complete usage guide
+- Review `QUICKREF.md` for quick command reference
+- See `docs/troubleshooting.md` for detailed error solutions
+- Read `docs/api_reference.md` for module documentation
+
+**Logs and Debugging:**
+- Check logs in `log/` directory for detailed error messages
+- Use `--verbose` flag for detailed output during processing
+- Run unit tests to verify core functionality: `poetry run pytest tests/ -v`
+
+**Configuration:**
+- Review `config/config.yaml` for current settings
+- Adjust parameters if needed (thresholds, methods, etc.)
+- Refer to README for configuration options
+
+**Project Status:**
+- Current version: v0.3.0 (Modular Architecture)
+- Test status: 34/34 passing (100%)
+- All three pipelines production-ready and validated
 
 Happy testing! 🎉

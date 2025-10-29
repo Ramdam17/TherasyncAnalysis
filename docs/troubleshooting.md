@@ -1,10 +1,10 @@
 # Troubleshooting Guide - TherasyncPipeline
 
 **Authors**: Lena Adel, Remy Ramadour  
-**Version**: 0.1.0  
+**Version**: 0.3.0 (Modular Architecture)  
 **Last Updated**: October 28, 2025
 
-This guide helps resolve common issues when using the TherasyncPipeline.
+This guide helps resolve common issues when using the TherasyncPipeline preprocessing modules (BVP, EDA, HR).
 
 ---
 
@@ -101,20 +101,22 @@ poetry install
 
 **Solutions**:
 
-1. **Use PYTHONPATH**:
+1. **Ensure Poetry environment is activated**:
 ```bash
-PYTHONPATH=. poetry run python scripts/preprocess_bvp.py --help
+poetry shell     # Activate environment
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --help
 ```
 
-2. **Install in editable mode**:
+2. **Scripts handle path setup internally** (no PYTHONPATH needed):
 ```bash
-poetry install
+# This should work directly
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
 ```
 
 3. **Check virtual environment**:
 ```bash
 poetry env info  # Shows active environment
-poetry shell     # Activate environment
+poetry install   # Reinstall if needed
 ```
 
 ---
@@ -128,10 +130,10 @@ poetry shell     # Activate environment
 **Diagnosis**:
 ```bash
 # Check data structure
-tree data/raw/sub-f01p01/ses-01/ -L 2
+tree data/sourcedata/sub-f01p01/ses-01/ -L 2
 
 # Expected structure:
-# data/raw/sub-f01p01/ses-01/physio/
+# data/sourcedata/sub-f01p01/ses-01/physio/
 #   ├── sub-f01p01_ses-01_task-restingstate_recording-bvp.tsv
 #   ├── sub-f01p01_ses-01_task-restingstate_recording-bvp.json
 #   ├── sub-f01p01_ses-01_task-therapy_recording-bvp.tsv
@@ -144,10 +146,19 @@ tree data/raw/sub-f01p01/ses-01/ -L 2
 ```yaml
 # config/config.yaml
 paths:
-  sourcedata: "data/raw"  # Must match your data location
+  sourcedata: "data/sourcedata"  # Must match your data location
 ```
 
-2. **Verify file naming**:
+2. **Use correct subject/session format in commands**:
+```bash
+# Correct (no prefixes)
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
+
+# Incorrect (don't use prefixes)
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject sub-f01p01 --session ses-01
+```
+
+3. **Verify file naming**:
    - Files must follow BIDS naming: `{subject}_{session}_task-{moment}_recording-bvp.{tsv,json}`
    - Subject must include `sub-` prefix
    - Session must include `ses-` prefix
@@ -634,16 +645,21 @@ sudo chown -R $USER:$USER data/derivatives/
 
 1. **Clean outputs before reprocessing**:
 ```bash
-# Clean specific subject/session
-poetry run python scripts/clean_outputs.py --subject sub-f01p01 --session ses-01 --force
+# Clean specific subject/session (no prefixes needed)
+poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01
+
+# Clean specific modality
+poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01 --modality bvp
 
 # Or clean all
-poetry run python scripts/clean_outputs.py --all --force
+poetry run python scripts/utils/clean_outputs.py --all
 ```
 
 2. **Manual cleanup**:
 ```bash
-rm -rf data/derivatives/therasync-bvp/sub-f01p01/ses-01/
+rm -rf data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/
+rm -rf data/derivatives/preprocessing/sub-f01p01/ses-01/eda/
+rm -rf data/derivatives/preprocessing/sub-f01p01/ses-01/hr/
 ```
 
 ---
@@ -655,17 +671,14 @@ rm -rf data/derivatives/therasync-bvp/sub-f01p01/ses-01/
 **Diagnosis**:
 ```bash
 # Check what was created
-ls -1 data/derivatives/therasync-bvp/sub-f01p01/ses-01/physio/
+ls -1 data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/
+ls -1 data/derivatives/preprocessing/sub-f01p01/ses-01/eda/
+ls -1 data/derivatives/preprocessing/sub-f01p01/ses-01/hr/
 
-# Expected files (per moment):
-# - *_task-{moment}_desc-processed_recording-bvp.tsv
-# - *_task-{moment}_desc-processed_recording-bvp.json
-# - *_task-{moment}_desc-processing_recording-bvp.json
-
-# Plus session-level:
-# - *_desc-bvpmetrics_physio.tsv
-# - *_desc-bvpmetrics_physio.json
-# - *_desc-summary_recording-bvp.json
+# Expected files:
+# BVP: 9 files (processed signals, metrics, metadata for each moment)
+# EDA: 13 files (processed signals, SCR events, metrics, metadata)
+# HR: 7 files (processed signals, metrics, metadata)
 ```
 
 **Solutions**:
@@ -998,62 +1011,76 @@ When reporting issues, include:
 
 | Issue | Quick Fix |
 |-------|-----------|
-| Import errors | `PYTHONPATH=. poetry run ...` |
-| File not found | Check `paths.sourcedata` in config |
+| Import errors | Use `poetry run python scripts/...` (no PYTHONPATH needed) |
+| File not found | Check `paths.sourcedata` in config, use IDs without prefixes |
 | Low BVP quality warning | Normal for long recordings if >0.65 |
 | Few/many SCRs detected | Check electrode contact, adjust threshold |
 | cvxEDA convergence error | Check signal for NaN/inf values |
 | Low sampling rate warning | Expected for E4 (4 Hz), no action needed |
 | Memory error | Process moments separately |
 | Permission denied | `chmod -R u+w data/derivatives/` |
-| Existing outputs | `poetry run python scripts/clean_outputs.py --all --force` |
+| Existing outputs | `poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01` |
 
 ### Useful Commands
 
 #### BVP Pipeline
 ```bash
-# Clean and reprocess BVP
-poetry run python scripts/clean_outputs.py --derivatives --force
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --verbose
+# Clean and reprocess BVP (no prefixes needed)
+poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01 --modality bvp
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01 --verbose
 
 # Check BVP outputs
-tree data/derivatives/therasync-bvp/sub-f01p01/ses-01/
+tree data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/
 
 # View BVP metrics
-column -t -s $'\t' data/derivatives/therasync-bvp/sub-f01p01/ses-01/physio/*bvpmetrics*.tsv
+column -t -s $'\t' data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/*_desc-bvp-metrics_physio.tsv
 
 # Check BVP logs
-tail -f log/bvp_preprocessing.log
+tail -f log/preprocessing_bvp_*.log
 ```
 
 #### EDA Pipeline
 ```bash
-# Clean and reprocess EDA
-poetry run python scripts/clean_outputs.py --derivatives --force
-PYTHONPATH=. poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --verbose
+# Clean and reprocess EDA (no prefixes needed)
+poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01 --modality eda
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01 --verbose
 
 # Check EDA outputs
-tree data/derivatives/therasync-eda/sub-f01p01/ses-01/
-find data/derivatives/therasync-eda -name "*metrics*" | sort
+tree data/derivatives/preprocessing/sub-f01p01/ses-01/eda/
+find data/derivatives/preprocessing -name "*eda-metrics*" | sort
 
 # View EDA metrics (all subjects)
-for file in data/derivatives/therasync-eda/*/*/physio/*_desc-edametrics_physio.tsv; do
+for file in data/derivatives/preprocessing/*/*/eda/*_desc-eda-metrics_physio.tsv; do
   echo "=== $(basename $file) ===";
   cat "$file" | column -t -s $'\t';
 done
 
 # Check single subject EDA metrics
-column -t -s $'\t' data/derivatives/therasync-eda/sub-f01p01/ses-01/physio/*edametrics*.tsv
+column -t -s $'\t' data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_desc-eda-metrics_physio.tsv
 
 # View SCR events
-head -20 data/derivatives/therasync-eda/sub-f01p01/ses-01/physio/*_desc-scr_events.tsv
+head -20 data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_desc-scr_events.tsv
 
 # Check processing summary
-cat data/derivatives/therasync-eda/sub-f01p01/ses-01/physio/*_desc-summary_recording-eda.json | jq
+cat data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_desc-summary_*.json | jq
+```
+
+#### HR Pipeline
+```bash
+# Clean and reprocess HR (no prefixes needed)
+poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01 --modality hr
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01 --verbose
+
+# Check HR outputs
+tree data/derivatives/preprocessing/sub-f01p01/ses-01/hr/
+
+# View HR metrics
+column -t -s $'\t' data/derivatives/preprocessing/sub-f01p01/ses-01/hr/*_desc-hr-metrics_physio.tsv
 ```
 
 ---
 
 **Authors**: Lena Adel, Remy Ramadour  
+**Version**: 0.3.0 (Modular Architecture)  
 **Last Updated**: October 28, 2025  
 **Version**: 0.1.0

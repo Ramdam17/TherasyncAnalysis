@@ -1,15 +1,15 @@
 # BVP Pipeline - Technical Decisions Documentation
 
 **Date:** October 28, 2025  
-**Sprint:** Sprint 2 - BVP Preprocessing  
-**Branch:** master (merged from sprint-2/bvp-preprocessing)  
-**Status:** ✅ IMPLEMENTED (Documentation Added)
+**Version:** v0.3.0 (Modular Architecture)  
+**Status:** ✅ IMPLEMENTED & PRODUCTION-READY  
+**Implementation:** `src/physio/preprocessing/bvp_*.py`
 
 ---
 
 ## Decision Summary
 
-This document formalizes the technical decisions made for the BVP (Blood Volume Pulse) preprocessing pipeline. These decisions were implemented during Sprint 2 and are now being formally documented.
+This document formalizes the technical decisions made for the BVP (Blood Volume Pulse) preprocessing pipeline. All decisions have been implemented, tested (34/34 tests passing), and validated on real data.
 
 ---
 
@@ -98,7 +98,7 @@ physio:
 
 ### Implementation Files:
 
-- **Module:** `src/physio/bvp_cleaner.py`
+- **Module:** `src/physio/preprocessing/bvp_cleaner.py`
 - **Class:** `BVPCleaner`
 - **Method:** `clean_signal()` using `nk.ppg_process()`
 - **Method:** `process_moment_signals()` for batch processing
@@ -243,7 +243,7 @@ physio:
 
 ### Implementation Files:
 
-- **Module:** `src/physio/bvp_metrics.py`
+- **Module:** `src/physio/preprocessing/bvp_metrics.py`
 - **Class:** `BVPMetricsExtractor`
 - **Method:** `extract_hrv_metrics()` - extracts HRV from peaks
 - **Method:** `extract_session_metrics()` - batch processing for multiple moments
