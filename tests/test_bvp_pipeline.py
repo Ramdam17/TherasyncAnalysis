@@ -20,10 +20,10 @@ import pandas as pd
 import numpy as np
 
 from src.core.config_loader import ConfigLoader
-from src.physio.bvp_loader import BVPLoader
-from src.physio.bvp_cleaner import BVPCleaner
-from src.physio.bvp_metrics import BVPMetricsExtractor
-from src.physio.bvp_bids_writer import BVPBIDSWriter
+from src.physio.preprocessing.bvp_loader import BVPLoader
+from src.physio.preprocessing.bvp_cleaner import BVPCleaner
+from src.physio.preprocessing.bvp_metrics import BVPMetricsExtractor
+from src.physio.preprocessing.bvp_bids_writer import BVPBIDSWriter
 
 
 class TestBVPLoader(unittest.TestCase):
@@ -88,7 +88,7 @@ class TestBVPLoader(unittest.TestCase):
         with open(json_file, 'w') as f:
             json.dump(metadata, f)
     
-    @patch('physio.bvp_loader.ConfigLoader')
+    @patch('src.physio.preprocessing.bvp_loader.ConfigLoader')
     def test_loader_initialization(self, mock_config):
         """Test BVP loader initialization."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -102,9 +102,9 @@ class TestBVPLoader(unittest.TestCase):
     
     def test_load_moment_data_success(self):
         """Test successful loading of moment data."""
-        with patch('physio.bvp_loader.ConfigLoader') as mock_config:
+        with patch('src.physio.preprocessing.bvp_loader.ConfigLoader') as mock_config:
             mock_config.return_value.get.side_effect = lambda key, default=None: {
-                'paths.sourcedata': str(self.temp_path / "sourcedata")
+                'paths.rawdata': str(self.temp_path / "sourcedata")
             }.get(key, default)
             
             loader = BVPLoader()
@@ -123,9 +123,9 @@ class TestBVPLoader(unittest.TestCase):
     
     def test_load_moment_data_missing_file(self):
         """Test loading with missing files."""
-        with patch('physio.bvp_loader.ConfigLoader') as mock_config:
+        with patch('src.physio.preprocessing.bvp_loader.ConfigLoader') as mock_config:
             mock_config.return_value.get.side_effect = lambda key, default=None: {
-                'paths.sourcedata': str(self.temp_path / "sourcedata")
+                'paths.rawdata': str(self.temp_path / "sourcedata")
             }.get(key, default)
             
             loader = BVPLoader()
@@ -136,9 +136,9 @@ class TestBVPLoader(unittest.TestCase):
     
     def test_data_validation(self):
         """Test data validation functionality."""
-        with patch('physio.bvp_loader.ConfigLoader') as mock_config:
+        with patch('src.physio.preprocessing.bvp_loader.ConfigLoader') as mock_config:
             mock_config.return_value.get.side_effect = lambda key, default=None: {
-                'paths.sourcedata': str(self.temp_path / "sourcedata")
+                'paths.rawdata': str(self.temp_path / "sourcedata")
             }.get(key, default)
             
             loader = BVPLoader()
@@ -194,8 +194,8 @@ class TestBVPCleaner(unittest.TestCase):
         
         return bvp_signal
     
-    @patch('physio.bvp_cleaner.ConfigLoader')
-    @patch('physio.bvp_cleaner.nk')
+    @patch('src.physio.preprocessing.bvp_cleaner.ConfigLoader')
+    @patch('src.physio.preprocessing.bvp_cleaner.nk')
     def test_cleaner_initialization(self, mock_nk, mock_config):
         """Test BVP cleaner initialization."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -208,8 +208,8 @@ class TestBVPCleaner(unittest.TestCase):
         self.assertEqual(cleaner.method_quality, 'templatematch')
         self.assertEqual(cleaner.quality_threshold, 0.8)
     
-    @patch('physio.bvp_cleaner.ConfigLoader')
-    @patch('physio.bvp_cleaner.nk.ppg_process')
+    @patch('src.physio.preprocessing.bvp_cleaner.ConfigLoader')
+    @patch('src.physio.preprocessing.bvp_cleaner.nk.ppg_process')
     def test_process_signal_success(self, mock_ppg_process, mock_config):
         """Test successful signal processing."""
         # Mock config
@@ -241,7 +241,7 @@ class TestBVPCleaner(unittest.TestCase):
         self.assertIn('PPG_Peaks', processing_info)
         mock_ppg_process.assert_called_once()
     
-    @patch('physio.bvp_cleaner.ConfigLoader')
+    @patch('src.physio.preprocessing.bvp_cleaner.ConfigLoader')
     def test_input_validation(self, mock_config):
         """Test input signal validation."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -305,7 +305,7 @@ class TestBVPMetricsExtractor(unittest.TestCase):
             'therapy': (processed_signals, processing_info)
         }
     
-    @patch('physio.bvp_metrics.ConfigLoader')
+    @patch('src.physio.preprocessing.bvp_metrics.ConfigLoader')
     def test_extractor_initialization(self, mock_config):
         """Test metrics extractor initialization."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -319,15 +319,16 @@ class TestBVPMetricsExtractor(unittest.TestCase):
         self.assertEqual(len(extractor.frequency_domain_metrics), 2)
         self.assertEqual(len(extractor.nonlinear_metrics), 2)
     
-    @patch('physio.bvp_metrics.ConfigLoader')
-    @patch('physio.bvp_metrics.nk.hrv_time')
-    @patch('physio.bvp_metrics.nk.hrv_frequency')
-    @patch('physio.bvp_metrics.nk.hrv_nonlinear')
+    @patch('src.physio.preprocessing.bvp_metrics.ConfigLoader')
+    @patch('src.physio.preprocessing.bvp_metrics.nk.hrv_time')
+    @patch('src.physio.preprocessing.bvp_metrics.nk.hrv_frequency')
+    @patch('src.physio.preprocessing.bvp_metrics.nk.hrv_nonlinear')
     def test_extract_hrv_metrics_success(self, mock_nonlinear, mock_frequency, 
                                        mock_time, mock_config):
         """Test successful HRV metrics extraction."""
         # Mock config
         mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'physio.bvp': self.test_config['physio']['bvp'],
             'physio.bvp.metrics': self.test_config['physio']['bvp']['metrics'],
             'physio.bvp.metrics.selected_metrics': self.test_config['physio']['bvp']['metrics']['selected_metrics']
         }.get(key, default)
@@ -359,10 +360,11 @@ class TestBVPMetricsExtractor(unittest.TestCase):
         self.assertIn('HRV_SD1', metrics)
         self.assertEqual(metrics['HRV_MeanNN'], 800)
     
-    @patch('physio.bvp_metrics.ConfigLoader')
+    @patch('src.physio.preprocessing.bvp_metrics.ConfigLoader')
     def test_peaks_validation(self, mock_config):
         """Test peak validation for HRV analysis."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'physio.bvp': {'metrics': {}},
             'physio.bvp.metrics': {}
         }.get(key, default)
         
@@ -372,14 +374,15 @@ class TestBVPMetricsExtractor(unittest.TestCase):
         few_peaks = [64, 128]
         self.assertFalse(extractor._validate_peaks_for_hrv(few_peaks, "test"))
         
-        # Test sufficient peaks
-        enough_peaks = list(range(64, 640, 64))  # 10 peaks
+        # Test sufficient peaks (need at least 10)
+        enough_peaks = list(range(64, 704, 64))  # 10 peaks: 64 to 640
         self.assertTrue(extractor._validate_peaks_for_hrv(enough_peaks, "test"))
     
-    @patch('physio.bvp_metrics.ConfigLoader')
+    @patch('src.physio.preprocessing.bvp_metrics.ConfigLoader')
     def test_session_metrics_extraction(self, mock_config):
         """Test extraction of session-level metrics."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'physio.bvp': self.test_config['physio']['bvp'],
             'physio.bvp.metrics': self.test_config['physio']['bvp']['metrics'],
             'physio.bvp.metrics.selected_metrics': {}
         }.get(key, default)
@@ -441,25 +444,27 @@ class TestBVPBIDSWriter(unittest.TestCase):
             'restingstate': (processed_signals, processing_info)
         }
     
-    @patch('physio.bvp_bids_writer.ConfigLoader')
+    @patch('src.physio.preprocessing.bvp_bids_writer.ConfigLoader')
     def test_writer_initialization(self, mock_config):
         """Test BIDS writer initialization."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
             'paths.derivatives': str(self.temp_path / "derivatives"),
+            'output.preprocessing_dir': 'preprocessing',
+            'output.modality_subdirs.bvp': 'bvp',
             'bids': {}
         }.get(key, default)
         
         writer = BVPBIDSWriter()
         
-        # Check if pipeline directory was created
-        pipeline_dir = self.temp_path / "derivatives" / "therasync-bvp"
-        self.assertTrue(pipeline_dir.exists())
+        # Check if preprocessing directory was created (new structure)
+        preprocessing_dir = self.temp_path / "derivatives" / "preprocessing"
+        self.assertTrue(preprocessing_dir.exists())
         
         # Check if dataset description was created
-        dataset_desc = pipeline_dir / "dataset_description.json"
+        dataset_desc = preprocessing_dir / "dataset_description.json"
         self.assertTrue(dataset_desc.exists())
     
-    @patch('physio.bvp_bids_writer.ConfigLoader')
+    @patch('src.physio.preprocessing.bvp_bids_writer.ConfigLoader')
     def test_save_processed_data(self, mock_config):
         """Test saving processed data in BIDS format."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -491,7 +496,7 @@ class TestBVPBIDSWriter(unittest.TestCase):
             for file_path in file_list:
                 self.assertTrue(Path(file_path).exists())
     
-    @patch('physio.bvp_bids_writer.ConfigLoader')
+    @patch('src.physio.preprocessing.bvp_bids_writer.ConfigLoader')
     def test_bids_filename_format(self, mock_config):
         """Test BIDS-compliant filename formatting."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -517,7 +522,7 @@ class TestBVPBIDSWriter(unittest.TestCase):
     
     def test_json_serialization(self):
         """Test JSON serialization of numpy types."""
-        with patch('physio.bvp_bids_writer.ConfigLoader'):
+        with patch('src.physio.preprocessing.bvp_bids_writer.ConfigLoader'):
             writer = BVPBIDSWriter()
             
             # Test serialization of numpy types
@@ -599,12 +604,24 @@ class TestBVPPipelineIntegration(unittest.TestCase):
         # Create test config
         self.test_config_path = self.temp_path / "config.yaml"
         config_content = f"""
+study:
+  name: test_study
+  version: 1.0.0
+  description: Test study for BVP pipeline
+
 paths:
-  sourcedata: {sourcedata_dir}
+  rawdata: {sourcedata_dir}
   derivatives: {derivatives_dir}
 
 moments:
   - name: {self.test_moment}
+
+output:
+  preprocessing_dir: preprocessing
+  modality_subdirs:
+    bvp: bvp
+    eda: eda
+    hr: hr
 
 physio:
   bvp:
@@ -628,10 +645,10 @@ physio:
         with open(self.test_config_path, 'w') as f:
             f.write(config_content)
     
-    @patch('physio.bvp_cleaner.nk.ppg_process')
-    @patch('physio.bvp_metrics.nk.hrv_time')
-    @patch('physio.bvp_metrics.nk.hrv_frequency')
-    @patch('physio.bvp_metrics.nk.hrv_nonlinear')
+    @patch('src.physio.preprocessing.bvp_cleaner.nk.ppg_process')
+    @patch('src.physio.preprocessing.bvp_metrics.nk.hrv_time')
+    @patch('src.physio.preprocessing.bvp_metrics.nk.hrv_frequency')
+    @patch('src.physio.preprocessing.bvp_metrics.nk.hrv_nonlinear')
     def test_complete_pipeline(self, mock_nonlinear, mock_frequency, 
                               mock_time, mock_ppg_process):
         """Test the complete BVP pipeline end-to-end."""
@@ -691,12 +708,12 @@ physio:
         total_files = sum(len(files) for files in created_files.values())
         self.assertGreater(total_files, 5)  # Expect multiple output files
         
-        # Verify file contents
-        derivatives_dir = self.temp_path / "derivatives" / "therasync-bvp"
-        subject_dir = derivatives_dir / self.test_subject / self.test_session / "physio"
+        # Verify file contents (new structure: derivatives/preprocessing/sub-X/ses-X/bvp/)
+        derivatives_dir = self.temp_path / "derivatives" / "preprocessing"
+        subject_dir = derivatives_dir / self.test_subject / self.test_session / "bvp"
         
-        # Check if metrics file exists and has correct content
-        metrics_file = subject_dir / f"{self.test_subject}_{self.test_session}_desc-bvpmetrics_physio.tsv"
+        # Check if metrics file exists and has correct content (note: desc-bvp-metrics with hyphen)
+        metrics_file = subject_dir / f"{self.test_subject}_{self.test_session}_desc-bvp-metrics_physio.tsv"
         self.assertTrue(metrics_file.exists())
         
         metrics_df = pd.read_csv(metrics_file, sep='\\t')

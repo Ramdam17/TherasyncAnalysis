@@ -23,10 +23,10 @@ import pandas as pd
 import numpy as np
 
 from src.core.config_loader import ConfigLoader
-from src.physio.eda_loader import EDALoader
-from src.physio.eda_cleaner import EDACleaner
-from src.physio.eda_metrics import EDAMetricsExtractor
-from src.physio.eda_bids_writer import EDABIDSWriter
+from src.physio.preprocessing.eda_loader import EDALoader
+from src.physio.preprocessing.eda_cleaner import EDACleaner
+from src.physio.preprocessing.eda_metrics import EDAMetricsExtractor
+from src.physio.preprocessing.eda_bids_writer import EDABIDSWriter
 
 
 class TestEDALoader(unittest.TestCase):
@@ -122,12 +122,12 @@ class TestEDALoader(unittest.TestCase):
         with open(json_file, 'w') as f:
             json.dump(metadata, f, indent=2)
     
-    @patch('physio.eda_loader.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_loader.ConfigLoader')
     def test_loader_basic_functionality(self, mock_config):
         """Test basic EDA loader functionality."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
             'physio.eda': {'sampling_rate': 4},
-            'paths.sourcedata': str(self.temp_path / "sourcedata")
+            'paths.rawdata': str(self.temp_path / "sourcedata")
         }.get(key, default)
         
         loader = EDALoader()
@@ -136,9 +136,9 @@ class TestEDALoader(unittest.TestCase):
     
     def test_load_subject_session_success(self):
         """Test successful loading of subject/session data."""
-        with patch('physio.eda_loader.ConfigLoader') as mock_config:
+        with patch('src.physio.preprocessing.eda_loader.ConfigLoader') as mock_config:
             mock_config.return_value.get.side_effect = lambda key, default=None: {
-                'paths.sourcedata': str(self.temp_path / "sourcedata"),
+                'paths.rawdata': str(self.temp_path / "sourcedata"),
                 'physio.eda.sampling_rate': 4
             }.get(key, default)
             
@@ -162,9 +162,9 @@ class TestEDALoader(unittest.TestCase):
     
     def test_load_subject_session_missing_file(self):
         """Test loading with missing files."""
-        with patch('physio.eda_loader.ConfigLoader') as mock_config:
+        with patch('src.physio.preprocessing.eda_loader.ConfigLoader') as mock_config:
             mock_config.return_value.get.side_effect = lambda key, default=None: {
-                'paths.sourcedata': str(self.temp_path / "sourcedata"),
+                'paths.rawdata': str(self.temp_path / "sourcedata"),
                 'physio.eda.sampling_rate': 4
             }.get(key, default)
             
@@ -176,9 +176,9 @@ class TestEDALoader(unittest.TestCase):
     
     def test_data_validation(self):
         """Test EDA data validation functionality."""
-        with patch('physio.eda_loader.ConfigLoader') as mock_config:
+        with patch('src.physio.preprocessing.eda_loader.ConfigLoader') as mock_config:
             mock_config.return_value.get.side_effect = lambda key, default=None: {
-                'paths.sourcedata': str(self.temp_path / "sourcedata"),
+                'paths.rawdata': str(self.temp_path / "sourcedata"),
                 'physio.eda.sampling_rate': 4
             }.get(key, default)
             
@@ -245,12 +245,15 @@ class TestEDACleaner(unittest.TestCase):
         
         return np.maximum(tonic + phasic + noise, 0.1)
     
-    @patch('physio.eda_cleaner.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_cleaner.ConfigLoader')
     def test_cleaner_initialization(self, mock_config):
         """Test EDA cleaner initialization."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
             'physio.eda': self.test_config['physio']['eda'],
-            'physio.eda.processing': self.test_config['physio']['eda']['processing'],
+            'physio.eda.processing': {
+                'method': 'neurokit',
+                'scr_threshold': 0.01
+            },
             'physio.eda.processing.method': 'neurokit',
             'physio.eda.processing.scr_threshold': 0.01
         }.get(key, default)
@@ -259,8 +262,8 @@ class TestEDACleaner(unittest.TestCase):
         self.assertEqual(cleaner.method, 'neurokit')
         self.assertEqual(cleaner.scr_threshold, 0.01)
     
-    @patch('physio.eda_cleaner.ConfigLoader')
-    @patch('physio.eda_cleaner.nk.eda_process')
+    @patch('src.physio.preprocessing.eda_cleaner.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_cleaner.nk.eda_process')
     def test_clean_signal_success(self, mock_eda_process, mock_config):
         """Test successful EDA signal cleaning."""
         # Mock config
@@ -311,7 +314,7 @@ class TestEDACleaner(unittest.TestCase):
         
         mock_eda_process.assert_called_once()
     
-    @patch('physio.eda_cleaner.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_cleaner.ConfigLoader')
     def test_input_validation(self, mock_config):
         """Test input signal validation."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -329,7 +332,7 @@ class TestEDACleaner(unittest.TestCase):
             invalid_df = pd.DataFrame({'time': [0, 0.25, 0.5]})
             cleaner.clean_signal(invalid_df, moment="test")
     
-    @patch('physio.eda_cleaner.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_cleaner.ConfigLoader')
     def test_data_quality_checks(self, mock_config):
         """Test EDA data quality validation."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -358,9 +361,9 @@ class TestEDAMetricsExtractor(unittest.TestCase):
             'physio': {
                 'eda': {
                     'metrics': [
-                        'scr_count', 'scr_mean_amplitude', 'scr_rate_per_min',
-                        'tonic_mean', 'tonic_std', 'tonic_range',
-                        'phasic_mean', 'phasic_std', 'phasic_rate_change'
+                        'SCR_Peaks_N', 'SCR_Peaks_Amplitude_Mean', 'SCR_Peaks_Rate',
+                        'EDA_Tonic_Mean', 'EDA_Tonic_SD', 'EDA_Tonic_Range',
+                        'EDA_Phasic_Mean', 'EDA_Phasic_SD', 'EDA_Phasic_Rate'
                     ]
                 }
             }
@@ -401,7 +404,7 @@ class TestEDAMetricsExtractor(unittest.TestCase):
         
         return signals, info
     
-    @patch('physio.eda_metrics.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_metrics.ConfigLoader')
     def test_extractor_initialization(self, mock_config):
         """Test metrics extractor initialization."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -411,7 +414,7 @@ class TestEDAMetricsExtractor(unittest.TestCase):
         extractor = EDAMetricsExtractor()
         self.assertIsInstance(extractor, EDAMetricsExtractor)
     
-    @patch('physio.eda_metrics.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_metrics.ConfigLoader')
     def test_extract_metrics_success(self, mock_config):
         """Test successful metrics extraction."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -419,92 +422,105 @@ class TestEDAMetricsExtractor(unittest.TestCase):
         }.get(key, default)
         
         extractor = EDAMetricsExtractor()
-        metrics = extractor.extract_eda_metrics(
+        metrics_df = extractor.extract_eda_metrics(
             self.test_signals, moment="test"
         )
         
-        self.assertIsInstance(metrics, dict)
+        # Method returns DataFrame with one row
+        self.assertIsInstance(metrics_df, pd.DataFrame)
+        self.assertEqual(len(metrics_df), 1)
         
-        # Check SCR metrics
-        self.assertIn('scr_count', metrics)
-        self.assertEqual(metrics['scr_count'], 4)
+        # Convert to dict for easier assertion
+        metrics = metrics_df.iloc[0].to_dict()
         
-        self.assertIn('scr_mean_amplitude', metrics)
-        self.assertGreater(metrics['scr_mean_amplitude'], 0)
+        # Check SCR metrics (using actual NeuroKit2 naming)
+        self.assertIn('SCR_Peaks_N', metrics)
+        self.assertEqual(metrics['SCR_Peaks_N'], 4)
         
-        self.assertIn('scr_rate_per_min', metrics)
-        self.assertAlmostEqual(metrics['scr_rate_per_min'], 4.0, delta=0.1)
+        self.assertIn('SCR_Peaks_Amplitude_Mean', metrics)
+        self.assertGreater(metrics['SCR_Peaks_Amplitude_Mean'], 0)
+        
+        self.assertIn('SCR_Peaks_Rate', metrics)
+        self.assertAlmostEqual(metrics['SCR_Peaks_Rate'], 4.0, delta=0.1)
         
         # Check tonic metrics
-        self.assertIn('tonic_mean', metrics)
-        self.assertIn('tonic_std', metrics)
+        self.assertIn('EDA_Tonic_Mean', metrics)
+        self.assertIn('EDA_Tonic_SD', metrics)
         
         # Check phasic metrics
-        self.assertIn('phasic_mean', metrics)
-        self.assertIn('phasic_std', metrics)
+        self.assertIn('EDA_Phasic_Mean', metrics)
+        self.assertIn('EDA_Phasic_SD', metrics)
     
-    @patch('physio.eda_metrics.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_metrics.ConfigLoader')
     def test_scr_metrics_calculation(self, mock_config):
         """Test SCR-specific metrics calculation."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
-            'physio.eda.metrics': ['scr_count', 'scr_mean_amplitude', 
-                                   'scr_max_amplitude', 'scr_sum_amplitude']
+            'physio.eda.metrics': ['SCR_Peaks_N', 'SCR_Peaks_Amplitude_Mean', 
+                                   'SCR_Peaks_Amplitude_Max']
         }.get(key, default)
         
         extractor = EDAMetricsExtractor()
-        metrics = extractor.extract_eda_metrics(
+        metrics_df = extractor.extract_eda_metrics(
             self.test_signals, moment="test"
         )
         
+        # Convert to dict for easier assertion
+        metrics = metrics_df.iloc[0].to_dict()
+        
         # Verify SCR count
-        self.assertEqual(metrics['scr_count'], 4)
+        self.assertEqual(metrics['SCR_Peaks_N'], 4)
         
         # Verify amplitude metrics exist
-        self.assertIn('scr_mean_amplitude', metrics)
-        self.assertIn('scr_max_amplitude', metrics)
+        self.assertIn('SCR_Peaks_Amplitude_Mean', metrics)
+        self.assertIn('SCR_Peaks_Amplitude_Max', metrics)
     
-    @patch('physio.eda_metrics.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_metrics.ConfigLoader')
     def test_tonic_metrics_calculation(self, mock_config):
         """Test tonic component metrics calculation."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
-            'physio.eda.metrics': ['tonic_mean', 'tonic_std', 'tonic_min', 
-                                   'tonic_max', 'tonic_range']
+            'physio.eda.metrics': ['EDA_Tonic_Mean', 'EDA_Tonic_SD', 'EDA_Tonic_Min', 
+                                   'EDA_Tonic_Max', 'EDA_Tonic_Range']
         }.get(key, default)
         
         extractor = EDAMetricsExtractor()
-        metrics = extractor.extract_eda_metrics(
+        metrics_df = extractor.extract_eda_metrics(
             self.test_signals, moment="test"
         )
+        
+        # Convert to dict for easier assertion
+        metrics = metrics_df.iloc[0].to_dict()
         
         tonic = self.test_signals['EDA_Tonic'].values
         
-        self.assertIn('tonic_mean', metrics)
-        self.assertIn('tonic_std', metrics)
-        self.assertIn('tonic_min', metrics)
-        self.assertIn('tonic_max', metrics)
+        self.assertIn('EDA_Tonic_Mean', metrics)
+        self.assertIn('EDA_Tonic_SD', metrics)
+        self.assertIn('EDA_Tonic_Min', metrics)
+        self.assertIn('EDA_Tonic_Max', metrics)
     
-    @patch('physio.eda_metrics.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_metrics.ConfigLoader')
     def test_phasic_metrics_calculation(self, mock_config):
         """Test phasic component metrics calculation."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
-            'physio.eda.metrics': ['phasic_mean', 'phasic_std', 'phasic_max',
-                                   'phasic_auc']
+            'physio.eda.metrics': ['EDA_Phasic_Mean', 'EDA_Phasic_SD', 'EDA_Phasic_Max']
         }.get(key, default)
         
         extractor = EDAMetricsExtractor()
-        metrics = extractor.extract_eda_metrics(
+        metrics_df = extractor.extract_eda_metrics(
             self.test_signals, moment="test"
         )
         
-        self.assertIn('phasic_mean', metrics)
-        self.assertIn('phasic_std', metrics)
-        self.assertIn('phasic_max', metrics)
+        # Convert to dict for easier assertion
+        metrics = metrics_df.iloc[0].to_dict()
+        
+        self.assertIn('EDA_Phasic_Mean', metrics)
+        self.assertIn('EDA_Phasic_SD', metrics)
+        self.assertIn('EDA_Phasic_Max', metrics)
     
-    @patch('physio.eda_metrics.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_metrics.ConfigLoader')
     def test_empty_scr_handling(self, mock_config):
         """Test handling of data with no SCRs detected."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
-            'physio.eda.metrics': ['scr_count', 'scr_mean_amplitude', 'scr_rate_per_min']
+            'physio.eda.metrics': ['SCR_Peaks_N', 'SCR_Peaks_Amplitude_Mean', 'SCR_Peaks_Rate']
         }.get(key, default)
         
         # Create data with no SCRs
@@ -515,10 +531,13 @@ class TestEDAMetricsExtractor(unittest.TestCase):
         signals['SCR_RecoveryTime'] = 0.0
         
         extractor = EDAMetricsExtractor()
-        metrics = extractor.extract_eda_metrics(signals, moment="test")
+        metrics_df = extractor.extract_eda_metrics(signals, moment="test")
         
-        self.assertEqual(metrics['scr_count'], 0)
-        self.assertEqual(metrics['scr_rate_per_min'], 0.0)
+        # Convert to dict for easier assertion
+        metrics = metrics_df.iloc[0].to_dict()
+        
+        self.assertEqual(metrics['SCR_Peaks_N'], 0)
+        self.assertEqual(metrics['SCR_Peaks_Rate'], 0.0)
 
 
 class TestEDABIDSWriter(unittest.TestCase):
@@ -551,12 +570,12 @@ class TestEDABIDSWriter(unittest.TestCase):
         self.test_signals.loc[peak_indices, 'SCR_Amplitude'] = [0.15, 0.20, 0.18]
         
         self.test_metrics = {
-            'scr_count': 3,
-            'scr_mean_amplitude': 0.177,
-            'scr_rate_per_min': 3.0,
-            'tonic_mean': 1.25,
-            'tonic_std': 0.15,
-            'phasic_mean': 0.08,
+            'SCR_Peaks_N': 3,
+            'SCR_Peaks_Amplitude_Mean': 0.177,
+            'SCR_Peaks_Rate': 3.0,
+            'EDA_Tonic_Mean': 1.25,
+            'EDA_Tonic_SD': 0.15,
+            'EDA_Phasic_Mean': 0.08,
             'duration': 60.0
         }
         
@@ -574,7 +593,7 @@ class TestEDABIDSWriter(unittest.TestCase):
         """Clean up test environment."""
         shutil.rmtree(self.temp_dir)
     
-    @patch('physio.eda_bids_writer.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_bids_writer.ConfigLoader')
     def test_writer_initialization(self, mock_config):
         """Test BIDS writer initialization."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -584,7 +603,7 @@ class TestEDABIDSWriter(unittest.TestCase):
         writer = EDABIDSWriter()
         self.assertIsInstance(writer, EDABIDSWriter)
     
-    @patch('physio.eda_bids_writer.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_bids_writer.ConfigLoader')
     def test_save_processed_data_basic(self, mock_config):
         """Test basic functionality of save_processed_data."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -617,11 +636,13 @@ class TestEDABIDSWriter(unittest.TestCase):
         total_files = sum(len(files) for files in output_files.values())
         self.assertGreater(total_files, 0)
     
-    @patch('physio.eda_bids_writer.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_bids_writer.ConfigLoader')
     def test_bids_directory_structure(self, mock_config):
         """Test BIDS-compliant directory structure creation."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
-            'paths.derivatives': str(self.temp_path / "derivatives")
+            'paths.derivatives': str(self.temp_path / "derivatives"),
+            'output.preprocessing_dir': 'preprocessing',
+            'output.modality_subdirs.eda': 'eda'
         }.get(key, default)
         
         writer = EDABIDSWriter()
@@ -638,9 +659,9 @@ class TestEDABIDSWriter(unittest.TestCase):
             processing_metadata=self.test_metadata
         )
         
-        # Verify base derivatives directory exists
-        derivatives_dir = self.temp_path / "derivatives" / "physio_preprocessing"
-        self.assertTrue(derivatives_dir.exists())
+        # Verify preprocessing directory exists (new structure)
+        preprocessing_dir = self.temp_path / "derivatives" / "preprocessing"
+        self.assertTrue(preprocessing_dir.exists())
 
 
 class TestEDAPipelineIntegration(unittest.TestCase):
@@ -706,22 +727,22 @@ class TestEDAPipelineIntegration(unittest.TestCase):
         with open(physio_dir / f"{base_filename}.json", 'w') as f:
             json.dump(metadata, f)
     
-    @patch('physio.eda_loader.ConfigLoader')
-    @patch('physio.eda_cleaner.ConfigLoader')
-    @patch('physio.eda_metrics.ConfigLoader')
-    @patch('physio.eda_bids_writer.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_loader.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_cleaner.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_metrics.ConfigLoader')
+    @patch('src.physio.preprocessing.eda_bids_writer.ConfigLoader')
     def test_full_pipeline_execution(self, mock_writer_config, mock_metrics_config,
                                      mock_cleaner_config, mock_loader_config):
         """Test complete EDA pipeline from load to write."""
         # Mock all configs
         def get_config(key, default=None):
             config_map = {
-                'paths.sourcedata': str(self.temp_path / "sourcedata"),
+                'paths.rawdata': str(self.temp_path / "sourcedata"),
                 'paths.derivatives': str(self.temp_path / "derivatives"),
                 'physio.eda.sampling_rate': 4,
                 'physio.eda.processing': {'method': 'cvxEDA', 'scr_threshold': 0.01},
                 'physio.eda.processing.method': 'cvxEDA',
-                'physio.eda.metrics': ['scr_count', 'scr_mean_amplitude', 'tonic_mean']
+                'physio.eda.metrics': ['SCR_Peaks_N', 'SCR_Peaks_Amplitude_Mean', 'EDA_Tonic_Mean']
             }
             return config_map.get(key, default)
         

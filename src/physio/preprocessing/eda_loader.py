@@ -35,14 +35,14 @@ class EDALoader:
     - Measures skin conductance response (SCR)
     """
     
-    def __init__(self, config: Optional[ConfigLoader] = None):
+    def __init__(self, config_path: Optional[Union[str, Path]] = None):
         """
         Initialize the EDA loader with configuration.
         
         Args:
-            config: ConfigLoader instance. If None, creates new instance with default config.
+            config_path: Path to configuration file. If None, uses default config.
         """
-        self.config = config if config is not None else ConfigLoader()
+        self.config = ConfigLoader(config_path)
         
         # Get paths from config
         self.rawdata_path = Path(self.config.get('paths.rawdata', 'data/raw'))
