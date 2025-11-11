@@ -338,10 +338,11 @@ def plot_hr_dynamics_timeline(
     """
     Visualization #6: HR Dynamics Timeline.
     
-    Shows HR over time with color-coded zones (rest/moderate/elevated).
+    Shows HR over time with color-coded zones (rest/moderate/elevated) per moment.
+    Each moment has its own zones calculated independently.
     
     Args:
-        data: Dictionary containing 'hr' data
+        data: Dictionary containing 'hr' data with 'signals' sub-dict
         output_path: Where to save the figure (string path)
         show: Whether to display the figure
     """
@@ -354,83 +355,181 @@ def plot_hr_dynamics_timeline(
     if not hr_data or 'signals' not in hr_data:
         ax.text(0.5, 0.5, 'No HR data available', ha='center', va='center',
                 transform=ax.transAxes, fontsize=FONTSIZE['label'])
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        plt.close()
+        if output_path:
+            fig.savefig(output_path, dpi=300, bbox_inches='tight')
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
         return
     
-    # Concatenate all moments
-    all_hr = []
-    all_time = []
-    moment_boundaries = [0]
-    offset = 0
+    # HR data is in 'combined' format (not split by moments)
+    # We need to split it based on timestamps or use metadata
+    signals = hr_data['signals'].get('combined')
     
-    for moment in ['restingstate', 'therapy']:
-        if moment not in hr_data['signals']:
-            continue
-        
-        signals = hr_data['signals'][moment]
-        time = signals['time'].values + offset
-        hr_values = signals['HR'].values if 'HR' in signals.columns else []
-        
-        all_time.extend(time)
-        all_hr.extend(hr_values)
-        
-        offset += signals['time'].max() + 10
-        moment_boundaries.append(offset - 10)
+    if signals is None or signals.empty:
+        ax.text(0.5, 0.5, 'No HR signals available', ha='center', va='center',
+                transform=ax.transAxes, fontsize=FONTSIZE['label'])
+        if output_path:
+            fig.savefig(output_path, dpi=300, bbox_inches='tight')
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
+        return
     
-    if not all_hr:
+    # Get HR column (lowercase or uppercase)
+    hr_col = 'hr' if 'hr' in signals.columns else 'HR'
+    if hr_col not in signals.columns:
+        ax.text(0.5, 0.5, 'No HR column found in signals', ha='center', va='center',
+                transform=ax.transAxes, fontsize=FONTSIZE['label'])
+        if output_path:
+            fig.savefig(output_path, dpi=300, bbox_inches='tight')
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
+        return
+    
+    # Get moment boundaries from metadata or BVP data
+    moment_boundaries = {}
+    bvp_data = data.get('bvp', {})
+    
+    if 'signals' in bvp_data:
+        # Use BVP signal lengths to infer moment boundaries
+        offset = 0
+        for moment in bvp_data['signals'].keys():
+            bvp_signals = bvp_data['signals'][moment]
+            duration = bvp_signals['time'].max() if 'time' in bvp_signals.columns else 0
+            moment_boundaries[moment] = {
+                'start': offset,
+                'end': offset + duration
+            }
+            offset += duration
+    
+    # If we have boundaries, split HR data by moments
+    if moment_boundaries:
+        moment_data = []
+        
+        for moment, bounds in moment_boundaries.items():
+            start_time = bounds['start']
+            end_time = bounds['end']
+            
+            # Filter HR data for this moment's time range
+            mask = (signals['time'] >= start_time) & (signals['time'] <= end_time)
+            moment_hr = signals[mask]
+            
+            if len(moment_hr) == 0:
+                continue
+            
+            hr_values = moment_hr[hr_col].values
+            time_values = moment_hr['time'].values
+            
+            moment_data.append({
+                'moment': moment,
+                'time': time_values,
+                'hr': hr_values,
+                'start': start_time,
+                'end': end_time,
+                'hr_mean': np.mean(hr_values)
+            })
+    else:
+        # No moment boundaries, treat as single continuous signal
+        moment_data = [{
+            'moment': 'combined',
+            'time': signals['time'].values,
+            'hr': signals[hr_col].values,
+            'start': signals['time'].min(),
+            'end': signals['time'].max(),
+            'hr_mean': np.mean(signals[hr_col].values)
+        }]
+    
+    if not moment_data:
         ax.text(0.5, 0.5, 'No HR data available', ha='center', va='center',
                 transform=ax.transAxes, fontsize=FONTSIZE['label'])
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        plt.close()
+        if output_path:
+            fig.savefig(output_path, dpi=300, bbox_inches='tight')
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
         return
     
-    all_time = np.array(all_time)
-    all_hr = np.array(all_hr)
-    hr_mean = np.mean(all_hr)
+    # Calculate global y-axis limits
+    all_hr = np.concatenate([m['hr'] for m in moment_data])
+    hr_min, hr_max = np.min(all_hr), np.max(all_hr)
+    y_margin = (hr_max - hr_min) * 0.1
+    y_min = hr_min - y_margin
+    y_max = hr_max + y_margin
     
-    # Define zones
-    zones = [
-        (0, hr_mean - 10, COLORS['good'], 'Rest'),
-        (hr_mean - 10, hr_mean + 10, COLORS['medium'], 'Moderate'),
-        (hr_mean + 10, 200, COLORS['poor'], 'Elevated')
-    ]
+    # Plot each moment with its own zones
+    for idx, moment_info in enumerate(moment_data):
+        moment = moment_info['moment']
+        time = moment_info['time']
+        hr = moment_info['hr']
+        hr_mean = moment_info['hr_mean']
+        hr_std = np.std(hr)  # Calculate standard deviation for this moment
+        start = moment_info['start']
+        end = moment_info['end']
+        
+        color = get_moment_color(moment)
+        
+        # Define zones for this moment (±1 SD around mean)
+        zone_rest_max = hr_mean - hr_std
+        zone_elevated_min = hr_mean + hr_std
+        
+        # Fill background zones for this moment's timespan
+        # Rest zone (green)
+        ax.fill_between([start, end], y_min, zone_rest_max,
+                       color=COLORS['good'], alpha=0.15, zorder=0)
+        # Moderate zone (yellow)
+        ax.fill_between([start, end], zone_rest_max, zone_elevated_min,
+                       color=COLORS['medium'], alpha=0.15, zorder=0)
+        # Elevated zone (red)
+        ax.fill_between([start, end], zone_elevated_min, y_max,
+                       color=COLORS['poor'], alpha=0.15, zorder=0)
+        
+        # Plot HR line for this moment
+        ax.plot(time, hr, color=color, linewidth=LINEWIDTH['thick'],
+               label=f'{moment.capitalize()} (μ={hr_mean:.1f} ±{hr_std:.1f} BPM)',
+               alpha=ALPHA['line'])
+        
+        # Add moment separator (vertical line) - except for last moment
+        if idx < len(moment_data) - 1:
+            ax.axvline(end + 5, color='black', linestyle='--', 
+                      linewidth=LINEWIDTH['normal'], alpha=0.5, zorder=10)
     
-    # Fill background zones
-    for y_min, y_max, color, label in zones:
-        ax.axhspan(y_min, y_max, color=color, alpha=0.1, label=label)
-    
-    # Plot HR line
-    ax.plot(all_time, all_hr, color=COLORS['hr'], 
-           linewidth=LINEWIDTH['thick'], label='HR', zorder=10)
-    
-    # Mark moment boundaries
-    for boundary in moment_boundaries[1:-1]:
-        ax.axvline(boundary, color=COLORS['dark_gray'], 
-                  linestyle='--', linewidth=LINEWIDTH['thin'], alpha=0.5)
-    
-    # Annotations
-    ax.axhline(hr_mean, color=COLORS['gray'], linestyle='--', 
-              linewidth=LINEWIDTH['normal'], label=f'Mean ({hr_mean:.1f} BPM)')
-    
-    ax.set_xlabel('Time (seconds)', fontsize=FONTSIZE['label'])
-    ax.set_ylabel('Heart Rate (BPM)', fontsize=FONTSIZE['label'])
-    ax.set_title(f'Heart Rate Dynamics - Subject {data.get("subject", "Unknown")}, Session {data.get("session", "Unknown")}',
+    # Formatting
+    ax.set_xlabel('Time (s)', fontsize=FONTSIZE['label'], fontweight='bold')
+    ax.set_ylabel('Heart Rate (BPM)', fontsize=FONTSIZE['label'], fontweight='bold')
+    ax.set_title('Heart Rate Dynamics Timeline\n(with Rest/Moderate/Elevated zones per moment: mean ± 1 SD)',
                 fontsize=FONTSIZE['title'], fontweight='bold')
-    ax.legend(loc='upper right', fontsize=FONTSIZE['legend'])
-    ax.grid(True, alpha=ALPHA['fill'])
+    ax.set_ylim(y_min, y_max)
+    ax.legend(loc='upper right', fontsize=FONTSIZE['legend'], framealpha=0.95)
+    ax.grid(True, alpha=ALPHA['fill'], axis='both', linestyle='--')
+    ax.tick_params(labelsize=FONTSIZE['tick'])
     
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    if not show:
-        plt.close()
+    # Overall title
+    fig.suptitle(
+        f'Subject {data.get("subject", "Unknown")}, Session {data.get("session", "Unknown")}',
+        fontsize=FONTSIZE['subtitle'], fontweight='bold', y=0.98)
+    
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    
+    if output_path:
+        fig.savefig(output_path, dpi=300, bbox_inches='tight')
+    
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
 
 
 def plot_events_timeline(
     data: Dict,
-    output_path: Optional[Path] = None,
+    output_path: str,
     show: bool = False
-) -> plt.Figure:
+) -> None:
     """
     Visualization #10: Multi-Modal Events Timeline.
     
@@ -444,9 +543,6 @@ def plot_events_timeline(
         data: Dictionary containing all modality data
         output_path: Where to save the figure
         show: Whether to display the figure
-    
-    Returns:
-        Figure object
     """
     apply_plot_style()
     
@@ -471,5 +567,3 @@ def plot_events_timeline(
         plt.show()
     else:
         plt.close(fig)
-    
-    return fig
