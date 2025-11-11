@@ -2,7 +2,7 @@
 """
 Visualization Generation Script for TherasyncPipeline.
 
-This script generates all 10 visualizations for a subject/session or batch processes
+This script generates the 6 core visualizations for a subject/session or batch processes
 multiple subjects.
 
 Usage:
@@ -31,8 +31,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.visualization.data_loader import VisualizationDataLoader
 from src.visualization.plotters.signal_plots import (
     plot_multisignal_dashboard,
-    plot_hr_dynamics_timeline,
-    plot_events_timeline
+    plot_hr_dynamics_timeline
 )
 from src.visualization.plotters.hrv_plots import (
     plot_poincare_hrv,
@@ -41,10 +40,6 @@ from src.visualization.plotters.hrv_plots import (
 from src.visualization.plotters.eda_plots import (
     plot_eda_arousal_profile,
     plot_scr_distribution
-)
-from src.visualization.plotters.comparison_plots import (
-    plot_correlation_matrix,
-    plot_radar_comparison
 )
 from src.visualization.config import OUTPUT_CONFIG
 
@@ -59,10 +54,6 @@ PLOT_FUNCTIONS = {
     4: ('04_eda_arousal_profile.png', plot_eda_arousal_profile),
     5: ('05_scr_distribution.png', plot_scr_distribution),
     6: ('06_hr_dynamics_timeline.png', plot_hr_dynamics_timeline),
-    7: ('07_correlation_matrix.png', plot_correlation_matrix),
-    8: ('08_radar_comparison.png', plot_radar_comparison),
-    9: ('09_scr_distribution.png', plot_scr_distribution),
-    10: ('10_events_timeline.png', plot_events_timeline),
 }
 
 

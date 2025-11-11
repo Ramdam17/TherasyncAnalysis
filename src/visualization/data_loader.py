@@ -16,6 +16,8 @@ import pandas as pd
 import numpy as np
 import logging
 
+from src.core.config_loader import ConfigLoader
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,16 +35,25 @@ class VisualizationDataLoader:
         >>> eda_metrics = data['eda']['metrics']
     """
     
-    def __init__(self, derivatives_path: Optional[Path] = None):
+    def __init__(self, derivatives_path: Optional[Path] = None, config_path: Optional[Path] = None):
         """
         Initialize the data loader.
         
         Args:
             derivatives_path: Path to derivatives directory
-                Default: data/derivatives/preprocessing/
+                Default: Loaded from config YAML
+            config_path: Path to configuration YAML file
+                Default: config/config.yaml
         """
+        # Load configuration
+        self.config_loader = ConfigLoader(config_path)
+        self.config = self.config_loader.config
+        
+        # Use derivatives_path from config if not provided
         if derivatives_path is None:
-            derivatives_path = Path('data/derivatives/preprocessing')
+            base_path = Path(self.config['paths']['derivatives'])
+            preprocessing_dir = self.config['output']['preprocessing_dir']
+            derivatives_path = base_path / preprocessing_dir
         
         self.derivatives_path = Path(derivatives_path)
         

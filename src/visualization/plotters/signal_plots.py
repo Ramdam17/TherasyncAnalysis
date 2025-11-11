@@ -4,7 +4,6 @@ Signal Plots Module.
 Implements time-series and temporal visualizations:
 - Visualization #1: Multi-Signal Dashboard
 - Visualization #6: HR Dynamics Timeline
-- Visualization #10: Events Timeline
 
 Authors: Lena Adel, Remy Ramadour
 Date: November 2025
@@ -515,50 +514,6 @@ def plot_hr_dynamics_timeline(
         fontsize=FONTSIZE['subtitle'], fontweight='bold', y=0.98)
     
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    
-    if output_path:
-        fig.savefig(output_path, dpi=300, bbox_inches='tight')
-    
-    if show:
-        plt.show()
-    else:
-        plt.close(fig)
-
-
-def plot_events_timeline(
-    data: Dict,
-    output_path: str,
-    show: bool = False
-) -> None:
-    """
-    Visualization #10: Multi-Modal Events Timeline.
-    
-    Shows 4 horizontal tracks:
-    - Track 1: BVP peaks + quality
-    - Track 2: SCR events
-    - Track 3: HR zones
-    - Track 4: Session markers
-    
-    Args:
-        data: Dictionary containing all modality data
-        output_path: Where to save the figure
-        show: Whether to display the figure
-    """
-    apply_plot_style()
-    
-    fig, axes = plt.subplots(4, 1, figsize=FIGSIZE['wide'], 
-                            sharex=True, gridspec_kw={'height_ratios': [1, 1, 1, 0.5]})
-    
-    # TODO: Implement full timeline visualization
-    # This is a simplified version
-    
-    for ax in axes:
-        ax.text(0.5, 0.5, 'Timeline visualization - Coming soon', 
-               ha='center', va='center', transform=ax.transAxes)
-    
-    fig.suptitle('Physiological Events Timeline', fontsize=FONTSIZE['title'], fontweight='bold')
-    
-    plt.tight_layout()
     
     if output_path:
         fig.savefig(output_path, dpi=300, bbox_inches='tight')
