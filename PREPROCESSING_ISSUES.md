@@ -87,3 +87,104 @@ therapy:      Tonic min=-0.051, max=2.959, mean=1.639
 2. Identify prevalence of issues
 3. Review and adjust preprocessing pipeline parameters
 4. Reprocess affected data if needed
+
+---
+
+## Investigation Strategy (November 11, 2025)
+
+**Branch**: `analysis/preprocessing-artifacts`  
+**Status**: Ready to execute
+
+### Phase 1: Global Exploratory Analysis (Quick Wins)
+
+**Objective**: Get a comprehensive statistical overview of all 50 preprocessed sessions.
+
+**Actions**:
+1. Create `scripts/analysis/compute_preprocessing_stats.py`
+   - Iterate over all sessions in `data/derivatives/preprocessing/`
+   - Extract key metrics per session:
+     - **BVP/HRV**: min/max/mean HR, RMSSD, SDNN, LF power, HF power, LF/HF ratio
+     - **EDA**: min/max/mean tonic, number of SCR, mean SCR amplitude, phasic peak
+     - **HR**: min/max/mean HR, heart rate variability
+   - Generate consolidated CSV: `data/derivatives/analysis/preprocessing_stats.csv`
+   - Create distribution plots: histograms + boxplots for each metric
+
+2. Identify outliers automatically
+   - Sessions with LF/HF > 10 (physiologically aberrant)
+   - Sessions with EDA_Tonic min < 0 (physical impossibility)
+   - Sessions with HR < 30 or > 200 bpm (measurement errors)
+
+**Expected output**:
+- CSV with ~15-20 metrics × 50 sessions
+- 6-8 visualization plots (distributions)
+- List of flagged sessions for Phase 2
+
+**Estimated time**: 30 min coding + 5 min execution
+
+---
+
+### Phase 2: Targeted Investigation of Outliers
+
+**Objective**: Understand root causes of aberrant values.
+
+**Actions**:
+1. For each flagged session:
+   - Visual inspection: raw signal vs. preprocessed signal
+   - Check moment transitions (onset/offset timestamps)
+   - Review preprocessing logs for warnings/errors
+   - Compare signal quality metrics (BVP_MeanQuality, EDA_SCR_Quality)
+
+2. Create detailed case studies
+   - Document 2-3 worst cases with full diagnostic
+   - Identify common patterns across outliers
+
+**Expected output**:
+- Detailed report per outlier session
+- Hypothesis about algorithmic vs. data quality issues
+
+**Estimated time**: 1-2 hours depending on findings
+
+---
+
+### Phase 3: Validation and Correction
+
+**Objective**: Fix preprocessing pipeline if necessary.
+
+**Actions**:
+1. Test parameter adjustments
+   - HRV: FFT window size, frequency bands
+   - EDA: cvxEDA regularization weights, baseline correction
+   - Signal quality thresholds
+
+2. Validate on test subset (5-10 sessions)
+   - Reprocess with adjusted parameters
+   - Compare old vs. new metrics
+   - Ensure no regression on previously valid sessions
+
+3. Batch re-processing if validated
+   - Run corrected pipeline on all affected sessions
+   - Update `data/derivatives/preprocessing/`
+   - Regenerate visualizations if needed
+
+**Expected output**:
+- Updated preprocessing configuration
+- Re-processed data (if needed)
+- Final validation report
+
+**Estimated time**: 2-4 hours depending on corrections needed
+
+---
+
+### Success Criteria
+
+- [ ] All 50 sessions analyzed with comprehensive stats
+- [ ] Outliers identified and documented
+- [ ] Root causes understood (algorithm vs. data quality)
+- [ ] Preprocessing pipeline validated or corrected
+- [ ] Decision made: keep current preprocessing OR reprocess with fixes
+- [ ] Documentation updated with findings
+
+---
+
+**Start date**: November 11, 2025  
+**Target completion**: TBD

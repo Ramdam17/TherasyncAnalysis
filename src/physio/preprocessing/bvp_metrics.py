@@ -132,9 +132,37 @@ class BVPMetricsExtractor:
         peaks_array = np.array(peaks)
         
         try:
+            # Calculate RR intervals in milliseconds
+            rr_intervals = np.diff(peaks_array) / sampling_rate * 1000
+            
+            # Remove aberrant RR intervals (outliers from missed/extra beats)
+            # Physiologically valid RR intervals: 300ms (200 BPM) to 2000ms (30 BPM)
+            # More extreme outliers indicate artifacts (motion, signal loss)
+            valid_mask = (rr_intervals >= 300) & (rr_intervals <= 2000)
+            n_outliers = (~valid_mask).sum()
+            
+            if n_outliers > 0:
+                # Filter outlier peaks by reconstructing valid peak indices
+                valid_peaks = [peaks_array[0]]  # Keep first peak
+                for i, is_valid in enumerate(valid_mask):
+                    if is_valid:
+                        valid_peaks.append(peaks_array[i + 1])
+                
+                peaks_corrected = np.array(valid_peaks)
+                
+                logger.info(
+                    f"Peak correction for {moment}: "
+                    f"removed {n_outliers}/{len(peaks_array)-1} aberrant RR intervals "
+                    f"({100*n_outliers/(len(peaks_array)-1):.1f}%) "
+                    f"outside 300-2000ms range"
+                )
+            else:
+                peaks_corrected = peaks_array
+                logger.debug(f"No aberrant peaks detected for {moment}")
+            
             # Extract time-domain metrics
             if self.time_domain_metrics:
-                time_metrics = nk.hrv_time(peaks_array, sampling_rate=sampling_rate)
+                time_metrics = nk.hrv_time(peaks_corrected, sampling_rate=sampling_rate)
                 for metric in self.time_domain_metrics:
                     if metric in time_metrics.columns:
                         metrics[metric] = float(time_metrics[metric].iloc[0])
@@ -145,7 +173,7 @@ class BVPMetricsExtractor:
             # Extract frequency-domain metrics
             if self.frequency_domain_metrics:
                 try:
-                    freq_metrics = nk.hrv_frequency(peaks_array, sampling_rate=sampling_rate)
+                    freq_metrics = nk.hrv_frequency(peaks_corrected, sampling_rate=sampling_rate)
                     for metric in self.frequency_domain_metrics:
                         if metric in freq_metrics.columns:
                             metrics[metric] = float(freq_metrics[metric].iloc[0])
@@ -160,7 +188,7 @@ class BVPMetricsExtractor:
             # Extract nonlinear metrics
             if self.nonlinear_metrics:
                 try:
-                    nonlinear_metrics = nk.hrv_nonlinear(peaks_array, sampling_rate=sampling_rate)
+                    nonlinear_metrics = nk.hrv_nonlinear(peaks_corrected, sampling_rate=sampling_rate)
                     for metric in self.nonlinear_metrics:
                         if metric in nonlinear_metrics.columns:
                             metrics[metric] = float(nonlinear_metrics[metric].iloc[0])

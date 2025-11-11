@@ -109,11 +109,14 @@ class EDACleaner:
         
         try:
             # Process EDA signal with NeuroKit2
-            # This performs cleaning and tonic-phasic decomposition
+            # This performs cleaning and tonic-phasic decomposition using cvxEDA
+            # Note: Negative values in phasic/tonic components are NORMAL after
+            # mathematical decomposition (centered signals, filtering) - they do NOT
+            # indicate errors. What matters is the relative change, not absolute values.
             signals, info = nk.eda_process(
                 raw_signal,
                 sampling_rate=self.sampling_rate,
-                method=self.method
+                method=self.method  # Uses cvxEDA for gold-standard decomposition
             )
             
             # Create output DataFrame with all components
