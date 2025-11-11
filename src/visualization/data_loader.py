@@ -204,24 +204,29 @@ class VisualizationDataLoader:
             'metadata': {}
         }
         
-        # HR uses task-combined instead of separate restingstate/therapy files
-        signal_file = modality_path / f"{subject_id}_{session_id}_task-combined_physio.tsv.gz"
-        metadata_file = modality_path / f"{subject_id}_{session_id}_task-combined_physio.json"
+        # HR now uses separate per-moment files (new format)
+        moments = ['restingstate', 'therapy']
         
-        if signal_file.exists():
-            with gzip.open(signal_file, 'rt') as f:
-                hr_data['signals']['combined'] = pd.read_csv(f, sep='\t')
-            logger.info(f"  Loaded HR combined signals: {len(hr_data['signals']['combined'])} samples")
+        for moment in moments:
+            signal_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-hr.tsv"
+            metadata_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-hr.json"
+            
+            if signal_file.exists():
+                hr_data['signals'][moment] = pd.read_csv(signal_file, sep='\t')
+                logger.info(f"  Loaded HR signals for {moment}: {len(hr_data['signals'][moment])} samples")
+            
+            if metadata_file.exists():
+                with open(metadata_file, 'r') as f:
+                    hr_data['metadata'][moment] = json.load(f)
         
-        if metadata_file.exists():
-            with open(metadata_file, 'r') as f:
-                hr_data['metadata']['combined'] = json.load(f)
-        
-        # Load metrics
-        metrics_file = modality_path / f"{subject_id}_{session_id}_task-combined_hr-metrics.tsv"
+        # Load combined metrics (aggregated across moments)
+        metrics_file = modality_path / f"{subject_id}_{session_id}_desc-hr-summary.json"
         if metrics_file.exists():
-            hr_data['metrics'] = pd.read_csv(metrics_file, sep='\t')
-            logger.info(f"  Loaded HR metrics: {len(hr_data['metrics'])} rows")
+            with open(metrics_file, 'r') as f:
+                summary_data = json.load(f)
+                # Convert summary to DataFrame for compatibility
+                hr_data['metrics'] = pd.DataFrame([summary_data])
+                logger.info(f"  Loaded HR summary metrics")
         
         return hr_data
     

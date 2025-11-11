@@ -196,39 +196,28 @@ def plot_hr_signal(ax: plt.Axes, hr_data: Dict, moments: list, moment_boundaries
     
     all_hr = []
     
-    # HR data is in 'combined' key, not split by moments
-    # We need to split it manually based on moment durations
-    if 'combined' in hr_data['signals']:
-        signals = hr_data['signals']['combined']
+    # HR data is now split by moments (restingstate, therapy)
+    # Each moment has its own DataFrame with HR_Clean column
+    for moment in moments:
+        if moment not in hr_data['signals'] or moment not in moment_boundaries:
+            continue
         
-        # Plot HR for each moment segment
-        for moment in moments:
-            if moment not in moment_boundaries:
-                continue
-            
-            bounds = moment_boundaries[moment]
-            # Filter data for this moment's time range
-            mask = (signals['time'] >= 0) & (signals['time'] <= (bounds['end'] - bounds['start']))
-            moment_data = signals[mask].copy()
-            
-            if len(moment_data) == 0:
-                continue
-            
-            color = get_moment_color(moment)
-            time = moment_data['time'].values + bounds['start']
-            
-            if 'hr' in moment_data.columns:
-                hr_values = moment_data['hr'].values
-                all_hr.extend(hr_values)
-                ax.plot(time, hr_values, 
-                       color=color, linewidth=LINEWIDTH['medium'],
-                       label=moment.capitalize(), alpha=ALPHA['line'])
-            
-            # Move to next segment of the combined data
-            signals = signals[~mask].copy()
-            # Adjust remaining times
-            if len(signals) > 0:
-                signals['time'] = signals['time'] - (bounds['end'] - bounds['start'])
+        signals = hr_data['signals'][moment]
+        bounds = moment_boundaries[moment]
+        
+        if len(signals) == 0:
+            continue
+        
+        color = get_moment_color(moment)
+        time = signals['time'].values + bounds['start']
+        
+        # Use HR_Clean column from new format
+        if 'HR_Clean' in signals.columns:
+            hr_values = signals['HR_Clean'].values
+            all_hr.extend(hr_values)
+            ax.plot(time, hr_values, 
+                   color=color, linewidth=LINEWIDTH['medium'],
+                   label=moment.capitalize(), alpha=ALPHA['line'])
     
     # Add horizontal zones
     if all_hr:
@@ -362,11 +351,11 @@ def plot_hr_dynamics_timeline(
             plt.close(fig)
         return
     
-    # HR data is in 'combined' format (not split by moments)
-    # We need to split it based on timestamps or use metadata
-    signals = hr_data['signals'].get('combined')
+    # HR data is now split by moments (restingstate, therapy)
+    # Each moment has its own DataFrame with HR_Clean column
+    signals = hr_data['signals']
     
-    if signals is None or signals.empty:
+    if not signals:
         ax.text(0.5, 0.5, 'No HR signals available', ha='center', va='center',
                 transform=ax.transAxes, fontsize=FONTSIZE['label'])
         if output_path:
@@ -377,20 +366,7 @@ def plot_hr_dynamics_timeline(
             plt.close(fig)
         return
     
-    # Get HR column (lowercase or uppercase)
-    hr_col = 'hr' if 'hr' in signals.columns else 'HR'
-    if hr_col not in signals.columns:
-        ax.text(0.5, 0.5, 'No HR column found in signals', ha='center', va='center',
-                transform=ax.transAxes, fontsize=FONTSIZE['label'])
-        if output_path:
-            fig.savefig(output_path, dpi=300, bbox_inches='tight')
-        if show:
-            plt.show()
-        else:
-            plt.close(fig)
-        return
-    
-    # Get moment boundaries from metadata or BVP data
+    # Get moment boundaries from BVP data to align timeline
     moment_boundaries = {}
     bvp_data = data.get('bvp', {})
     
@@ -406,42 +382,42 @@ def plot_hr_dynamics_timeline(
             }
             offset += duration
     
-    # If we have boundaries, split HR data by moments
-    if moment_boundaries:
-        moment_data = []
+    # Build moment data from per-moment HR signals
+    moment_data = []
+    
+    for moment in signals.keys():
+        moment_hr = signals[moment]
         
-        for moment, bounds in moment_boundaries.items():
-            start_time = bounds['start']
-            end_time = bounds['end']
-            
-            # Filter HR data for this moment's time range
-            mask = (signals['time'] >= start_time) & (signals['time'] <= end_time)
-            moment_hr = signals[mask]
-            
-            if len(moment_hr) == 0:
-                continue
-            
-            hr_values = moment_hr[hr_col].values
-            time_values = moment_hr['time'].values
-            
-            moment_data.append({
-                'moment': moment,
-                'time': time_values,
-                'hr': hr_values,
-                'start': start_time,
-                'end': end_time,
-                'hr_mean': np.mean(hr_values)
-            })
-    else:
-        # No moment boundaries, treat as single continuous signal
-        moment_data = [{
-            'moment': 'combined',
-            'time': signals['time'].values,
-            'hr': signals[hr_col].values,
-            'start': signals['time'].min(),
-            'end': signals['time'].max(),
-            'hr_mean': np.mean(signals[hr_col].values)
-        }]
+        if moment_hr is None or moment_hr.empty:
+            continue
+        
+        # Get HR column (use HR_Clean from new format)
+        hr_col = 'HR_Clean' if 'HR_Clean' in moment_hr.columns else 'hr'
+        if hr_col not in moment_hr.columns:
+            continue
+        
+        hr_values = moment_hr[hr_col].values
+        time_values = moment_hr['time'].values
+        
+        # Use moment boundaries if available, otherwise use time range
+        if moment in moment_boundaries:
+            start_time = moment_boundaries[moment]['start']
+            end_time = moment_boundaries[moment]['end']
+            # Adjust time values to global timeline
+            adjusted_time = time_values + start_time
+        else:
+            start_time = time_values.min()
+            end_time = time_values.max()
+            adjusted_time = time_values
+        
+        moment_data.append({
+            'moment': moment,
+            'time': adjusted_time,
+            'hr': hr_values,
+            'start': start_time,
+            'end': end_time,
+            'hr_mean': np.mean(hr_values)
+        })
     
     if not moment_data:
         ax.text(0.5, 0.5, 'No HR data available', ha='center', va='center',
