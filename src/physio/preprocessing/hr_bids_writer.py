@@ -138,17 +138,17 @@ class HRBIDSWriter(PhysioBIDSWriter):
                 moment_metadata = processing_metadata.get(moment, {}) if processing_metadata else {}
                 
                 # Write physio signal files
-                physio_file = self._write_physio_file(output_dir, prefix, moment_data)
+                physio_file = self._write_physio_file(output_dir, subject_id, session_id, moment, moment_data)
                 all_file_paths['physio'].append(physio_file)
                 
-                physio_json = self._write_physio_metadata(output_dir, prefix, moment_data, moment_metadata)
+                physio_json = self._write_physio_metadata(output_dir, subject_id, session_id, moment, moment_data, moment_metadata)
                 all_file_paths['physio_json'].append(physio_json)
                 
                 # Write events files
-                events_file = self._write_events_file(output_dir, prefix, moment_data)
+                events_file = self._write_events_file(output_dir, subject_id, session_id, moment, moment_data)
                 all_file_paths['events'].append(events_file)
                 
-                events_json = self._write_events_metadata(output_dir, prefix)
+                events_json = self._write_events_metadata(output_dir, subject_id, session_id, moment)
                 all_file_paths['events_json'].append(events_json)
                 
                 # Extract moment-specific metrics if session_metrics provided
@@ -159,15 +159,15 @@ class HRBIDSWriter(PhysioBIDSWriter):
                     moment_metrics = self._extract_basic_metrics(moment_data, moment)
                 
                 # Write metrics files
-                metrics_file = self._write_metrics_file(output_dir, prefix, moment_metrics)
+                metrics_file = self._write_metrics_file(output_dir, subject_id, session_id, moment, moment_metrics)
                 all_file_paths['metrics'].append(metrics_file)
                 
-                metrics_json = self._write_metrics_metadata(output_dir, prefix, moment_metrics)
+                metrics_json = self._write_metrics_metadata(output_dir, subject_id, session_id, moment, moment_metrics)
                 all_file_paths['metrics_json'].append(metrics_json)
                 
                 # Write summary file
                 summary_file = self._write_summary_file(
-                    output_dir, prefix, moment_metrics, moment_metadata,
+                    output_dir, subject_id, session_id, moment, moment_metrics, moment_metadata,
                     {
                         'physio': physio_file,
                         'physio_json': physio_json,
@@ -221,24 +221,31 @@ class HRBIDSWriter(PhysioBIDSWriter):
     
     def _write_physio_file(
         self,
-        output_dir: Path,
-        prefix: str,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        moment: str,
         data: pd.DataFrame
     ) -> Path:
         """
         Write processed HR signals to UNCOMPRESSED TSV file.
         
         Args:
-            output_dir: Output directory
-            prefix: BIDS filename prefix
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            moment: Moment/task name
             data: Cleaned HR data with columns: time, HR_Raw, HR_Clean, HR_Quality, 
                   HR_Outliers, HR_Interpolated
         
         Returns:
             Path to written file
         """
+        # BIDS filename pattern for processed physio data
+        base_filename = f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-hr"
+        
         # New filename convention: _desc-processed_recording-hr.tsv (UNCOMPRESSED)
-        file_path = output_dir / f"{prefix}_desc-processed_recording-hr.tsv"
+        signals_tsv = subject_dir / f"{base_filename}.tsv"
         
         # Select columns in standardized order
         # Expected input columns: time, HR_Raw, HR_Clean, HR_Quality, HR_Outliers, HR_Interpolated
@@ -259,15 +266,17 @@ class HRBIDSWriter(PhysioBIDSWriter):
             output_data['HR_Interpolated'] = output_data['HR_Interpolated'].astype(int)
         
         # Write UNCOMPRESSED TSV (no .gz)
-        output_data.to_csv(file_path, sep='\t', index=False)
+        output_data.to_csv(signals_tsv, sep='\t', index=False, na_rep='n/a')
         
-        logger.debug(f"Physio data written: {file_path} ({len(output_data)} samples, {len(output_columns)} columns)")
-        return file_path
+        logger.debug(f"Saved processed signals: {signals_tsv} ({len(output_data)} samples, {len(output_columns)} columns)")
+        return signals_tsv
     
     def _write_physio_metadata(
         self,
-        output_dir: Path,
-        prefix: str,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        moment: str,
         data: pd.DataFrame,
         cleaning_metadata: Dict[str, Any]
     ) -> Path:
@@ -275,16 +284,21 @@ class HRBIDSWriter(PhysioBIDSWriter):
         Write physio signal metadata file.
         
         Args:
-            output_dir: Output directory
-            prefix: BIDS filename prefix
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            moment: Moment/task name
             data: Cleaned HR data
             cleaning_metadata: Cleaning process metadata
         
         Returns:
             Path to written file
         """
+        # BIDS filename pattern for processed physio data
+        base_filename = f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-hr"
+        
         # Match new filename convention
-        file_path = output_dir / f"{prefix}_desc-processed_recording-hr.json"
+        signals_json = subject_dir / f"{base_filename}.json"
         
         # Calculate signal characteristics
         sampling_rate = 1.0  # HR is typically 1 Hz
@@ -292,7 +306,7 @@ class HRBIDSWriter(PhysioBIDSWriter):
         
         # Updated column names and descriptions
         metadata = {
-            "TaskName": cleaning_metadata.get('moment', 'unknown'),
+            "TaskName": moment,
             "SamplingFrequency": sampling_rate,
             "StartTime": 0.0,
             "Columns": [
@@ -333,29 +347,35 @@ class HRBIDSWriter(PhysioBIDSWriter):
         }
         
         # Use base class JSON serialization
-        self._save_json_sidecar(file_path, metadata)
+        self._save_json_sidecar(signals_json, metadata)
         
-        logger.debug(f"Physio metadata written: {file_path}")
-        return file_path
+        logger.debug(f"Saved processed signals metadata: {signals_json}")
+        return signals_json
     
     def _write_events_file(
         self,
-        output_dir: Path,
-        prefix: str,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        moment: str,
         data: pd.DataFrame
     ) -> Path:
         """
         Write HR events file (peaks, elevated periods, etc.).
         
         Args:
-            output_dir: Output directory
-            prefix: BIDS filename prefix
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            moment: Moment/task name
             data: Cleaned HR data with HR_Clean column
         
         Returns:
             Path to written file
         """
-        file_path = output_dir / f"{prefix}_events.tsv"
+        # BIDS filename pattern
+        base_filename = f"{subject_id}_{session_id}_task-{moment}"
+        events_tsv = subject_dir / f"{base_filename}_events.tsv"
         
         events = []
         
@@ -384,36 +404,33 @@ class HRBIDSWriter(PhysioBIDSWriter):
             events_df = pd.DataFrame(columns=['onset', 'duration', 'trial_type', 'value'])
         
         # Write events TSV
-        events_df.to_csv(file_path, sep='\t', index=False)
+        events_df.to_csv(events_tsv, sep='\t', index=False, na_rep='n/a')
         
-        logger.debug(f"Events written: {file_path} ({len(events_df)} events)")
-        return file_path
-        
-        # Create events DataFrame
-        if events:
-            events_df = pd.DataFrame(events)
-        else:
-            # Empty events file with proper structure
-            events_df = pd.DataFrame(columns=['onset', 'duration', 'trial_type', 'value'])
-        
-        # Write events TSV
-        events_df.to_csv(file_path, sep='\t', index=False)
-        
-        logger.debug(f"Events written: {file_path} ({len(events_df)} events)")
-        return file_path
+        logger.debug(f"Saved events: {events_tsv} ({len(events_df)} events)")
+        return events_tsv
     
-    def _write_events_metadata(self, output_dir: Path, prefix: str) -> Path:
+    def _write_events_metadata(
+        self,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        moment: str
+    ) -> Path:
         """
         Write events metadata file.
         
         Args:
-            output_dir: Output directory
-            prefix: BIDS filename prefix
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            moment: Moment/task name
         
         Returns:
             Path to written file
         """
-        file_path = output_dir / f"{prefix}_events.json"
+        # BIDS filename pattern
+        base_filename = f"{subject_id}_{session_id}_task-{moment}"
+        events_json = subject_dir / f"{base_filename}_events.json"
         
         metadata = {
             "onset": {
@@ -438,30 +455,35 @@ class HRBIDSWriter(PhysioBIDSWriter):
         }
         
         # Use base class JSON serialization
-        self._save_json_sidecar(file_path, metadata)
+        self._save_json_sidecar(events_json, metadata)
         
-        logger.debug(f"Events metadata written: {file_path}")
-        return file_path
+        logger.debug(f"Saved events metadata: {events_json}")
+        return events_json
     
     def _write_metrics_file(
         self,
-        output_dir: Path,
-        prefix: str,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        moment: str,
         metrics: Dict[str, Any]
     ) -> Path:
         """
         Write HR metrics to TSV file.
         
         Args:
-            output_dir: Output directory
-            prefix: BIDS filename prefix
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            moment: Moment/task name
             metrics: Extracted HR metrics (can be flat dict or nested with categories)
         
         Returns:
             Path to written file
         """
-        # New filename convention
-        file_path = output_dir / f"{prefix}_desc-hr-metrics.tsv"
+        # BIDS filename pattern
+        base_filename = f"{subject_id}_{session_id}_task-{moment}"
+        metrics_tsv = subject_dir / f"{base_filename}_desc-hr-metrics.tsv"
         
         # Handle both flat and nested dictionaries
         flattened_metrics = {}
@@ -490,30 +512,35 @@ class HRBIDSWriter(PhysioBIDSWriter):
         metrics_df = pd.DataFrame([flattened_metrics])
         
         # Write metrics TSV
-        metrics_df.to_csv(file_path, sep='\t', index=False)
+        metrics_df.to_csv(metrics_tsv, sep='\t', index=False, na_rep='n/a')
         
-        logger.debug(f"HR metrics written: {file_path} ({len(flattened_metrics)} metrics)")
-        return file_path
+        logger.debug(f"Saved HR metrics: {metrics_tsv} ({len(flattened_metrics)} metrics)")
+        return metrics_tsv
     
     def _write_metrics_metadata(
         self,
-        output_dir: Path,
-        prefix: str,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        moment: str,
         metrics: Dict[str, Any]
     ) -> Path:
         """
         Write metrics metadata file with descriptions.
         
         Args:
-            output_dir: Output directory
-            prefix: BIDS filename prefix
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            moment: Moment/task name
             metrics: Extracted HR metrics
         
         Returns:
             Path to written file
         """
-        # New filename convention
-        file_path = output_dir / f"{prefix}_desc-hr-metrics.json"
+        # BIDS filename pattern
+        base_filename = f"{subject_id}_{session_id}_task-{moment}"
+        metrics_json = subject_dir / f"{base_filename}_desc-hr-metrics.json"
         
         # Try to import HRMetricsExtractor to get full descriptions
         try:
@@ -526,6 +553,7 @@ class HRBIDSWriter(PhysioBIDSWriter):
         
         metadata = {
             "Description": "Heart Rate (HR) metrics extracted from cleaned HR signals",
+            "TaskName": moment,
             "MetricsCategories": {
                 "descriptive": "Basic statistical measures of HR distribution",
                 "trend": "Temporal trends and changes in HR over time", 
@@ -552,15 +580,17 @@ class HRBIDSWriter(PhysioBIDSWriter):
         }
         
         # Use base class JSON serialization
-        self._save_json_sidecar(file_path, metadata)
+        self._save_json_sidecar(metrics_json, metadata)
         
-        logger.debug(f"Metrics metadata written: {file_path}")
-        return file_path
+        logger.debug(f"Saved HR metrics metadata: {metrics_json}")
+        return metrics_json
     
     def _write_summary_file(
         self,
-        output_dir: Path,
-        prefix: str,
+        subject_dir: Path,
+        subject_id: str,
+        session_id: str,
+        moment: str,
         metrics: Dict[str, Any],
         cleaning_metadata: Dict[str, Any],
         file_paths: Dict[str, Path]
@@ -569,8 +599,10 @@ class HRBIDSWriter(PhysioBIDSWriter):
         Write processing summary file.
         
         Args:
-            output_dir: Output directory
-            prefix: BIDS filename prefix
+            subject_dir: Subject directory path
+            subject_id: Subject identifier
+            session_id: Session identifier
+            moment: Moment/task name
             metrics: Extracted HR metrics
             cleaning_metadata: Cleaning process metadata
             file_paths: Dictionary of written file paths for this moment
@@ -578,23 +610,18 @@ class HRBIDSWriter(PhysioBIDSWriter):
         Returns:
             Path to written file
         """
-        # New filename convention
-        file_path = output_dir / f"{prefix}_desc-hr-summary.json"
-        
-        # Parse subject/session/task from prefix
-        parts = prefix.split('_')
-        subject = parts[0].replace('sub-', '') if len(parts) > 0 else 'unknown'
-        session = parts[1].replace('ses-', '') if len(parts) > 1 else 'unknown'
-        task = parts[2].replace('task-', '') if len(parts) > 2 else 'unknown'
+        # BIDS filename pattern
+        base_filename = f"{subject_id}_{session_id}_task-{moment}"
+        summary_json = subject_dir / f"{base_filename}_desc-hr-summary.json"
         
         summary = {
             "ProcessingInfo": {
                 "Pipeline": "TherasyncPipeline",
                 "Version": "1.0.0",
                 "ProcessingDate": datetime.now().isoformat(),
-                "Subject": subject,
-                "Session": session,
-                "Task": task
+                "Subject": subject_id,
+                "Session": session_id,
+                "Task": moment
             },
             "DataQuality": {
                 "TotalSamples": int(cleaning_metadata.get('total_samples', 0)),
@@ -623,15 +650,15 @@ class HRBIDSWriter(PhysioBIDSWriter):
                 "ProcessedSignals": str(file_paths.get('physio', '')),
                 "Events": str(file_paths.get('events', '')),
                 "Metrics": str(file_paths.get('metrics', '')),
-                "Summary": str(file_path)
+                "Summary": str(summary_json)
             }
         }
         
         # Use base class JSON serialization
-        self._save_json_sidecar(file_path, summary)
+        self._save_json_sidecar(summary_json, summary)
         
-        logger.debug(f"Processing summary written: {file_path}")
-        return file_path
+        logger.debug(f"Saved HR processing summary: {summary_json}")
+        return summary_json
     
     def _find_hr_peaks(self, hr_values: np.ndarray, time_values: np.ndarray) -> List[Dict]:
         """

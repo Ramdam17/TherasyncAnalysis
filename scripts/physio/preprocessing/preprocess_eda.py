@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 
 import pandas as pd
+import numpy as np
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
@@ -27,6 +28,49 @@ from src.physio.preprocessing.eda_loader import EDALoader
 from src.physio.preprocessing.eda_cleaner import EDACleaner
 from src.physio.preprocessing.eda_metrics import EDAMetricsExtractor
 from src.physio.preprocessing.eda_bids_writer import EDABIDSWriter
+
+
+def calculate_eda_quality(processed: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate EDA signal quality score based on signal stability and physiological plausibility.
+    
+    Quality is calculated using:
+    - Tonic stability (coefficient of variation)
+    - Phasic activity reasonableness
+    - Presence/absence of artifacts
+    
+    Args:
+        processed: DataFrame with EDA_Tonic and EDA_Phasic columns
+        
+    Returns:
+        DataFrame with added EDA_Quality column (0-1, higher is better)
+    """
+    quality_scores = []
+    window_size = 16  # 4 seconds at 4Hz
+    
+    for i in range(len(processed)):
+        # Get window around current sample
+        start_idx = max(0, i - window_size // 2)
+        end_idx = min(len(processed), i + window_size // 2)
+        window = processed.iloc[start_idx:end_idx]
+        
+        # Factor 1: Tonic stability (low CV = more stable = better)
+        tonic_values = window['EDA_Tonic']
+        tonic_cv = tonic_values.std() / (tonic_values.mean() + 1e-10)
+        tonic_quality = 1.0 / (1.0 + tonic_cv)  # 0-1, higher is better
+        
+        # Factor 2: Phasic reasonableness (not too extreme)
+        phasic_value = processed.loc[processed.index[i], 'EDA_Phasic']
+        phasic_std = window['EDA_Phasic'].std()
+        phasic_z = abs(phasic_value) / (phasic_std + 1e-10)
+        phasic_quality = 1.0 / (1.0 + phasic_z / 3.0)  # Penalize extreme values
+        
+        # Combined quality (weighted average)
+        quality = 0.6 * tonic_quality + 0.4 * phasic_quality
+        quality_scores.append(quality)
+    
+    processed['EDA_Quality'] = quality_scores
+    return processed
 
 
 def setup_logging(config_path: Optional[Path] = None) -> None:
@@ -133,6 +177,11 @@ def process_single_subject(
                 # Count SCR peaks
                 num_scr_peaks = int(processed['SCR_Peaks'].sum()) if 'SCR_Peaks' in processed.columns else 0
                 logger.info(f"Processed {moment}: {num_scr_peaks} SCR peaks detected")
+                
+                # Calculate EDA_Quality if not present
+                if 'EDA_Quality' not in processed.columns:
+                    processed = calculate_eda_quality(processed)
+                    logger.debug(f"Added EDA_Quality column (mean: {processed['EDA_Quality'].mean():.3f})")
                 
                 processed_results[moment] = processed
                 moments_data[moment] = processed
