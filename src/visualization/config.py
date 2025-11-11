@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 # Color Schemes
 COLORS = {
-    # Moment colors
+    # Moment colors (legacy support for named moments)
     'restingstate': '#3498db',  # Blue
     'therapy': '#e74c3c',  # Red
     
@@ -39,6 +39,24 @@ COLORS = {
     'gray': '#95a5a6',
     'dark_gray': '#34495e',
     'light_gray': '#ecf0f1',
+}
+
+# Moment color palette (supports up to 8 distinct moments, with modulo fallback)
+MOMENT_COLORS = [
+    '#3498db',  # Blue
+    '#e74c3c',  # Red
+    '#2ecc71',  # Green
+    '#f39c12',  # Orange
+    '#9b59b6',  # Purple
+    '#1abc9c',  # Teal
+    '#e67e22',  # Dark orange
+    '#34495e',  # Dark gray
+]
+
+# Map known moment names to indices for backward compatibility
+MOMENT_NAME_TO_INDEX = {
+    'restingstate': 0,
+    'therapy': 1,
 }
 
 # Transparency levels
@@ -173,9 +191,37 @@ def apply_plot_style():
     plt.rcParams['legend.fontsize'] = FONTSIZE['legend']
 
 
-def get_moment_color(moment: str) -> str:
-    """Get color for a specific moment."""
-    return COLORS.get(moment, COLORS['gray'])
+def get_moment_color(moment) -> str:
+    """
+    Get color for a specific moment.
+    
+    Supports both string names and integer indices.
+    Uses modulo fallback for indices beyond the palette size.
+    
+    Args:
+        moment: Either a moment name (str) or index (int)
+    
+    Returns:
+        Hex color code
+    
+    Examples:
+        get_moment_color('restingstate')  # '#3498db' (blue)
+        get_moment_color('therapy')       # '#e74c3c' (red)
+        get_moment_color(0)               # '#3498db' (blue)
+        get_moment_color(5)               # '#1abc9c' (teal)
+        get_moment_color(10)              # '#2ecc71' (green, wraps around)
+    """
+    if isinstance(moment, int):
+        # Direct index access with modulo fallback
+        return MOMENT_COLORS[moment % len(MOMENT_COLORS)]
+    elif isinstance(moment, str):
+        # Try named moment first (backward compatibility)
+        if moment in MOMENT_NAME_TO_INDEX:
+            return MOMENT_COLORS[MOMENT_NAME_TO_INDEX[moment]]
+        # Fallback to COLORS dict for unknown names
+        return COLORS.get(moment, COLORS['gray'])
+    else:
+        return COLORS['gray']
 
 
 def get_modality_color(modality: str) -> str:
