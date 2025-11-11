@@ -1,10 +1,12 @@
 # API Reference - TherasyncPipeline
 
 **Authors**: Lena Adel, Remy Ramadour  
-**Version**: 0.5.0 (Visualization & Batch Processing)  
+**Version**: 1.0.0 (Production Ready - Phase 2 Harmonization Complete)  
 **Last Updated**: November 11, 2025
 
 This document provides comprehensive API documentation for all modules in the TherasyncPipeline project.
+
+**Note**: All BIDS writers (BVP, EDA, HR) have been harmonized in Phase 2 to use identical code patterns and helper method signatures for consistency and maintainability.
 
 ---
 

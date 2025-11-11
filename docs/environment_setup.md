@@ -1,16 +1,18 @@
 # Environment Setup Guide
 
-**Last Updated:** October 28, 2025  
-**Project Version:** v0.3.0 (Modular Architecture)  
+**Last Updated:** November 11, 2025  
+**Project Version:** v1.0.0 (Production Ready)  
 
 This guide helps you set up the development environment for the Therasync Pipeline project.
 
 ## Prerequisites
 
-- **Python 3.9+** (recommended: Python 3.10 or 3.11)
-- **Poetry** for dependency management (recommended)
+- **Python 3.8+** (tested with Python 3.10, 3.11, 3.12)
+- **Poetry** for dependency management (required)
 - **Git** for version control
-- **Linux/macOS/Windows** (tested on Linux)
+- **Linux/macOS/Windows** (primarily tested on Linux)
+- **Disk space**: ~2.5 GB for full dataset processing
+- **Memory**: <2 GB RAM for typical processing
 
 ## Installation Methods
 
@@ -94,10 +96,21 @@ pre-commit install
 ### Testing Environment
 
 ```bash
-# Run all tests (34 tests)
-poetry run pytest tests/
+# Run all tests (34 tests, should all pass)
+poetry run pytest tests/ -v
 
 # Run tests with coverage
+poetry run pytest --cov=src tests/
+
+# Run specific test file
+poetry run pytest tests/test_bvp_pipeline.py -v
+
+# Verify all pipelines work
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01
+poetry run python scripts/visualization/generate_visualizations.py --subject f01p01 --session 01
+```
 poetry run pytest --cov=src tests/
 
 # Run specific test file

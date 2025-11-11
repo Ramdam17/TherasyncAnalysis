@@ -3,9 +3,9 @@
 This document tracks all available resources (data files, images, configs, metadata) that can be used for building interactive viewers, dashboards, and visualizations.
 
 **Authors**: Lena Adel, Remy Ramadour  
-**Last Updated**: October 28, 2025  
-**Pipeline Version**: v0.3.0 (Modular Architecture)  
-**Status**: All preprocessing pipelines complete (BVP, EDA, HR)
+**Last Updated**: November 11, 2025  
+**Pipeline Version**: v1.0.0 (Production Ready)  
+**Status**: All preprocessing pipelines complete (BVP, EDA, HR) with harmonized architecture and visualization suite
 
 ---
 
@@ -67,12 +67,14 @@ data/
 │               └── *_recording-acc.{tsv,json}   # Accelerometer
 │
 └── derivatives/         # Processed outputs
-    └── preprocessing/
-        └── sub-{subject}/
-            └── ses-{session}/
-                ├── bvp/         # BVP preprocessing outputs (9 files)
-                ├── eda/         # EDA preprocessing outputs (13 files)
-                └── hr/          # HR preprocessing outputs (7 files)
+    ├── preprocessing/
+    │   └── sub-{subject}/
+    │       └── ses-{session}/
+    │           ├── bvp/         # BVP preprocessing outputs (9 files)
+    │           ├── eda/         # EDA preprocessing outputs (13 files)
+    │           └── hr/          # HR preprocessing outputs (14 files)
+    │
+    └── visualizations/  # Visualization suite (6 plots per session)
 ```
 
 ### Available Physiological Signals (Raw)
@@ -91,14 +93,14 @@ data/
 #### EDA (Electrodermal Activity)
 - **Files**: `*_task-{moment}_recording-eda.tsv` + `.json`
 - **Sampling Rate**: 4 Hz
-- **Status**: ⏳ Pipeline not yet implemented (Sprint 3)
-- **Future Use**: Skin conductance visualization, arousal levels
+- **Status**: ✅ Pipeline complete (Phase 2)
+- **Viewer Use**: Skin conductance visualization, arousal levels, phasic/tonic components
 
 #### HR (Heart Rate)
 - **Files**: `*_task-{moment}_recording-hr.tsv` + `.json`
 - **Sampling Rate**: 1 Hz (derived from BVP)
-- **Status**: ⏳ Available but not processed yet
-- **Future Use**: Real-time heart rate display, trends
+- **Status**: ✅ Pipeline complete (Phase 2)
+- **Viewer Use**: Real-time heart rate display, trends, per-moment analysis
 
 #### Temperature
 - **Files**: `*_task-{moment}_recording-temp.tsv` + `.json`
@@ -129,10 +131,15 @@ data/
 
 ## Processed Data (Derivatives)
 
-### BVP Pipeline Outputs
+### Preprocessing Pipeline Outputs
+
+All three modalities (BVP, EDA, HR) follow harmonized architecture with consistent file patterns and naming conventions.
 
 #### Dataset-Level
-- **Path**: `data/derivatives/therasync-bvp/`
+- **Paths**: 
+  - `data/derivatives/therasync-bvp/`
+  - `data/derivatives/therasync-eda/`
+  - `data/derivatives/therasync-hr/`
 - **File**: `dataset_description.json`
 - **Format**: JSON
 - **Contains**:
@@ -143,7 +150,7 @@ data/
 - **Viewer Use**: Pipeline provenance, version tracking
 
 #### Subject/Session Level
-- **Path**: `data/derivatives/therasync-bvp/{subject}/{session}/physio/`
+- **Paths**: `data/derivatives/therasync-{modality}/{subject}/{session}/physio/`
 
 ##### 1. Processed Signals
 - **Files**: `*_task-{moment}_desc-processed_recording-bvp.{tsv,json}`
@@ -311,31 +318,73 @@ All derivative files include JSON sidecars with:
 
 ---
 
+## Visualization Suite
+
+### Available Visualizations (v1.0.0)
+
+All visualizations are automatically generated during preprocessing and saved as PNG files in `data/derivatives/visualizations/{subject}/{session}/`.
+
+#### 1. Signal Quality Plots (2 plots per session)
+- **Files**: `*_task-{moment}_desc-quality_recording-bvp.png`
+- **Moments**: `restingstate`, `therapy`
+- **Contains**:
+  - Raw BVP signal
+  - Cleaned signal overlay
+  - Quality indicators
+  - Detected peaks markers
+- **Viewer Use**: Quality assessment, signal validation, preprocessing verification
+
+#### 2. HRV Metrics Comparison (1 plot per session)
+- **File**: `*_desc-hrvcomparison_physio.png`
+- **Contains**:
+  - Time-domain metrics (MeanNN, SDNN, RMSSD, pNN50)
+  - Frequency-domain metrics (LF, HF, LF/HF ratio)
+  - Nonlinear metrics (SD1, SD2, SampEn)
+  - Moment-to-moment comparison (restingstate vs. therapy)
+- **Viewer Use**: Physiological state comparison, autonomic balance assessment
+
+#### 3. EDA Signal Plots (2 plots per session)
+- **Files**: `*_task-{moment}_desc-quality_recording-eda.png`
+- **Moments**: `restingstate`, `therapy`
+- **Contains**:
+  - Raw EDA signal
+  - Cleaned signal
+  - Phasic component
+  - Tonic component
+  - SCR peaks markers
+- **Viewer Use**: Arousal assessment, skin conductance analysis
+
+#### 4. Heart Rate Plots (1 plot per session)
+- **File**: `*_desc-hrcomparison_physio.png`
+- **Contains**:
+  - Per-moment HR statistics
+  - Mean HR comparison (restingstate vs. therapy)
+  - HR variability indicators
+- **Viewer Use**: Heart rate trends, moment comparison
+
+**Total**: 6 visualizations per session
+**Production Status**: 306/306 plots generated successfully (100% success rate)
+
+---
+
 ## Future Resources
 
-### Planned for Sprint 3+ (EDA Processing)
-- ⏳ Processed EDA signals (phasic, tonic components)
-- ⏳ EDA metrics (SCR frequency, amplitude, rise time)
-- ⏳ Arousal indicators
-
-### Planned for Future Sprints
+### Planned for Future Versions
 - ⏳ Epoched analysis (30-second windows with 1-second steps)
 - ⏳ Dynamic HRV metrics over time
 - ⏳ Cross-signal correlations (BVP-EDA, BVP-HR)
 - ⏳ Family synchrony metrics
-- ⏳ Visualization plots (PNG/SVG exports)
+- ⏳ Interactive visualizations (HTML/JavaScript)
 - ⏳ Statistical analysis results
 - ⏳ Group comparisons
 - ⏳ Moment of Interest (MOI) aligned data
 
-### Planned Visualizations (to be generated)
-- ⏳ Time-series plots (raw and processed signals)
-- ⏳ HRV distribution plots
+### Additional Planned Visualizations
 - ⏳ Spectral density plots (frequency domain)
 - ⏳ Poincaré plots (nonlinear analysis)
-- ⏳ Quality control plots
 - ⏳ Heatmaps (metrics across subjects/sessions)
 - ⏳ Correlation matrices
+- ⏳ Real-time streaming dashboards
 
 ---
 
@@ -390,12 +439,15 @@ const quality = await Promise.all(
 | Type | Count | Location | Status |
 |------|-------|----------|--------|
 | Configuration | 2 | `config/` | ✅ Available |
-| Raw Physiological Signals | 5 types | `data/raw/sub-*/ses-*/physio/` | ✅ Available |
-| Processed BVP Signals | 2 moments | `data/derivatives/therasync-bvp/` | ✅ Available |
+| Raw Physiological Signals | 5 types | `data/sourcedata/sub-*/ses-*/physio/` | ✅ Available |
+| Processed Signals (BVP/EDA/HR) | 3 modalities | `data/derivatives/therasync-*/` | ✅ Available |
 | HRV Metrics | 20 metrics | `data/derivatives/therasync-bvp/` | ✅ Available |
-| Processing Metadata | Per moment | `data/derivatives/therasync-bvp/` | ✅ Available |
+| EDA Metrics | 12 metrics | `data/derivatives/therasync-eda/` | ✅ Available |
+| HR Metrics | Per-moment stats | `data/derivatives/therasync-hr/` | ✅ Available |
+| Visualizations | 6 per session | `data/derivatives/visualizations/` | ✅ Available |
+| Processing Metadata | Per moment | `data/derivatives/therasync-*/` | ✅ Available |
 | Logs | Multiple | `log/` | ✅ Available |
-| Documentation | 6 files | `docs/` | ✅ Available |
+| Documentation | 10 files | `docs/` + root | ✅ Available |
 
 ### By Viewer Component
 
@@ -406,6 +458,7 @@ const quality = await Promise.all(
 | Metrics Dashboard | Metrics TSV, metadata JSON | ✅ Ready |
 | Quality Monitor | Processing JSONs, summary JSON, logs | ✅ Ready |
 | Moment Comparison | Metrics TSV filtered by moment | ✅ Ready |
+| Visualization Gallery | PNG files in derivatives/visualizations/ | ✅ Ready |
 | Configuration Display | config.yaml | ✅ Ready |
 | Documentation Help | docs/*.md | ✅ Ready |
 
@@ -427,12 +480,13 @@ const quality = await Promise.all(
 4. **Export**: Allow CSV/JSON/PNG exports
 5. **Real-time**: Support streaming if needed (future)
 
-### Priority Visualizations (Phase 1)
+### Priority Visualizations (v1.0.0)
 1. ✅ Session list/browser
 2. ✅ Key metrics dashboard (cards)
 3. ✅ Time-series signal viewer
 4. ✅ Moment comparison (bar charts)
-5. ⏳ Quality control dashboard
+5. ✅ Quality control dashboard
+6. ✅ Automated visualization generation (PNG exports)
 
 ---
 

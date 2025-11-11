@@ -1,10 +1,10 @@
 # Troubleshooting Guide - TherasyncPipeline
 
 **Authors**: Lena Adel, Remy Ramadour  
-**Version**: 0.3.0 (Modular Architecture)  
-**Last Updated**: October 28, 2025
+**Version**: 1.0.0 (Production Ready)  
+**Last Updated**: November 11, 2025
 
-This guide helps resolve common issues when using the TherasyncPipeline preprocessing modules (BVP, EDA, HR).
+This guide helps resolve common issues when using the TherasyncPipeline preprocessing modules (BVP, EDA, HR), visualization, and batch processing systems.
 
 ---
 
