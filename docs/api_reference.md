@@ -1,1902 +1,1055 @@
 # API Reference - TherasyncPipeline
 
 **Authors**: Lena Adel, Remy Ramadour  
-**Version**: 0.5.0 (Visualization & Batch Processing)  
+**Version**: 1.0.0 (Production Ready - Phase 2 Harmonization Complete)  
 **Last Updated**: November 11, 2025
 
-This document provides comprehensive API documentation for all modules in the TherasyncPipeline project.
+This document provides comprehensive API documentation for all modules in the TherasyncPipeline project, auto-generated from source code to ensure accuracy.
+
+**Note**: All BIDS writers (BVP, EDA, HR) have been harmonized in Phase 2 to use identical code patterns and helper method signatures for consistency and maintainability.
 
 ---
 
-## Table of Contents
+## 📋 Table of Contents
 
 1. [Core Modules](#core-modules)
-   - [ConfigLoader](#configloader)
-2. [Preprocessing Modules](#preprocessing-modules)
-   - **BVP (Blood Volume Pulse)**
-     - [BVPLoader](#bvploader)
-     - [BVPCleaner](#bvpcleaner)
-     - [BVPMetrics](#bvpmetrics)
-     - [BVPBIDSWriter](#bvpbidswriter)
-   - **EDA (Electrodermal Activity)**
-     - [EDALoader](#edaloader)
-     - [EDACleaner](#edacleaner)
-     - [EDAMetricsExtractor](#edametricsextractor)
-     - [EDABIDSWriter](#edabidswriter)
-   - **HR (Heart Rate)**
-     - [HRLoader](#hrloader)
-     - [HRCleaner](#hrcleaner)
-     - [HRMetrics](#hrmetrics)
-     - [HRBIDSWriter](#hrbidswriter)
-3. [Scripts](#scripts)
-   - [preprocess_bvp.py](#preprocess_bvppy)
-   - [preprocess_eda.py](#preprocess_edapy)
-   - [preprocess_hr.py](#preprocess_hrpy)
-   - [generate_visualizations.py](#generate_visualizationspy)
-   - [run_all_preprocessing.py](#run_all_preprocessingpy)
-   - [run_all_visualizations.py](#run_all_visualizationspy)
-   - [clean_outputs.py](#clean_outputspy)
-4. [Visualization Modules](#visualization-modules)
-   - [VisualizationDataLoader](#visualizationdataloader)
-   - [VisualizationConfig](#visualizationconfig)
-   - [SignalPlotter](#signalplotter)
-   - [HRVPlotter](#hrvplotter)
-   - [EDAPlotter](#edaplotter)
-5. [Batch Processing](#batch-processing)
-   - [BatchPreprocessor](#batchpreprocessor)
-   - [BatchVisualizer](#batchvisualizer)
+   - [ConfigLoader](#class-configloader)
+2. [BVP Preprocessing](#bvp-preprocessing)
+   - [BVPLoader](#class-bvploader)
+   - [BVPCleaner](#class-bvpcleaner)
+   - [BVPMetricsExtractor](#class-bvpmetricsextractor)
+   - [BVPBIDSWriter](#class-bvpbidswriter)
+3. [EDA Preprocessing](#eda-preprocessing)
+   - [EDALoader](#class-edaloader)
+   - [EDACleaner](#class-edacleaner)
+   - [EDAMetricsExtractor](#class-edametricsextractor)
+   - [EDABIDSWriter](#class-edabidswriter)
+4. [HR Preprocessing](#hr-preprocessing)
+   - [HRLoader](#class-hrloader)
+   - [HRCleaner](#class-hrcleaner)
+   - [HRMetricsExtractor](#class-hrmetricsextractor)
+   - [HRBIDSWriter](#class-hrbidswriter)
+5. [Version History](#version-history)
+6. [Support & Contribution](#support--contribution)
 
 ---
 
 ## Core Modules
 
-### ConfigLoader
-
-**Module**: `src.core.config_loader.py`
-
-Central configuration management system with YAML loading, validation, and dot-notation access.
-
 #### Class: `ConfigLoader`
 
+**Module**: `src.core.config_loader`
+
+Configuration loader with schema validation and environment variable support.
+
+This class handles loading YAML configuration files, validating them against
+a schema, and providing easy access to configuration parameters.
+
+**Constructor**:
+
 ```python
-from src.core.config_loader import ConfigLoader
-
-config = ConfigLoader(config_path='config/config.yaml')
+ConfigLoader(self, config_path: Union[str, pathlib.Path, NoneType] = None)
 ```
-
-**Constructor Parameters**:
-- `config_path` (str, optional): Path to YAML configuration file. Default: `'config/config.yaml'`
-
-**Attributes**:
-- `config_path` (Path): Path object to configuration file
-- `config` (dict): Loaded configuration dictionary
 
 **Methods**:
 
-##### `load_config() -> dict`
-Loads and validates YAML configuration file.
+##### `get(self, key: str, default: Any = None) -> Any`
 
-```python
-config_dict = config.load_config()
-```
+Get a configuration value using dot notation.
 
-**Returns**: Dictionary containing all configuration settings
+Args:
+    key: Configuration key in dot notation (e.g., 'physio.bvp.sampling_rate').
+    default: Default value if key is not found.
+    
+Returns:
+    Configuration value or default.
 
-**Raises**:
-- `FileNotFoundError`: If config file doesn't exist
-- `yaml.YAMLError`: If YAML parsing fails
-- `jsonschema.ValidationError`: If config doesn't match schema
+##### `get_bids_config(self) -> Dict[str, Any]`
 
-**Schema Requirements**:
-```yaml
-paths:
-  sourcedata: str  # Path to raw data
-  derivatives: str  # Path to processed outputs
-  logs: str        # Path to log files
-study:
-  name: str
-  version: str
-moments: list[dict]  # Task/moment definitions
-physio: dict         # Processing parameters
-```
+Get BIDS configuration settings.
 
-##### `get(key: str, default: Any = None) -> Any`
-Retrieves configuration value using dot notation.
+Returns:
+    BIDS configuration dictionary.
 
-```python
-# Access nested values
-sampling_rate = config.get('physio.bvp.sampling_rate')  # Returns 64
-method = config.get('physio.bvp.processing.method')     # Returns 'elgendi'
-missing = config.get('nonexistent.key', default=None)   # Returns None
-```
+##### `get_moment_names(self) -> list`
 
-**Parameters**:
-- `key` (str): Dot-separated path to config value (e.g., `'physio.bvp.sampling_rate'`)
-- `default` (Any): Value to return if key not found. Default: `None`
+Get the list of moment names.
 
-**Returns**: Configuration value at specified path, or default if not found
+Returns:
+    List of moment names.
 
-##### `validate_config(config_dict: dict) -> bool`
-Validates configuration against JSON schema.
+##### `get_moments(self) -> list`
 
-```python
-is_valid = config.validate_config(config_dict)
-```
+Get the list of configured moments/tasks.
 
-**Parameters**:
-- `config_dict` (dict): Configuration dictionary to validate
+Returns:
+    List of moment configurations.
 
-**Returns**: `True` if valid
+##### `get_paths(self) -> Dict[str, str]`
 
-**Raises**: `jsonschema.ValidationError` if validation fails
+Get path configurations.
 
-**Example Usage**:
+Returns:
+    Dictionary of configured paths.
 
-```python
-from src.core.config_loader import ConfigLoader
+##### `get_physio_config(self, signal_type: str) -> Dict[str, Any]`
 
-# Initialize and auto-load
-config = ConfigLoader('config/config.yaml')
+Get physiological signal configuration.
 
-# Access configuration
-data_path = config.get('paths.sourcedata')  # 'data/raw'
-moments = config.get('moments')              # List of moment dicts
-threshold = config.get('physio.bvp.processing.quality_threshold')  # 0.8
+Args:
+    signal_type: Type of signal ('bvp', 'eda', 'hr').
+    
+Returns:
+    Configuration dictionary for the specified signal type.
 
-# Check if key exists
-if config.get('custom_setting') is not None:
-    # Use custom setting
-    pass
-```
+##### `load_config(self) -> Dict[str, Any]`
+
+Load and validate the configuration file.
+
+Returns:
+    Loaded and validated configuration dictionary.
+    
+Raises:
+    ConfigError: If configuration file is invalid or missing.
+
+##### `save_config(self, output_path: Union[str, pathlib.Path, NoneType] = None) -> None`
+
+Save the current configuration to a file.
+
+Args:
+    output_path: Path to save the configuration. If None, overwrites original.
+
 
 ---
 
-## Preprocessing Modules
-
-All preprocessing modules follow a consistent initialization pattern:
-- Accept `config_path: Optional[Union[str, Path]]` parameter
-- Create ConfigLoader internally
-- Located in `src/physio/preprocessing/`
-
-### BVPLoader
-
-**Module**: `src.physio.preprocessing.bvp_loader`
-
-Loads Blood Volume Pulse (BVP) data from BIDS-compliant TSV/JSON files with moment-based segmentation.
+## BVP Preprocessing
 
 #### Class: `BVPLoader`
 
+**Module**: `src.physio.preprocessing.bvp_loader`
+
+Load and validate BVP data files from BIDS-formatted Empatica recordings.
+
+This class handles loading BVP data with associated metadata, validates data
+integrity, and segments data according to configured moments (e.g., resting_state, therapy).
+
+**Constructor**:
+
 ```python
-from src.physio.preprocessing.bvp_loader import BVPLoader
-
-loader = BVPLoader(config_path='config/config.yaml')
+BVPLoader(self, config_path: Union[str, pathlib.Path, NoneType] = None)
 ```
-
-**Constructor Parameters**:
-- `config_path` (Optional[Union[str, Path]]): Path to configuration file. If None, uses default config.
-
-**Attributes**:
-- `config` (ConfigLoader): Configuration loader instance
-- `sourcedata_path` (Path): Path to raw data directory
-- `sampling_rate` (int): Expected BVP sampling rate (default: 64 Hz)
 
 **Methods**:
 
-##### `load_subject_session(subject: str, session: str, moment: str = None) -> Tuple[pd.DataFrame, dict]`
+##### `get_available_data(self, subject_pattern: str = '*') -> Dict[str, Dict[str, List[str]]]`
 
-Loads BVP data for a specific subject/session, optionally filtered by moment.
+Scan for available BVP data files in the sourcedata directory.
 
-```python
-# Load all moments
-data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01')
+Args:
+    subject_pattern: Pattern to match subject directories (default: all subjects)
+    
+Returns:
+    Nested dictionary: {subject: {session: [moments]}}
 
-# Load specific moment
-data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
-```
+##### `load_moment_data(self, subject_id: str, session_id: str, moment: str) -> Tuple[pandas.core.frame.DataFrame, Dict]`
 
-**Parameters**:
-- `subject` (str): Subject ID (e.g., `'sub-f01p01'`)
-- `session` (str): Session ID (e.g., `'ses-01'`)
-- `moment` (str, optional): Moment/task name (e.g., `'restingstate'`, `'therapy'`). If None, loads all moments.
+Load BVP data for a specific moment (task).
 
-**Returns**: 
-- `data` (pd.DataFrame): BVP data with columns `['time', 'bvp']`
-- `metadata` (dict): Combined metadata from JSON sidecars
+Args:
+    subject_id: Subject identifier (e.g., 'sub-f01p01')
+    session_id: Session identifier (e.g., 'ses-01')
+    moment: Moment name (e.g., 'restingstate', 'therapy')
+    
+Returns:
+    Tuple of (data_dataframe, metadata_dict)
+    
+Raises:
+    FileNotFoundError: If TSV or JSON files are not found
+    ValueError: If data validation fails
 
-**Raises**:
-- `FileNotFoundError`: If data files don't exist
-- `ValueError`: If data validation fails
+##### `load_subject_session_data(self, subject_id: str, session_id: str, moments: Optional[List[str]] = None) -> Dict[str, Dict]`
 
-**DataFrame Structure**:
-```
-   time    bvp
-0  0.000  -0.123
-1  0.016   0.456
-2  0.031  -0.789
-```
+Load all BVP data for a subject and session across specified moments.
 
-##### `find_bvp_files(subject: str, session: str) -> List[Tuple[Path, Path]]`
-
-Finds all BVP TSV/JSON file pairs for a subject/session.
-
-```python
-file_pairs = loader.find_bvp_files('sub-f01p01', 'ses-01')
-# Returns: [(tsv_path_1, json_path_1), (tsv_path_2, json_path_2), ...]
-```
-
-**Parameters**:
-- `subject` (str): Subject ID
-- `session` (str): Session ID
-
-**Returns**: List of tuples `(tsv_path, json_path)` for each recording
-
-**Raises**: `FileNotFoundError` if no BVP files found
-
-##### `_load_single_recording(tsv_file: Path, json_file: Path) -> Tuple[pd.DataFrame, dict]`
-
-Internal method to load a single TSV/JSON pair.
-
-**Example Usage**:
-
-```python
-from src.physio.bvp_loader import BVPLoader
-
-loader = BVPLoader()
-
-# Load all moments for analysis
-all_data, all_meta = loader.load_subject_session('sub-f01p01', 'ses-01')
-print(f"Loaded {len(all_data)} samples at {all_meta['SamplingFrequency']} Hz")
-
-# Load only baseline
-baseline_data, baseline_meta = loader.load_subject_session(
-    'sub-f01p01', 'ses-01', moment='restingstate'
-)
-
-# Get time range
-duration = baseline_data['time'].max()
-print(f"Baseline duration: {duration:.1f} seconds")
-```
-
----
-
-### BVPCleaner
-
-**Module**: `src.physio.preprocessing.bvp_cleaner`
-
-Cleans and processes BVP signals using NeuroKit2 with peak detection and quality assessment.
+Args:
+    subject_id: Subject identifier (e.g., 'sub-f01p01')
+    session_id: Session identifier (e.g., 'ses-01')
+    moments: List of moment names to load. If None, loads all configured moments.
+    
+Returns:
+    Dictionary with moment names as keys and loaded data as values.
+    Each moment contains: {'data': DataFrame, 'metadata': Dict}
+    
+Raises:
+    FileNotFoundError: If required data files are not found
+    ValueError: If data validation fails
 
 #### Class: `BVPCleaner`
 
+**Module**: `src.physio.preprocessing.bvp_cleaner`
+
+Clean and process BVP data using NeuroKit2 PPG processing pipeline.
+
+This class implements the BVP preprocessing approach established in the original
+Therasync project, using nk.ppg_process with elgendi method for peak detection
+and templatematch for quality assessment.
+
+**Constructor**:
+
 ```python
-from src.physio.bvp_cleaner import BVPCleaner
-
-cleaner = BVPCleaner()
+BVPCleaner(self, config_path: Union[str, pathlib.Path, NoneType] = None)
 ```
-
-**Constructor Parameters**:
-- `config` (ConfigLoader, optional): Configuration object. If None, loads default config.
-
-**Attributes**:
-- `config` (ConfigLoader): Configuration loader instance
-- `sampling_rate` (int): BVP sampling rate (Hz)
-- `processing_config` (dict): Processing parameters from config
-- `method` (str): Peak detection method (default: `'elgendi'`)
-- `quality_threshold` (float): Minimum acceptable quality score (0-1 scale, default: 0.8)
 
 **Methods**:
 
-##### `clean_signal(bvp_data: pd.DataFrame, moment: str = None) -> pd.DataFrame`
+##### `apply_additional_filtering(self, signal: Union[pandas.core.series.Series, numpy.ndarray], sampling_rate: int) -> numpy.ndarray`
 
-Processes raw BVP signal and extracts clean signal with peaks.
+Apply additional filtering to BVP signal if needed.
 
-```python
-# Clean BVP signal
-processed = cleaner.clean_signal(raw_data, moment='restingstate')
+This method provides optional additional filtering using the configured
+frequency bounds, separate from the main nk.ppg_process pipeline.
 
-# Access results
-clean_signal = processed['PPG_Clean']
-peaks = processed['PPG_Peaks']
-quality = processed['PPG_Quality']
-heart_rate = processed['PPG_Rate']
-```
+Args:
+    signal: BVP signal to filter
+    sampling_rate: Sampling rate in Hz
+    
+Returns:
+    Filtered signal array
 
-**Parameters**:
-- `bvp_data` (pd.DataFrame): Raw BVP data with columns `['time', 'bvp']`
-- `moment` (str, optional): Moment name for logging purposes
+##### `get_clean_signal(self, processed_signals: pandas.core.frame.DataFrame) -> pandas.core.series.Series`
 
-**Returns**: pd.DataFrame with columns:
-- `PPG_Clean` (float): Cleaned BVP signal
-- `PPG_Peaks` (int): Binary peak indicators (1 = peak, 0 = no peak)
-- `PPG_Rate` (float): Instantaneous heart rate (BPM)
-- `PPG_Quality` (float): Signal quality score (0-1, higher = better)
+Extract the cleaned BVP signal from processed results.
 
-**Processing Pipeline**:
-1. Validates input data (time and bvp columns)
-2. Applies NeuroKit2 `ppg_process()` with specified method
-3. Detects peaks using Elgendi algorithm (optimized for PPG)
-4. Computes quality scores using template matching
-5. Logs warnings if quality < threshold
+Args:
+    processed_signals: DataFrame from process_signal()
+    
+Returns:
+    Series containing the cleaned BVP signal
 
-**Quality Score Interpretation**:
-- `0.8-1.0`: Excellent quality
-- `0.7-0.8`: Good quality
-- `0.65-0.7`: Acceptable (typical for long recordings)
-- `< 0.65`: Poor quality, review manually
+##### `get_peaks(self, processing_info: Dict) -> numpy.ndarray`
 
-##### `get_clean_signal(processed_signals: pd.DataFrame) -> pd.Series`
+Extract detected peaks from processing results.
 
-Extracts cleaned signal from processed results.
+Args:
+    processing_info: Info dictionary from process_signal()
+    
+Returns:
+    Array of peak indices
 
-```python
-clean_bvp = cleaner.get_clean_signal(processed_signals)
-```
+##### `get_quality_scores(self, processed_signals: pandas.core.frame.DataFrame) -> Optional[pandas.core.series.Series]`
 
-**Parameters**:
-- `processed_signals` (pd.DataFrame): Output from `clean_signal()`
+Extract signal quality scores if available.
 
-**Returns**: pd.Series containing cleaned BVP values
+Args:
+    processed_signals: DataFrame from process_signal()
+    
+Returns:
+    Series containing quality scores, or None if not available
 
-##### `get_peaks(processed_signals: pd.DataFrame) -> np.ndarray`
+##### `process_moment_signals(self, moment_data: Dict[str, Union[pandas.core.frame.DataFrame, Dict]]) -> Dict[str, Tuple[pandas.core.frame.DataFrame, Dict]]`
 
-Extracts peak indices from processed results.
+Process BVP signals for all moments in a dataset.
 
-```python
-peak_indices = cleaner.get_peaks(processed_signals)
-# Returns: array([123, 189, 256, 324, ...])  # Sample indices of peaks
-```
+Args:
+    moment_data: Dictionary with moment names as keys and data/metadata as values.
+                Expected format: {moment: {'data': DataFrame, 'metadata': Dict}}
+    
+Returns:
+    Dictionary with processed signals and info for each moment.
+    Format: {moment: (processed_signals, processing_info)}
 
-**Parameters**:
-- `processed_signals` (pd.DataFrame): Output from `clean_signal()`
+##### `process_signal(self, bvp_signal: Union[pandas.core.series.Series, numpy.ndarray, List], sampling_rate: Optional[int] = None, moment: str = 'unknown') -> Tuple[pandas.core.frame.DataFrame, Dict[str, Any]]`
 
-**Returns**: numpy array of integer indices where peaks occur
+Process a BVP signal using NeuroKit2 PPG processing pipeline.
 
-##### `get_peak_metadata(processed_signals: pd.DataFrame, moment: str = None) -> dict`
+This method follows the established Therasync approach:
+1. Apply nk.ppg_process with elgendi method and templatematch quality
+2. Extract cleaned signal and processing information
+3. Validate results and apply quality checks
 
-Computes comprehensive peak statistics and quality metrics.
+Args:
+    bvp_signal: Raw BVP signal data
+    sampling_rate: Sampling rate in Hz. If None, uses config default.
+    moment: Name of the moment/task being processed (for logging)
+    
+Returns:
+    Tuple of (processed_signals_dataframe, processing_info_dict)
+    
+Raises:
+    ValueError: If signal is empty or processing fails
+    RuntimeError: If NeuroKit2 processing encounters errors
 
-```python
-metadata = cleaner.get_peak_metadata(processed_signals, moment='therapy')
-```
-
-**Returns**: Dictionary with keys:
-```python
-{
-    'num_peaks': int,              # Total peaks detected
-    'peak_indices': List[int],     # Peak sample indices
-    'mean_quality': float,         # Average quality score
-    'std_quality': float,          # Quality score std dev
-    'processing_method': str,      # 'elgendi'
-    'quality_method': str,         # 'templatematch'
-    'sampling_rate': int,          # Hz
-    'quality_threshold': float,    # Configured threshold
-    'moment': str                  # Moment name (if provided)
-}
-```
-
-**Example Usage**:
-
-```python
-from src.physio.bvp_cleaner import BVPCleaner
-from src.physio.bvp_loader import BVPLoader
-
-# Load and clean
-loader = BVPLoader()
-cleaner = BVPCleaner()
-
-raw_data, _ = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
-processed = cleaner.clean_signal(raw_data, moment='restingstate')
-
-# Extract results
-clean_signal = cleaner.get_clean_signal(processed)
-peaks = cleaner.get_peaks(processed)
-metadata = cleaner.get_peak_metadata(processed, moment='restingstate')
-
-print(f"Detected {metadata['num_peaks']} peaks")
-print(f"Quality: {metadata['mean_quality']:.3f}")
-print(f"Heart rate range: {processed['PPG_Rate'].min():.1f}-{processed['PPG_Rate'].max():.1f} BPM")
-```
-
----
-
-### BVPMetrics
+#### Class: `BVPMetricsExtractor`
 
 **Module**: `src.physio.preprocessing.bvp_metrics`
 
-Extracts Heart Rate Variability (HRV) metrics from processed BVP signals.
+Extract HRV and cardiovascular metrics from processed BVP data.
 
-#### Class: `BVPMetrics`
+This class implements the essential HRV metrics extraction using NeuroKit2,
+supporting both session-level analysis and future epoched analysis capabilities.
+
+**Constructor**:
 
 ```python
-from src.physio.bvp_metrics import BVPMetrics
-
-metrics_extractor = BVPMetrics()
+BVPMetricsExtractor(self, config_path: Union[str, pathlib.Path, NoneType] = None)
 ```
-
-**Constructor Parameters**:
-- `config` (ConfigLoader, optional): Configuration object. If None, loads default config.
-
-**Attributes**:
-- `config` (ConfigLoader): Configuration loader instance
-- `sampling_rate` (int): BVP sampling rate
-- `selected_metrics` (dict): Configured metrics to extract
 
 **Methods**:
 
-##### `extract_hrv_metrics(processed_signals: pd.DataFrame, moment: str = None) -> pd.DataFrame`
+##### `compare_moments(self, session_metrics: Dict[str, Dict[str, float]], baseline_moment: str = 'restingstate', comparison_moment: str = 'therapy') -> Dict[str, float]`
 
-Extracts HRV metrics from processed BVP signal.
+Compare metrics between two moments (e.g., resting vs therapy).
 
-```python
-# Extract metrics for one moment
-metrics_df = metrics_extractor.extract_hrv_metrics(processed_signals, moment='restingstate')
+Args:
+    session_metrics: Output from extract_session_metrics()
+    baseline_moment: Name of baseline moment
+    comparison_moment: Name of comparison moment
+    
+Returns:
+    Dictionary of differences (comparison - baseline)
 
-# DataFrame has 1 row with all metrics
-print(metrics_df.columns)
-# ['moment', 'HRV_MeanNN', 'HRV_SDNN', 'HRV_RMSSD', 'HRV_pNN50', ...]
-```
+##### `extract_epoched_metrics(self, processed_signals: pandas.core.frame.DataFrame, processing_info: Dict, moment: str) -> pandas.core.frame.DataFrame`
 
-**Parameters**:
-- `processed_signals` (pd.DataFrame): Output from `BVPCleaner.clean_signal()`
-- `moment` (str, optional): Moment name to include in output
+Extract HRV metrics from sliding windows (future implementation).
 
-**Returns**: pd.DataFrame with 1 row containing all metrics
+This method will implement the 30-second sliding window approach
+with 1-second steps for dynamic HRV analysis.
 
-**Extracted Metrics**:
+Args:
+    processed_signals: Processed signals DataFrame
+    processing_info: Processing information dictionary
+    moment: Moment name
+    
+Returns:
+    DataFrame with time-series of HRV metrics
 
-**Time-Domain HRV (5 metrics)**:
-- `HRV_MeanNN` (ms): Mean of normal-to-normal (NN) intervals
-- `HRV_SDNN` (ms): Standard deviation of NN intervals (overall variability)
-- `HRV_RMSSD` (ms): Root mean square of successive differences (parasympathetic activity)
-- `HRV_pNN50` (%): Percentage of successive NN intervals >50ms (parasympathetic tone)
-- `HRV_CVNN`: Coefficient of variation of NN intervals (normalized variability)
+##### `extract_session_metrics(self, processed_results: Dict[str, Tuple[pandas.core.frame.DataFrame, Dict]]) -> Dict[str, Dict[str, float]]`
 
-**Frequency-Domain HRV (4 metrics)**:
-- `HRV_LF` (ms²): Low frequency power (0.04-0.15 Hz, sympathetic + parasympathetic)
-- `HRV_HF` (ms²): High frequency power (0.15-0.4 Hz, parasympathetic/RSA)
-- `HRV_LFHF`: Ratio of LF to HF (autonomic balance indicator)
-- `HRV_TP` (ms²): Total power (overall autonomic activity)
+Extract HRV metrics for entire sessions/moments.
 
-**Nonlinear HRV (3 metrics)**:
-- `HRV_SD1` (ms): Poincaré plot SD1 (short-term variability)
-- `HRV_SD2` (ms): Poincaré plot SD2 (long-term variability)
-- `HRV_SampEn`: Sample entropy (signal complexity/regularity, lower = more regular)
+Args:
+    processed_results: Output from BVPCleaner.process_moment_signals()
+                      Format: {moment: (processed_signals, processing_info)}
+    
+Returns:
+    Dictionary with extracted metrics for each moment.
+    Format: {moment: {metric_name: value}}
 
-**Signal Quality Metrics (8 metrics)**:
-- `BVP_NumPeaks`: Number of detected peaks
-- `BVP_Duration` (s): Signal duration
-- `BVP_PeakRate` (peaks/s): Average peak detection rate
-- `BVP_MeanQuality`: Mean quality score (0-1)
-- `BVP_QualityStd`: Standard deviation of quality scores
-- `BVP_MeanAmplitude`: Mean peak amplitude
-- `BVP_StdAmplitude`: Standard deviation of amplitudes
-- `BVP_RangeAmplitude`: Range (max - min) of amplitudes
+##### `get_configured_metrics_list(self) -> List[str]`
 
-##### `extract_multiple_moments(moment_data: Dict[str, pd.DataFrame]) -> pd.DataFrame`
+Get list of all configured metrics that will be extracted.
 
-Extracts metrics for multiple moments at once.
+Returns:
+    List of metric names
 
-```python
-# Dictionary of moment name -> processed signals
-moments = {
-    'restingstate': processed_rest,
-    'therapy': processed_therapy
-}
+##### `get_metrics_summary(self, session_metrics: Dict[str, Dict[str, float]]) -> pandas.core.frame.DataFrame`
 
-# Extract all at once
-all_metrics = metrics_extractor.extract_multiple_moments(moments)
+Convert session metrics to a summary DataFrame.
 
-# DataFrame has 2 rows (one per moment)
-print(all_metrics[['moment', 'HRV_MeanNN', 'HRV_RMSSD']])
-#         moment  HRV_MeanNN  HRV_RMSSD
-# 0  restingstate      1201.4      85.2
-# 1       therapy       963.7      42.1
-```
-
-**Parameters**:
-- `moment_data` (Dict[str, pd.DataFrame]): Dictionary mapping moment names to processed signals
-
-**Returns**: pd.DataFrame with one row per moment
-
-##### `get_metric_descriptions() -> dict`
-
-Returns detailed descriptions of all available metrics.
-
-```python
-descriptions = metrics_extractor.get_metric_descriptions()
-
-print(descriptions['HRV_RMSSD'])
-# {'name': 'Root Mean Square of Successive Differences',
-#  'unit': 'ms',
-#  'domain': 'time',
-#  'description': 'Reflects parasympathetic (vagal) activity',
-#  'interpretation': 'Higher values indicate better autonomic regulation'}
-```
-
-**Returns**: Dictionary with metric names as keys and description dicts as values
-
-**Example Usage**:
-
-```python
-from src.physio.bvp_loader import BVPLoader
-from src.physio.bvp_cleaner import BVPCleaner
-from src.physio.bvp_metrics import BVPMetrics
-
-# Initialize pipeline
-loader = BVPLoader()
-cleaner = BVPCleaner()
-metrics = BVPMetrics()
-
-# Process one moment
-raw_data, _ = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
-processed = cleaner.clean_signal(raw_data, moment='restingstate')
-hrv_metrics = metrics.extract_hrv_metrics(processed, moment='restingstate')
-
-# Compare multiple moments
-moments_data = {}
-for moment in ['restingstate', 'therapy']:
-    raw, _ = loader.load_subject_session('sub-f01p01', 'ses-01', moment=moment)
-    moments_data[moment] = cleaner.clean_signal(raw, moment=moment)
-
-comparison = metrics.extract_multiple_moments(moments_data)
-
-# Analyze differences
-print("HRV Comparison:")
-print(comparison[['moment', 'HRV_MeanNN', 'HRV_RMSSD', 'HRV_HF', 'HRV_LFHF']])
-```
-
----
-
-### BVPBIDSWriter
-
-**Module**: `src.physio.preprocessing.bvp_bids_writer`
-
-Writes processed BVP data in BIDS-compliant format with comprehensive metadata.
+Args:
+    session_metrics: Output from extract_session_metrics()
+    
+Returns:
+    DataFrame with moments as rows and metrics as columns
 
 #### Class: `BVPBIDSWriter`
 
+**Module**: `src.physio.preprocessing.bvp_bids_writer`
+
+Save processed BVP data and metrics in BIDS-compliant format.
+
+This class handles saving processed signals, extracted metrics, and metadata
+following BIDS derivatives specifications for physiological data.
+
+**Constructor**:
+
 ```python
-from src.physio.bvp_bids_writer import BVPBIDSWriter
-
-writer = BVPBIDSWriter()
+BVPBIDSWriter(self, config_path: Union[str, pathlib.Path, NoneType] = None)
 ```
-
-**Constructor Parameters**:
-- `config` (ConfigLoader, optional): Configuration object. If None, loads default config.
-
-**Attributes**:
-- `config` (ConfigLoader): Configuration loader instance
-- `derivatives_path` (Path): Path to derivatives output directory
-- `pipeline_name` (str): Pipeline name for BIDS structure (default: `'therasync-bvp'`)
 
 **Methods**:
 
-##### `write_processed_signals(subject: str, session: str, moment: str, processed_signals: pd.DataFrame, original_metadata: dict) -> Path`
+##### `create_group_summary(self, subjects_data: Dict[str, Dict[str, Dict[str, float]]], output_filename: str = 'group_bvp_metrics.tsv') -> str`
 
-Saves processed BVP signal to BIDS-compliant TSV/JSON files.
+Create group-level summary of BVP metrics across subjects.
 
-```python
-output_path = writer.write_processed_signals(
-    subject='sub-f01p01',
-    session='ses-01',
-    moment='restingstate',
-    processed_signals=processed_data,
-    original_metadata=original_meta
-)
-# Saves to: data/derivatives/therasync-bvp/sub-f01p01/ses-01/physio/
-#   sub-f01p01_ses-01_task-restingstate_desc-processed_recording-bvp.tsv
-#   sub-f01p01_ses-01_task-restingstate_desc-processed_recording-bvp.json
-```
+Args:
+    subjects_data: Nested dict {subject_id: {session_id: session_metrics}}
+    output_filename: Name of output file
+    
+Returns:
+    Path to created group summary file
 
-**Parameters**:
-- `subject` (str): Subject ID (e.g., `'sub-f01p01'`)
-- `session` (str): Session ID (e.g., `'ses-01'`)
-- `moment` (str): Moment/task name (e.g., `'restingstate'`)
-- `processed_signals` (pd.DataFrame): Output from `BVPCleaner.clean_signal()`
-- `original_metadata` (dict): Original metadata from raw data
+##### `save_processed_data(self, subject_id: str, session_id: str, processed_results: Dict[str, pandas.core.frame.DataFrame], session_metrics: Optional[pandas.core.frame.DataFrame] = None, processing_metadata: Optional[Dict] = None) -> Dict[str, List[pathlib.Path]]`
 
-**Returns**: Path to saved TSV file
+Save processed BVP data and metrics in BIDS format.
 
-**Output Files**:
-1. **TSV file**: Tab-separated values with columns `['time', 'PPG_Clean', 'PPG_Rate']`
-2. **JSON sidecar**: Metadata including processing parameters, column descriptions, units
+Args:
+    subject_id: Subject identifier WITH prefix (e.g., 'sub-f01p01')
+    session_id: Session identifier WITH prefix (e.g., 'ses-01')
+    processed_results: Dictionary mapping moment names to processed DataFrames
+                     Expected columns: time, PPG_Raw, PPG_Clean, PPG_Quality, PPG_Peaks, PPG_Rate
+    session_metrics: DataFrame with session-level metrics (optional)
+    processing_metadata: Dictionary with moment-specific processing info (optional)
+    
+Returns:
+    Dictionary with lists of created file paths
 
-##### `write_processing_metadata(subject: str, session: str, moment: str, peak_metadata: dict) -> Path`
-
-Saves processing metadata (peaks, quality) to JSON file.
-
-```python
-meta_path = writer.write_processing_metadata(
-    subject='sub-f01p01',
-    session='ses-01',
-    moment='restingstate',
-    peak_metadata=peak_meta
-)
-# Saves to: sub-f01p01_ses-01_task-restingstate_desc-processing_recording-bvp.json
-```
-
-**Parameters**:
-- `subject` (str): Subject ID
-- `session` (str): Session ID
-- `moment` (str): Moment name
-- `peak_metadata` (dict): Output from `BVPCleaner.get_peak_metadata()`
-
-**Returns**: Path to saved JSON file
-
-**Output Content**:
-```json
-{
-  "num_peaks": 46,
-  "peak_indices": [123, 189, 256, ...],
-  "mean_quality": 0.81,
-  "std_quality": 0.15,
-  "processing_method": "elgendi",
-  "quality_method": "templatematch",
-  "sampling_rate": 64,
-  "quality_threshold": 0.8,
-  "processing_timestamp": "2025-10-28T12:34:56"
-}
-```
-
-##### `write_hrv_metrics(subject: str, session: str, metrics_df: pd.DataFrame) -> Path`
-
-Saves HRV metrics to BIDS-compliant TSV/JSON files.
-
-```python
-metrics_path = writer.write_hrv_metrics(
-    subject='sub-f01p01',
-    session='ses-01',
-    metrics_df=hrv_metrics
-)
-# Saves to: sub-f01p01_ses-01_desc-bvpmetrics_physio.tsv
-#           sub-f01p01_ses-01_desc-bvpmetrics_physio.json
-```
-
-**Parameters**:
-- `subject` (str): Subject ID
-- `session` (str): Session ID
-- `metrics_df` (pd.DataFrame): Output from `BVPMetrics.extract_hrv_metrics()` or `extract_multiple_moments()`
-
-**Returns**: Path to saved TSV file
-
-**Output Files**:
-1. **TSV file**: All HRV metrics (20 columns) with one row per moment
-2. **JSON sidecar**: Comprehensive metadata with column descriptions, units, domains
-
-##### `write_session_summary(subject: str, session: str, summary_data: dict) -> Path`
-
-Saves session-level summary of all processing.
-
-```python
-summary = {
-    'moments_processed': ['restingstate', 'therapy'],
-    'total_duration': 2839.0,
-    'total_peaks': 2929,
-    'mean_quality': 0.755,
-    'processing_complete': True
-}
-
-summary_path = writer.write_session_summary('sub-f01p01', 'ses-01', summary)
-# Saves to: sub-f01p01_ses-01_desc-summary_recording-bvp.json
-```
-
-**Parameters**:
-- `subject` (str): Subject ID
-- `session` (str): Session ID
-- `summary_data` (dict): Summary statistics dictionary
-
-**Returns**: Path to saved JSON file
-
-##### `create_dataset_description() -> None`
-
-Creates/updates `dataset_description.json` at derivatives root.
-
-```python
-writer.create_dataset_description()
-# Creates: data/derivatives/therasync-bvp/dataset_description.json
-```
-
-**Output Content**:
-```json
-{
-  "Name": "Therasync BVP Processing",
-  "BIDSVersion": "1.6.0",
-  "DatasetType": "derivative",
-  "GeneratedBy": [{
-    "Name": "TherasyncPipeline",
-    "Version": "0.1.0",
-    "CodeURL": "https://github.com/Ramdam17/TherasyncAnalysis"
-  }],
-  "SourceDatasets": [{
-    "URL": "local",
-    "Version": "0.1.0"
-  }]
-}
-```
-
-**Example Usage**:
-
-```python
-from src.physio.bvp_loader import BVPLoader
-from src.physio.bvp_cleaner import BVPCleaner
-from src.physio.bvp_metrics import BVPMetrics
-from src.physio.bvp_bids_writer import BVPBIDSWriter
-
-# Initialize pipeline
-loader = BVPLoader()
-cleaner = BVPCleaner()
-metrics = BVPMetrics()
-writer = BVPBIDSWriter()
-
-# Create dataset description (once per project)
-writer.create_dataset_description()
-
-# Process and save one moment
-subject, session, moment = 'sub-f01p01', 'ses-01', 'restingstate'
-
-raw_data, original_meta = loader.load_subject_session(subject, session, moment=moment)
-processed = cleaner.clean_signal(raw_data, moment=moment)
-peak_meta = cleaner.get_peak_metadata(processed, moment=moment)
-hrv_metrics = metrics.extract_hrv_metrics(processed, moment=moment)
-
-# Save all outputs
-writer.write_processed_signals(subject, session, moment, processed, original_meta)
-writer.write_processing_metadata(subject, session, moment, peak_meta)
-writer.write_hrv_metrics(subject, session, hrv_metrics)
-
-print(f"✓ Saved outputs to: data/derivatives/therasync-bvp/{subject}/{session}/physio/")
-```
 
 ---
 
-## EDA (Electrodermal Activity) Modules
-
-### EDALoader
-
-**Module**: `src.physio.preprocessing.eda_loader`
-
-Loads and validates Electrodermal Activity (EDA) data from Empatica E4 devices in BIDS format.
+## EDA Preprocessing
 
 #### Class: `EDALoader`
 
+**Module**: `src.physio.preprocessing.eda_loader`
+
+Load and validate EDA data files from BIDS-formatted Empatica recordings.
+
+This class handles loading EDA (skin conductance) data with associated metadata,
+validates data integrity, and segments data according to configured moments
+(e.g., restingstate, therapy).
+
+EDA data from Empatica E4:
+- Sampling rate: 4 Hz
+- Unit: microsiemens (μS)
+- Measures skin conductance response (SCR)
+
+**Constructor**:
+
 ```python
-from src.physio.eda_loader import EDALoader
-
-loader = EDALoader()
+EDALoader(self, config_path: Union[str, pathlib.Path, NoneType] = None)
 ```
-
-**Constructor Parameters**:
-- `config` (ConfigLoader, optional): Configuration instance. If `None`, creates new instance.
-
-**Attributes**:
-- `sourcedata_path` (Path): Path to raw data directory
-- `sampling_rate` (int): EDA sampling rate (default: 4 Hz for Empatica E4)
 
 **Methods**:
 
-##### `load_subject_session(subject: str, session: str, moment: Optional[str] = None) -> Tuple[pd.DataFrame, dict]`
+##### `find_eda_files(self, subject: str, session: str) -> List[Tuple[pathlib.Path, pathlib.Path]]`
 
-Loads EDA data for a subject/session, optionally filtered by moment.
+Find all EDA TSV/JSON file pairs for a subject/session.
 
-```python
-# Load all moments
-data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01')
+Args:
+    subject: Subject ID (e.g., 'sub-f01p01')
+    session: Session ID (e.g., 'ses-01')
 
-# Load specific moment
-data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
-```
+Returns:
+    List of tuples (tsv_path, json_path) for each EDA recording
 
-**Parameters**:
-- `subject` (str): Subject ID (e.g., `'sub-f01p01'`)
-- `session` (str): Session ID (e.g., `'ses-01'`)
-- `moment` (str, optional): Task/moment name. If `None`, loads all moments.
+Raises:
+    FileNotFoundError: If physio directory doesn't exist
 
-**Returns**:
-- `data` (pd.DataFrame): EDA signal with columns `['time', 'eda']`
-- `metadata` (dict): Combined metadata from JSON sidecars
+Example:
+    >>> loader = EDALoader()
+    >>> files = loader.find_eda_files('sub-f01p01', 'ses-01')
+    >>> print(f"Found {len(files)} EDA recordings")
 
-**Example DataFrame**:
-```
-      time       eda
-0     0.00     1.234
-1     0.25     1.256
-2     0.50     1.278
-...
-```
+##### `get_data_info(self, data: pandas.core.frame.DataFrame, metadata: dict) -> dict`
 
-**Metadata Keys**:
-- `SamplingFrequency`: 4.0 (Hz)
-- `StartTime`: Start time in seconds
-- `TaskName`: Moment/task name
-- `RecordingType`: 'EDA'
-- `Units`: ['s', 'μS']
-- `DeviceManufacturer`: 'Empatica'
-- `DeviceModel`: 'E4'
+Get summary information about loaded EDA data.
 
----
+Args:
+    data: Loaded EDA DataFrame
+    metadata: Associated metadata
 
-### EDACleaner
+Returns:
+    Dictionary with data summary information
 
-**Module**: `src.physio.preprocessing.eda_cleaner`
+Example:
+    >>> info = loader.get_data_info(data, metadata)
+    >>> print(f"Samples: {info['num_samples']}, Duration: {info['duration_seconds']:.1f}s")
 
-Decomposes EDA signal into tonic (slow baseline) and phasic (fast SCR) components using cvxEDA.
+##### `get_moment_duration(self, data: pandas.core.frame.DataFrame) -> float`
+
+Calculate duration of EDA recording in seconds.
+
+Args:
+    data: DataFrame with time column
+
+Returns:
+    Duration in seconds
+
+Example:
+    >>> duration = loader.get_moment_duration(data)
+    >>> print(f"Recording duration: {duration:.1f} seconds")
+
+##### `load_subject_session(self, subject: str, session: str, moment: Optional[str] = None) -> Tuple[pandas.core.frame.DataFrame, dict]`
+
+Load EDA data for a specific subject/session, optionally filtered by moment.
+
+Args:
+    subject: Subject ID (e.g., 'sub-f01p01')
+    session: Session ID (e.g., 'ses-01')
+    moment: Optional moment/task name (e.g., 'restingstate', 'therapy').
+           If None, loads and concatenates all moments.
+
+Returns:
+    Tuple of:
+        - DataFrame with columns ['time', 'eda']
+        - Dictionary with combined metadata from JSON sidecars
+
+Raises:
+    FileNotFoundError: If no EDA files found for subject/session
+    ValueError: If data validation fails
+
+Example:
+    >>> loader = EDALoader()
+    >>> data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
+    >>> print(f"Loaded {len(data)} samples at {metadata['SamplingFrequency']} Hz")
 
 #### Class: `EDACleaner`
 
+**Module**: `src.physio.preprocessing.eda_cleaner`
+
+Clean and process EDA signals using NeuroKit2.
+
+This class handles:
+- Signal cleaning and filtering
+- Tonic-phasic decomposition
+- SCR (Skin Conductance Response) peak detection
+- Quality assessment
+
+The tonic component represents the baseline skin conductance level,
+while the phasic component represents rapid SCRs (sympathetic arousal responses).
+
+**Constructor**:
+
 ```python
-from src.physio.eda_cleaner import EDACleaner
-
-cleaner = EDACleaner()
+EDACleaner(self, config_path: Union[str, pathlib.Path, NoneType] = None)
 ```
-
-**Constructor Parameters**:
-- `config` (ConfigLoader, optional): Configuration instance
-
-**Attributes**:
-- `method` (str): Decomposition method (default: `'neurokit'` uses cvxEDA)
-- `sampling_rate` (int): Sampling rate in Hz (default: 4)
-- `scr_threshold` (float): Minimum SCR amplitude in μS (default: 0.01)
 
 **Methods**:
 
-##### `clean_signal(eda_data: pd.DataFrame, moment: Optional[str] = None) -> pd.DataFrame`
+##### `clean_signal(self, eda_data: pandas.core.frame.DataFrame, moment: Optional[str] = None) -> pandas.core.frame.DataFrame`
 
-Process raw EDA signal and decompose into tonic/phasic components.
+Process raw EDA signal and decompose into tonic and phasic components.
 
-```python
-raw_data, _ = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
-processed = cleaner.clean_signal(raw_data, moment='restingstate')
-```
+This method:
+1. Cleans the raw EDA signal
+2. Decomposes into tonic (slow-changing baseline) and phasic (fast responses) components
+3. Detects SCR peaks in the phasic component
+4. Computes quality metrics
 
-**Parameters**:
-- `eda_data` (pd.DataFrame): Raw EDA with columns `['time', 'eda']`
-- `moment` (str, optional): Moment name for logging
+Args:
+    eda_data: DataFrame with columns ['time', 'eda']
+    moment: Optional moment name for logging
 
-**Returns**: DataFrame with processed signals
+Returns:
+    DataFrame with processed EDA signals including:
+        - EDA_Raw: Original signal
+        - EDA_Clean: Cleaned signal
+        - EDA_Tonic: Slow-varying baseline (tonic component)
+        - EDA_Phasic: Fast-varying responses (phasic component)
+        - SCR_Peaks: Binary indicators of SCR peaks (1 = peak, 0 = no peak)
+        - SCR_Amplitude: Amplitude of detected SCRs (0 if no peak)
+        - SCR_RiseTime: Rise time of SCRs (0 if no peak)
+        - SCR_RecoveryTime: Recovery time of SCRs (0 if no peak)
 
-**Output Columns**:
-- `time` (float): Time in seconds
-- `EDA_Raw` (float): Original signal (μS)
-- `EDA_Clean` (float): Cleaned signal (μS)
-- `EDA_Tonic` (float): Slow-varying baseline component (μS)
-- `EDA_Phasic` (float): Fast-varying response component (μS)
-- `SCR_Peaks` (int): Binary indicator of SCR peaks (1=peak, 0=no peak)
-- `SCR_Amplitude` (float): Amplitude of detected SCRs (μS, 0 if no peak)
-- `SCR_RiseTime` (float): Rise time of SCRs (seconds, 0 if no peak)
-- `SCR_RecoveryTime` (float): Recovery time of SCRs (seconds, 0 if no peak)
+Raises:
+    ValueError: If input data is invalid
 
-**Processing Steps**:
-1. Clean raw signal (artifact removal)
-2. Decompose using cvxEDA into tonic + phasic
-3. Detect SCR peaks in phasic component (threshold: 0.01 μS)
-4. Compute SCR characteristics (amplitude, rise/recovery times)
+Example:
+    >>> cleaner = EDACleaner()
+    >>> processed = cleaner.clean_signal(raw_data, moment='restingstate')
+    >>> print(f"Detected {processed['SCR_Peaks'].sum()} SCRs")
 
-**Example**:
-```python
-processed = cleaner.clean_signal(raw_data, moment='therapy')
-print(f"Detected {processed['SCR_Peaks'].sum()} SCRs")
-print(f"Mean tonic level: {processed['EDA_Tonic'].mean():.3f} μS")
-```
+##### `compute_scr_features(self, processed_signals: pandas.core.frame.DataFrame) -> pandas.core.frame.DataFrame`
 
----
+Compute detailed features for each detected SCR.
 
-### EDAMetricsExtractor
+Args:
+    processed_signals: Output from clean_signal()
 
-**Module**: `src.physio.preprocessing.eda_metrics`
+Returns:
+    DataFrame with one row per SCR, containing:
+        - scr_index: Sample index of SCR peak
+        - scr_time: Time of SCR peak (seconds)
+        - scr_amplitude: SCR amplitude (μS)
+        - scr_rise_time: Rise time (seconds)
+        - scr_recovery_time: Recovery time (seconds)
 
-Extracts comprehensive EDA metrics from processed signals.
+Example:
+    >>> scr_features = cleaner.compute_scr_features(processed_signals)
+    >>> print(f"Found {len(scr_features)} SCRs")
+    >>> print(scr_features[['scr_time', 'scr_amplitude']].head())
+
+##### `get_phasic_component(self, processed_signals: pandas.core.frame.DataFrame) -> pandas.core.series.Series`
+
+Extract phasic (response) component from processed signals.
+
+The phasic component represents rapid skin conductance responses (SCRs)
+associated with sympathetic nervous system activity and emotional arousal.
+
+Args:
+    processed_signals: Output from clean_signal()
+
+Returns:
+    Series containing phasic EDA values
+
+Example:
+    >>> phasic = cleaner.get_phasic_component(processed_signals)
+    >>> print(f"Mean phasic activity: {phasic.mean():.4f} μS")
+
+##### `get_scr_metadata(self, processed_signals: pandas.core.frame.DataFrame, moment: Optional[str] = None) -> dict`
+
+Compute comprehensive SCR statistics and quality metrics.
+
+Args:
+    processed_signals: Output from clean_signal()
+    moment: Optional moment name to include in metadata
+
+Returns:
+    Dictionary with SCR statistics:
+        - num_scrs: Total number of detected SCRs
+        - scr_indices: List of sample indices where SCRs occur
+        - scr_rate: SCRs per minute
+        - mean_scr_amplitude: Average SCR amplitude (μS)
+        - max_scr_amplitude: Maximum SCR amplitude (μS)
+        - mean_rise_time: Average rise time (seconds)
+        - mean_recovery_time: Average recovery time (seconds)
+        - tonic_mean: Mean tonic level (μS)
+        - tonic_std: Tonic level standard deviation (μS)
+        - phasic_mean: Mean phasic activity (μS)
+        - phasic_std: Phasic activity standard deviation (μS)
+        - processing_method: Method used for processing
+        - sampling_rate: Sampling rate (Hz)
+        - duration_seconds: Signal duration
+
+Example:
+    >>> metadata = cleaner.get_scr_metadata(processed_signals, moment='therapy')
+    >>> print(f"SCR rate: {metadata['scr_rate']:.2f} per minute")
+
+##### `get_scr_peaks(self, processed_signals: pandas.core.frame.DataFrame) -> numpy.ndarray`
+
+Extract SCR peak indices from processed signals.
+
+Args:
+    processed_signals: Output from clean_signal()
+
+Returns:
+    Array of sample indices where SCR peaks occur
+
+Example:
+    >>> peaks = cleaner.get_scr_peaks(processed_signals)
+    >>> print(f"SCR peaks at indices: {peaks}")
+
+##### `get_tonic_component(self, processed_signals: pandas.core.frame.DataFrame) -> pandas.core.series.Series`
+
+Extract tonic (baseline) component from processed signals.
+
+The tonic component represents the slow-varying baseline skin conductance level.
+It reflects overall arousal state and changes gradually over time.
+
+Args:
+    processed_signals: Output from clean_signal()
+
+Returns:
+    Series containing tonic EDA values
+
+Example:
+    >>> tonic = cleaner.get_tonic_component(processed_signals)
+    >>> print(f"Mean tonic level: {tonic.mean():.3f} μS")
 
 #### Class: `EDAMetricsExtractor`
 
+**Module**: `src.physio.preprocessing.eda_metrics`
+
+Extract EDA metrics from processed signals.
+
+This class computes comprehensive metrics from EDA data:
+- SCR features: count, amplitude (mean/max), rise time, recovery time
+- Tonic component: mean, standard deviation
+- Phasic component: mean, standard deviation, rate
+
+Metrics can be extracted for full recordings or individual moments.
+
+**Constructor**:
+
 ```python
-from src.physio.eda_metrics import EDAMetricsExtractor
-
-extractor = EDAMetricsExtractor()
+EDAMetricsExtractor(self, config_path: Union[str, pathlib.Path, NoneType] = None)
 ```
-
-**Constructor Parameters**:
-- `config` (ConfigLoader, optional): Configuration instance
-
-**Attributes**:
-- `selected_metrics` (list): Metrics to compute (from config)
 
 **Methods**:
 
-##### `extract_eda_metrics(processed_signals: pd.DataFrame, moment: Optional[str] = None) -> pd.DataFrame`
+##### `extract_eda_metrics(self, processed_signals: pandas.core.frame.DataFrame, moment: Optional[str] = None) -> pandas.core.frame.DataFrame`
 
-Extracts EDA metrics from processed signals.
+Extract EDA metrics from processed signals.
 
-```python
-processed = cleaner.clean_signal(raw_data, moment='restingstate')
-metrics = extractor.extract_eda_metrics(processed, moment='restingstate')
-```
+Args:
+    processed_signals: Output from EDACleaner.clean_signal()
+        Must contain columns: EDA_Tonic, EDA_Phasic, SCR_Peaks, SCR_Amplitude,
+        SCR_RiseTime, SCR_RecoveryTime
+    moment: Optional moment name to include in output
 
-**Parameters**:
-- `processed_signals` (pd.DataFrame): Output from `EDACleaner.clean_signal()`
-- `moment` (str, optional): Moment name (added to output)
+Returns:
+    DataFrame with one row containing all EDA metrics
 
-**Returns**: DataFrame with one row containing all metrics
+Example:
+    >>> extractor = EDAMetricsExtractor()
+    >>> metrics = extractor.extract_eda_metrics(processed_signals, moment='restingstate')
+    >>> print(metrics[['SCR_Peaks_N', 'SCR_Peaks_Amplitude_Mean', 'EDA_Tonic_Mean']])
 
-**Metric Categories** (23 metrics total):
+##### `extract_multiple_moments(self, moment_data: Dict[str, pandas.core.frame.DataFrame]) -> pandas.core.frame.DataFrame`
 
-1. **SCR Metrics** (9):
-   - `SCR_Peaks_N`: Number of SCR peaks detected
-   - `SCR_Peaks_Rate`: SCR rate per minute
-   - `SCR_Peaks_Amplitude_Mean`: Mean SCR amplitude (μS)
-   - `SCR_Peaks_Amplitude_Max`: Maximum SCR amplitude (μS)
-   - `SCR_Peaks_Amplitude_Sum`: Sum of all SCR amplitudes (μS)
-   - `SCR_RiseTime_Mean`: Mean SCR rise time (seconds)
-   - `SCR_RecoveryTime_Mean`: Mean SCR recovery time (seconds)
-   - `SCR_Peaks_Amplitude_Std`: Standard deviation of SCR amplitudes
-   - `SCR_Peaks_Amplitude_Min`: Minimum SCR amplitude (μS)
+Extract EDA metrics for multiple moments at once.
 
-2. **Tonic Component Metrics** (5):
-   - `EDA_Tonic_Mean`: Mean tonic level (μS)
-   - `EDA_Tonic_Std`: Standard deviation of tonic level
-   - `EDA_Tonic_Min`: Minimum tonic level (μS)
-   - `EDA_Tonic_Max`: Maximum tonic level (μS)
-   - `EDA_Tonic_Range`: Range of tonic level (μS)
+Args:
+    moment_data: Dictionary mapping moment names to processed signals
+        Example: {'restingstate': processed_rest, 'therapy': processed_therapy}
 
-3. **Phasic Component Metrics** (6):
-   - `EDA_Phasic_Mean`: Mean phasic activity (μS)
-   - `EDA_Phasic_Std`: Standard deviation of phasic activity
-   - `EDA_Phasic_Min`: Minimum phasic value (μS)
-   - `EDA_Phasic_Max`: Maximum phasic value (μS)
-   - `EDA_Phasic_Range`: Range of phasic activity (μS)
-   - `EDA_Phasic_Rate`: Rate of change of phasic component
+Returns:
+    DataFrame with one row per moment containing all metrics
 
-4. **Metadata** (3):
-   - `moment`: Moment/task name
-   - `EDA_Duration`: Signal duration (seconds)
-   - `EDA_SamplingRate`: Sampling rate (Hz)
+Example:
+    >>> moments = {
+    ...     'restingstate': processed_rest,
+    ...     'therapy': processed_therapy
+    ... }
+    >>> all_metrics = extractor.extract_multiple_moments(moments)
+    >>> print(all_metrics[['moment', 'SCR_Peaks_N', 'EDA_Tonic_Mean']])
 
-**Example Output**:
-```
-  moment  SCR_Peaks_N  SCR_Peaks_Rate  SCR_Peaks_Amplitude_Mean  EDA_Tonic_Mean  ...
-0  rest            22            22.0                     0.156           1.234  ...
-```
+##### `get_metric_descriptions(self) -> Dict[str, dict]`
 
-##### `extract_multiple_moments(processed_results: Dict[str, pd.DataFrame]) -> pd.DataFrame`
+Get detailed descriptions of all EDA metrics.
 
-Extracts metrics for multiple moments in batch.
+Returns:
+    Dictionary with metric names as keys and description dicts as values.
+    Each description contains: name, unit, domain, description, interpretation
 
-```python
-processed_results = {
-    'restingstate': processed_rest,
-    'therapy': processed_therapy
-}
+Example:
+    >>> extractor = EDAMetricsExtractor()
+    >>> descriptions = extractor.get_metric_descriptions()
+    >>> print(descriptions['SCR_Peaks_N'])
 
-all_metrics = extractor.extract_multiple_moments(processed_results)
-```
+##### `get_selected_metrics(self) -> List[str]`
 
-**Parameters**:
-- `processed_results` (dict): Dict mapping moment names to processed DataFrames
+Get list of metrics configured to be extracted.
 
-**Returns**: DataFrame with one row per moment
-
----
-
-### EDABIDSWriter
-
-**Module**: `src.physio.preprocessing.eda_bids_writer`
-
-Writes processed EDA data and metrics in BIDS-compliant format.
+Returns:
+    List of metric names to extract
 
 #### Class: `EDABIDSWriter`
 
-```python
-from src.physio.eda_bids_writer import EDABIDSWriter
+**Module**: `src.physio.preprocessing.eda_bids_writer`
 
-writer = EDABIDSWriter()
-```
+Save processed EDA data and metrics in BIDS-compliant format.
 
-**Constructor Parameters**:
-- `config` (ConfigLoader, optional): Configuration instance
+This class handles saving processed signals (tonic, phasic, SCR events), 
+extracted metrics, and metadata following BIDS derivatives specifications 
+for physiological data.
 
-**Attributes**:
-- `derivatives_path` (Path): Path to derivatives directory
-- `pipeline_name` (str): Pipeline name (default: `'physio_preprocessing'`)
-- `pipeline_dir` (Path): Full pipeline output directory
+Inherits from PhysioBIDSWriter to ensure consistent API across modalities.
 
-**Methods**:
-
-##### `save_processed_data(subject_id: str, session_id: str, processed_results: Dict[str, pd.DataFrame], session_metrics: pd.DataFrame, processing_metadata: Optional[Dict] = None) -> Dict[str, List[str]]`
-
-Saves all processed EDA data and metrics for a session.
+**Constructor**:
 
 ```python
-# Prepare data
-processed_results = {
-    'restingstate': processed_rest,
-    'therapy': processed_therapy
-}
-
-session_metrics = extractor.extract_multiple_moments(processed_results)
-
-# Save everything
-output_files = writer.save_processed_data(
-    subject_id='sub-f01p01',
-    session_id='ses-01',
-    processed_results=processed_results,
-    session_metrics=session_metrics,
-    processing_metadata={'method': 'cvxEDA', 'threshold': 0.01}
-)
-
-print(f"Created {sum(len(files) for files in output_files.values())} files")
-```
-
-**Parameters**:
-- `subject_id` (str): Subject ID (e.g., `'sub-f01p01'`)
-- `session_id` (str): Session ID (e.g., `'ses-01'`)
-- `processed_results` (dict): Dict of moment → processed DataFrame
-- `session_metrics` (pd.DataFrame): Output from `extract_multiple_moments()`
-- `processing_metadata` (dict, optional): Additional processing info
-
-**Returns**: Dictionary with lists of created file paths
-
-**Output Structure**:
-```python
-{
-    'processed_signals': [  # TSV + JSON per moment
-        'sub-f01p01_ses-01_task-restingstate_physio.tsv.gz',
-        'sub-f01p01_ses-01_task-restingstate_physio.json',
-        'sub-f01p01_ses-01_task-therapy_physio.tsv.gz',
-        'sub-f01p01_ses-01_task-therapy_physio.json'
-    ],
-    'scr_events': [  # TSV + JSON per moment (if SCRs detected)
-        'sub-f01p01_ses-01_task-restingstate_events.tsv',
-        'sub-f01p01_ses-01_task-restingstate_events.json',
-        ...
-    ],
-    'metrics': [  # Session-level metrics
-        'sub-f01p01_ses-01_desc-edametrics_physio.tsv',
-        'sub-f01p01_ses-01_desc-edametrics_physio.json'
-    ],
-    'metadata': [  # Moment-specific metadata
-        'sub-f01p01_ses-01_task-restingstate_desc-metadata.json',
-        ...
-    ],
-    'summary': [  # Session summary
-        'sub-f01p01_ses-01_desc-summary.json'
-    ]
-}
-```
-
-**File Types**:
-
-1. **Processed Signals** (`_physio.tsv.gz` + `.json`):
-   - Columns: `time`, `EDA_Raw`, `EDA_Clean`, `EDA_Tonic`, `EDA_Phasic`, `SCR_Peaks`, `SCR_Amplitude`, `SCR_RiseTime`, `SCR_RecoveryTime`
-   - Compressed TSV with gzip
-   - JSON sidecar with column descriptions, units
-
-2. **SCR Events** (`_events.tsv` + `.json`):
-   - Columns: `onset`, `duration`, `amplitude`, `rise_time`, `recovery_time`
-   - One row per detected SCR
-   - BIDS events format
-
-3. **Metrics** (`_desc-edametrics_physio.tsv` + `.json`):
-   - All 23 metrics in one row per moment
-   - Session-level file (all moments combined)
-
-4. **Metadata** (`_desc-metadata.json`):
-   - Per-moment processing details
-   - Quality metrics, parameters used
-
-5. **Summary** (`_desc-summary.json`):
-   - Session-level overview
-   - Total SCRs, durations, processing status
-
-##### `create_dataset_description() -> None`
-
-Creates `dataset_description.json` for BIDS compliance (call once per project).
-
-```python
-writer.create_dataset_description()
-```
-
-**Example Complete Workflow**:
-
-```python
-from src.physio.eda_loader import EDALoader
-from src.physio.eda_cleaner import EDACleaner
-from src.physio.eda_metrics import EDAMetricsExtractor
-from src.physio.eda_bids_writer import EDABIDSWriter
-
-# Initialize pipeline
-loader = EDALoader()
-cleaner = EDACleaner()
-extractor = EDAMetricsExtractor()
-writer = EDABIDSWriter()
-
-# Process one subject/session
-subject, session = 'sub-f01p01', 'ses-01'
-
-# Process each moment
-processed_results = {}
-for moment in ['restingstate', 'therapy']:
-    raw_data, _ = loader.load_subject_session(subject, session, moment=moment)
-    processed = cleaner.clean_signal(raw_data, moment=moment)
-    processed_results[moment] = processed
-
-# Extract metrics for all moments
-session_metrics = extractor.extract_multiple_moments(processed_results)
-
-# Save everything
-output_files = writer.save_processed_data(
-    subject_id=subject,
-    session_id=session,
-    processed_results=processed_results,
-    session_metrics=session_metrics
-)
-
-print(f"✓ Saved {sum(len(f) for f in output_files.values())} files")
-print(f"✓ Output: data/derivatives/physio_preprocessing/{subject}/{session}/physio/")
-```
-
----
-
-## Scripts
-
-### preprocess_bvp.py
-
-**Location**: `scripts/physio/preprocessing/preprocess_bvp.py`
-
-Command-line interface for BVP preprocessing pipeline.
-
-**Usage**:
-
-```bash
-# Basic usage (no prefix needed for subject/session)
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
-
-# With verbose logging
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01 --verbose
-
-# Custom config
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01 --config config/custom.yaml
-```
-
-**Note**: No PYTHONPATH needed - scripts handle path setup internally.
-
-**Arguments**:
-
-| Argument | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `--subject` | str | Yes | - | Subject ID (e.g., `sub-f01p01`) |
-| `--session` | str | Yes | - | Session ID (e.g., `ses-01`) |
-| `--moment` | str | No | All moments | Specific moment to process |
-| `--config` | str | No | `config/config.yaml` | Path to config file |
-| `--verbose` | flag | No | False | Enable verbose logging |
-
-**Pipeline Steps**:
-1. Load configuration
-2. Load raw BVP data (all moments or specific moment)
-3. Clean signals and detect peaks
-4. Extract HRV metrics
-5. Save BIDS-compliant outputs:
-   - Processed signals (TSV + JSON)
-   - Processing metadata (JSON)
-   - HRV metrics (TSV + JSON)
-   - Session summary (JSON)
-6. Create/update dataset description
-
-**Output Structure**:
-```
-data/derivatives/preprocessing/
-└── sub-f01p01/
-    └── ses-01/
-        └── bvp/
-            ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-processed_physio.tsv.gz
-            ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-processed_physio.json
-            ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-metrics_physio.tsv
-            ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-metrics_physio.json
-            └── ... (9 files total)
-```
-
-**Exit Codes**:
-- `0`: Success
-- `1`: Error (check logs)
-
-**Logging**:
-- **Default**: INFO level to console and `log/preprocessing_bvp_YYYYMMDD_HHMMSS.log`
-- **Verbose**: DEBUG level with detailed processing information
-
----
-
-### preprocess_eda.py
-
-**Location**: `scripts/physio/preprocessing/preprocess_eda.py`
-
-Command-line interface for EDA preprocessing pipeline.
-
-**Usage**:
-
-```bash
-# Basic usage (no prefix needed for subject/session)
-poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01
-
-# With verbose logging
-poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01 --verbose
-```
-
-**Output Structure**:
-```
-data/derivatives/preprocessing/
-└── sub-f01p01/
-    └── ses-01/
-        └── eda/
-            ├── sub-f01p01_ses-01_task-restingstate_desc-eda-processed_physio.tsv.gz
-            ├── sub-f01p01_ses-01_task-restingstate_desc-scr_events.tsv
-            ├── sub-f01p01_ses-01_task-restingstate_desc-eda-metrics_physio.tsv
-            └── ... (13 files total)
-```
-
----
-
-### preprocess_hr.py
-
-**Location**: `scripts/physio/preprocessing/preprocess_hr.py`
-
-Command-line interface for HR preprocessing pipeline.
-
-**Usage**:
-
-```bash
-# Basic usage (no prefix needed for subject/session)
-poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01
-
-# With verbose logging
-poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01 --verbose
-```
-
-**Output Structure**:
-```
-data/derivatives/preprocessing/
-└── sub-f01p01/
-    └── ses-01/
-        └── hr/
-            ├── sub-f01p01_ses-01_task-restingstate_desc-hr-processed_physio.tsv.gz
-            ├── sub-f01p01_ses-01_task-restingstate_desc-hr-metrics_physio.tsv
-            └── ... (7 files total)
-```
-
----
-
-### clean_outputs.py
-
-**Location**: `scripts/utils/clean_outputs.py`
-
-Utility script for cleaning derivatives, logs, and cache files between test iterations.
-
-**Usage**:
-
-```bash
-# Clean specific subject/session
-poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01
-
-# Clean specific modality
-poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01 --modality bvp
-
-# Clean all outputs (with confirmation)
-poetry run python scripts/utils/clean_outputs.py --all
-```
-
-**Arguments**:
-
-| Argument | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `--subject` | str | No | All subjects | Specific subject to clean (no prefix) |
-| `--session` | str | No | All sessions | Specific session to clean (no prefix) |
-| `--modality` | str | No | All modalities | Specific modality (bvp, eda, hr) |
-| `--all` | flag | No | False | Clean all outputs |
-| `--dry-run` | flag | No | False | Preview what would be deleted |
-
-**What Gets Cleaned**:
-
-| Target | Location | Description |
-|--------|----------|-------------|
-| Preprocessing outputs | `data/derivatives/preprocessing/` | All processed outputs (BVP, EDA, HR) |
-| Logs | `log/*.log` | Processing log files |
-
-**Safety Features**:
-- Confirmation prompt for destructive operations
-- Dry run option to preview deletions
-- Preserves raw data (never touches `data/sourcedata/`)
-- Detailed deletion reporting
-
-**Example Output**:
-```
-=== Cleanup Summary ===
-📁 Derivatives: sub-f01p01/ses-01/bvp (9 files)
-📁 Derivatives: sub-f01p01/ses-01/eda (13 files)
-� Derivatives: sub-f01p01/ses-01/hr (7 files)
-🗑️  Cache: 229 directories
-
-Total to delete: 232 directories, 10 files
-
-Proceed with deletion? [y/N]: y
-
-✓ Deleted 232 items
-```
-
----
-
-### preprocess_eda.py
-
-**Location**: `scripts/preprocess_eda.py`
-
-Command-line interface for EDA preprocessing pipeline.
-
-**Usage**:
-
-```bash
-# Basic usage
-poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01
-
-# With verbose logging
-poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --verbose
-
-# Custom config
-poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --config config/custom.yaml
-
-# Process specific moment only
-poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --moment restingstate
-
-# Batch processing
-poetry run python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --all-moments
-```
-
-**Arguments**:
-
-| Argument | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `--subject` | str | Yes | - | Subject ID (e.g., `sub-f01p01`) |
-| `--session` | str | Yes | - | Session ID (e.g., `ses-01`) |
-| `--moment` | str | No | Auto-detect | Specific moment to process |
-| `--all-moments` | flag | No | False | Process all available moments |
-| `--config` | str | No | `config/config.yaml` | Path to config file |
-| `--verbose` | flag | No | False | Enable DEBUG-level logging |
-
-**Processing Pipeline**:
-1. Load raw EDA data (4 Hz from Empatica E4)
-2. Clean signal and decompose (cvxEDA: tonic + phasic)
-3. Detect SCR peaks (threshold: 0.01 μS)
-4. Extract 23 EDA metrics (SCR, tonic, phasic)
-5. Save BIDS-compliant outputs:
-   - Processed signals (TSV + JSON)
-   - SCR events (TSV + JSON)
-   - Session metrics (TSV + JSON)
-   - Moment metadata (JSON)
-   - Session summary (JSON)
-6. Create/update dataset description
-
-**Output Structure**:
-```
-data/derivatives/physio_preprocessing/
-├── dataset_description.json
-└── sub-f01p01/
-    └── ses-01/
-        └── physio/
-            ├── sub-f01p01_ses-01_task-restingstate_physio.tsv.gz
-            ├── sub-f01p01_ses-01_task-restingstate_physio.json
-            ├── sub-f01p01_ses-01_task-restingstate_events.tsv
-            ├── sub-f01p01_ses-01_task-restingstate_events.json
-            ├── sub-f01p01_ses-01_task-restingstate_desc-metadata.json
-            ├── sub-f01p01_ses-01_task-therapy_physio.tsv.gz
-            ├── sub-f01p01_ses-01_task-therapy_physio.json
-            ├── sub-f01p01_ses-01_task-therapy_events.tsv
-            ├── sub-f01p01_ses-01_task-therapy_events.json
-            ├── sub-f01p01_ses-01_task-therapy_desc-metadata.json
-            ├── sub-f01p01_ses-01_desc-edametrics_physio.tsv
-            ├── sub-f01p01_ses-01_desc-edametrics_physio.json
-            └── sub-f01p01_ses-01_desc-summary.json
-```
-
-**Example Output**:
-```
-=== EDA Preprocessing Pipeline ===
-
-Subject: sub-f01p01
-Session: ses-01
-Moments to process: restingstate, therapy
-
-Processing moment: restingstate
-  ✓ Loaded 240 samples (60.0s at 4 Hz)
-  ✓ Decomposed into tonic + phasic components
-  ✓ Detected 22 SCRs (mean amplitude: 0.156 μS)
-  ✓ Extracted 23 metrics
-  ✓ Saved 5 output files
-
-Processing moment: therapy
-  ✓ Loaded 11064 samples (2766.0s at 4 Hz)
-  ✓ Decomposed into tonic + phasic components
-  ✓ Detected 791 SCRs (mean amplitude: 0.672 μS)
-  ✓ Extracted 23 metrics
-  ✓ Saved 5 output files
-
-✓ Session metrics saved (2 moments)
-✓ Processing complete!
-
-Total SCRs detected: 813
-Total duration: 2826.0 seconds
-Output: data/derivatives/physio_preprocessing/sub-f01p01/ses-01/physio/
-```
-
-**Exit Codes**:
-- `0`: Success
-- `1`: Error (check logs)
-
-**Logging**:
-- **Default**: INFO level to console and `log/eda_preprocessing.log`
-- **Verbose**: DEBUG level with detailed processing information, NeuroKit2 diagnostics
-
-**Typical Processing Time**:
-- Restingstate (60s): ~2 seconds
-- Therapy session (45 min): ~15-20 seconds
-- cvxEDA decomposition is computationally intensive for long signals
-
----
-
-
-
-### Main Configuration Structure
-
-```yaml
-# Study metadata
-study:
-  name: str                    # Study name
-  version: str                 # Version number
-
-# Data paths
-paths:
-  sourcedata: str              # Raw data directory (e.g., "data/raw")
-  derivatives: str             # Processed outputs (e.g., "data/derivatives")
-  logs: str                    # Log files (e.g., "log")
-
-# Moment/task definitions
-moments:
-  - name: str                  # Moment identifier (e.g., "restingstate")
-    description: str           # Human-readable description
-
-# Physiological processing parameters
-physio:
-  bvp:
-    sampling_rate: int         # Expected sampling rate (Hz)
-    processing:
-      method: str              # Peak detection method ("elgendi")
-      method_quality: str      # Quality assessment ("templatematch")
-      lowcut_freq: float       # High-pass filter (Hz)
-      highcut_freq: float      # Low-pass filter (Hz)
-      quality_threshold: float # Quality threshold (0-1)
-    metrics:
-      extract_all: bool        # Extract all metrics or selected only
-      selected_metrics:        # Metrics to extract
-        time_domain: List[str]
-        frequency_domain: List[str]
-        nonlinear: List[str]
-
-# BIDS configuration
-bids:
-  pipeline_name: str           # Derivatives pipeline name
-  dataset_description:
-    Name: str
-    BIDSVersion: str
-    DatasetType: str
-
-# Logging configuration
-logging:
-  level: str                   # Default log level ("INFO", "DEBUG")
-  format: str                  # Log message format
-  file_handler:
-    enabled: bool
-    filename: str
-    max_bytes: int
-    backup_count: int
-```
-
-### Example Config Values
-
-See `config/example_config.yaml` for a fully documented example with all available options.
-
----
-
-## Error Handling
-
-### Common Exceptions
-
-#### `FileNotFoundError`
-Raised when expected data files are missing.
-
-```python
-try:
-    data, meta = loader.load_subject_session('sub-f01p01', 'ses-01')
-except FileNotFoundError as e:
-    print(f"Data not found: {e}")
-    # Check that data exists in: data/raw/sub-f01p01/ses-01/physio/
-```
-
-#### `ValueError`
-Raised when data validation fails.
-
-```python
-try:
-    processed = cleaner.clean_signal(invalid_data)
-except ValueError as e:
-    print(f"Invalid data structure: {e}")
-    # Check that data has required columns: 'time', 'bvp'
-```
-
-#### `jsonschema.ValidationError`
-Raised when configuration doesn't match schema.
-
-```python
-try:
-    config = ConfigLoader('invalid_config.yaml')
-except jsonschema.ValidationError as e:
-    print(f"Config validation failed: {e.message}")
-    # Check config against schema in ConfigLoader.CONFIG_SCHEMA
-```
-
-### Logging Best Practices
-
-```python
-import logging
-
-logger = logging.getLogger(__name__)
-
-# Use appropriate log levels
-logger.debug("Detailed processing information")  # Verbose mode only
-logger.info("Normal processing steps")           # Standard output
-logger.warning("Non-fatal issues")               # Quality warnings
-logger.error("Errors that prevent processing")   # Critical failures
-
-# Include context in log messages
-logger.info(f"Processing {subject}/{session}/{moment}: {len(data)} samples")
-logger.warning(f"Low quality for {moment}: {quality:.3f} < {threshold}")
-```
-
----
-
-## Performance Considerations
-
-### Memory Usage
-
-- **BVP signals**: ~1.5 MB per minute at 64 Hz
-- **Processed outputs**: ~3-4x larger due to additional columns
-- **Long sessions (>30 min)**: Consider chunking for very large datasets
-
-### Processing Speed
-
-Typical processing times on standard hardware:
-
-| Operation | Duration (1 min signal) | Duration (30 min signal) |
-|-----------|------------------------|--------------------------|
-| Load data | <0.1s | ~0.5s |
-| Clean signal | ~0.5s | ~15s |
-| Extract HRV metrics | ~0.2s | ~5s |
-| Write outputs | <0.1s | ~0.5s |
-| **Total** | **~1s** | **~20s** |
-
-### Optimization Tips
-
-1. **Batch processing**: Process multiple subjects in parallel
-2. **Selective moments**: Use `--moment` flag to process only needed moments
-3. **Quality threshold**: Adjust for your needs (higher = faster rejection of poor data)
-4. **Metric selection**: Extract only needed metrics (set `extract_all: false`)
-
----
-
-## Visualization Modules
-
-### VisualizationDataLoader
-
-**Module**: `src.visualization.data_loader.py`
-
-Loads preprocessed BVP, EDA, and HR data for visualization.
-
-#### Class: `VisualizationDataLoader`
-
-```python
-from src.visualization.data_loader import VisualizationDataLoader
-
-# Initialize
-loader = VisualizationDataLoader()
-
-# Load data for one subject/session
-data = loader.load_subject_session(
-    subject="f01p01",
-    session="01",
-    config_name="therasync"
-)
-
-# List all available subjects/sessions
-subjects = loader.list_available_subjects(config_name="therasync")
+EDABIDSWriter(self, config_path: str)
 ```
 
 **Methods**:
 
-##### `load_subject_session(subject, session, config_name="therasync")`
+##### `create_group_summary(self, subjects_data: Dict[str, Dict[str, pandas.core.frame.DataFrame]], output_filename: str = 'group_eda_metrics.tsv') -> str`
 
-Load preprocessed data for a single subject/session.
+Create group-level summary of EDA metrics across subjects.
 
-**Parameters**:
-- `subject` (str): Subject ID (e.g., "f01p01")
-- `session` (str): Session number (e.g., "01")
-- `config_name` (str): Configuration name
+Args:
+    subjects_data: Nested dict {subject_id: {session_id: metrics_df}}
+    output_filename: Name of output file
+    
+Returns:
+    Path to created group summary file
 
-**Returns**: Dictionary with keys:
-- `bvp`: BVP signals and metrics
-  - `signals`: Dict of DataFrames per moment
-  - `metrics`: DataFrame with HRV metrics
-- `eda`: EDA signals and metrics
-  - `signals`: Dict of DataFrames per moment
-  - `scr_events`: Dict of DataFrames per moment
-  - `metrics`: DataFrame with EDA metrics
-- `hr`: HR signals and metrics
-  - `signals`: DataFrame with combined HR data
-  - `metrics`: DataFrame with HR metrics
+##### `save_processed_data(self, subject_id: str, session_id: str, processed_results: Dict[str, pandas.core.frame.DataFrame], session_metrics: Optional[pandas.core.frame.DataFrame] = None, processing_metadata: Optional[Dict] = None) -> Dict[str, List[pathlib.Path]]`
 
-##### `list_available_subjects(config_name="therasync")`
+Save processed EDA data and metrics in BIDS format.
 
-List all subjects/sessions with preprocessed data.
+Args:
+    subject_id: Subject identifier (with or without 'sub-' prefix)
+    session_id: Session identifier (with or without 'ses-' prefix)
+    processed_results: Dict of processed DataFrames from EDACleaner 
+                     (keys: moment names, values: processed signals with EDA_Quality)
+    session_metrics: DataFrame with extracted metrics from EDAMetricsExtractor
+    processing_metadata: Additional metadata about processing
+    
+Returns:
+    Dictionary with lists of created file paths (Path objects)
 
-**Returns**: List of tuples `[(subject, session), ...]`
-
----
-
-### VisualizationConfig
-
-**Module**: `src.visualization.config.py`
-
-Configuration for plot styling and parameters.
-
-#### Class: `VisualizationConfig`
-
-```python
-from src.visualization.config import VisualizationConfig
-
-# Initialize from YAML
-config = VisualizationConfig(config_path="config/config.yaml")
-
-# Access plot settings
-dpi = config.dpi  # 300
-colors = config.colors  # Color palette
-figure_sizes = config.figure_sizes  # {'dashboard': (14, 10), ...}
-```
-
-**Attributes**:
-- `dpi`: Plot resolution (default: 300)
-- `figure_format`: Output format (default: "png")
-- `colors`: Color palette for different signal types
-- `figure_sizes`: Predefined figure dimensions
-- `font_sizes`: Font size configuration
 
 ---
 
-### SignalPlotter
+## HR Preprocessing
 
-**Module**: `src.visualization.plotters.signal_plots.py`
+#### Class: `HRLoader`
 
-Generate multi-signal visualizations.
+**Module**: `src.physio.preprocessing.hr_loader`
 
-#### Class: `SignalPlotter`
+Load and validate HR data files from BIDS-formatted Empatica recordings.
+
+This class handles loading HR (heart rate) data with associated metadata,
+validates data integrity, and segments data according to configured moments
+(e.g., restingstate, therapy).
+
+HR data from Empatica E4:
+- Sampling rate: 1 Hz
+- Unit: beats per minute (BPM)
+- Measures instantaneous heart rate
+
+**Constructor**:
 
 ```python
-from src.visualization.plotters.signal_plots import SignalPlotter
-
-# Initialize
-plotter = SignalPlotter(config_path="config/config.yaml")
-
-# Generate dashboard
-output_path = plotter.plot_dashboard(
-    data=data,
-    subject="f01p01",
-    session="01",
-    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
-)
-
-# Generate timeline
-output_path = plotter.plot_timeline(
-    hr_signals=data['hr']['signals'],
-    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
-)
+HRLoader(self, config: Optional[src.core.config_loader.ConfigLoader] = None)
 ```
 
 **Methods**:
 
-##### `plot_dashboard(data, subject, session, output_dir)`
+##### `find_hr_files(self, subject: str, session: str) -> List[Tuple[pathlib.Path, pathlib.Path]]`
 
-Create multi-signal dashboard with BVP, EDA, HR.
+Find all HR TSV and JSON file pairs for a subject/session.
 
-**Generates**: `01_dashboard_multisignals.png`
+Args:
+    subject: Subject ID (e.g., 'sub-f01p01')
+    session: Session ID (e.g., 'ses-01')
 
-##### `plot_timeline(hr_signals, output_dir)`
+Returns:
+    List of tuples, each containing (tsv_path, json_path)
 
-Create HR dynamics timeline with variability bands.
+##### `get_available_moments(self, subject: str, session: str) -> List[str]`
 
-**Generates**: `06_hr_dynamics_timeline.png`
+Get list of available moments/tasks for a subject/session.
 
----
+Args:
+    subject: Subject ID
+    session: Session ID
 
-### HRVPlotter
+Returns:
+    List of moment names (e.g., ['restingstate', 'therapy'])
 
-**Module**: `src.visualization.plotters.hrv_plots.py`
+##### `load_single_moment(self, subject: str, session: str, moment: str) -> Tuple[pandas.core.frame.DataFrame, dict]`
 
-Generate HRV analysis visualizations.
+Load HR data for a single moment/task.
 
-#### Class: `HRVPlotter`
+Args:
+    subject: Subject ID
+    session: Session ID  
+    moment: Moment/task name
+
+Returns:
+    Tuple of (DataFrame, metadata) for the specified moment
+
+Raises:
+    FileNotFoundError: If moment not found
+
+##### `load_subject_session(self, subject: str, session: str, moment: Optional[str] = None) -> Tuple[pandas.core.frame.DataFrame, dict]`
+
+Load HR data for a specific subject/session, optionally filtered by moment.
+
+Args:
+    subject: Subject ID (e.g., 'sub-f01p01')
+    session: Session ID (e.g., 'ses-01')
+    moment: Optional moment/task name (e.g., 'restingstate', 'therapy').
+           If None, loads and concatenates all moments.
+
+Returns:
+    Tuple of:
+        - DataFrame with columns ['time', 'hr']
+        - Dictionary with combined metadata from JSON sidecars
+
+Raises:
+    FileNotFoundError: If no HR files found for subject/session
+    ValueError: If data validation fails
+
+Example:
+    >>> loader = HRLoader()
+    >>> data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
+    >>> print(f"Loaded {len(data)} samples at {metadata['SamplingFrequency']} Hz")
+
+#### Class: `HRCleaner`
+
+**Module**: `src.physio.preprocessing.hr_cleaner`
+
+Clean and preprocess HR data with conservative approach.
+
+This class handles:
+- Physiological outlier removal (< 40 or > 180 BPM)
+- Short gap interpolation (< 5 seconds)
+- Quality assessment and scoring
+- Data validation
+
+HR data characteristics:
+- Sampling rate: 1 Hz
+- Unit: BPM (beats per minute)
+- Expected range: 40-180 BPM for most populations
+
+**Constructor**:
 
 ```python
-from src.visualization.plotters.hrv_plots import HRVPlotter
-
-# Initialize
-plotter = HRVPlotter(config_path="config/config.yaml")
-
-# Generate Poincaré plot
-output_path = plotter.plot_poincare(
-    bvp_data=data['bvp'],
-    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
-)
-
-# Generate autonomic balance
-output_path = plotter.plot_autonomic_balance(
-    bvp_data=data['bvp'],
-    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
-)
+HRCleaner(self, config: Optional[src.core.config_loader.ConfigLoader] = None)
 ```
 
 **Methods**:
 
-##### `plot_poincare(bvp_data, output_dir)`
+##### `clean_signal(self, data: pandas.core.frame.DataFrame, moment: str = 'unknown') -> Tuple[pandas.core.frame.DataFrame, Dict]`
 
-Create Poincaré plot showing HRV non-linear dynamics (SD1/SD2).
+Clean HR signal with conservative approach.
 
-**Generates**: `02_poincare_hrv.png`
+Args:
+    data: DataFrame with columns ['time', 'hr']
+    moment: Moment/task name for logging
 
-##### `plot_autonomic_balance(bvp_data, output_dir)`
+Returns:
+    Tuple of:
+        - Cleaned DataFrame with additional columns:
+          ['time', 'hr', 'hr_clean', 'hr_outliers', 'hr_interpolated', 'hr_quality']
+        - Processing metadata dictionary
 
-Create autonomic balance timeline (LF/HF ratio evolution).
+Example:
+    >>> cleaner = HRCleaner()
+    >>> cleaned_data, metadata = cleaner.clean_signal(raw_data, moment='restingstate')
+    >>> print(f"Quality score: {metadata['quality_score']:.3f}")
 
-**Generates**: `03_autonomic_balance.png`
+##### `validate_cleaning_quality(self, metadata: Dict) -> Tuple[bool, str]`
 
----
+Validate the quality of cleaning results.
 
-### EDAPlotter
+Args:
+    metadata: Cleaning metadata from clean_signal()
 
-**Module**: `src.visualization.plotters.eda_plots.py`
+Returns:
+    Tuple of (is_valid, message)
 
-Generate EDA/arousal visualizations.
+#### Class: `HRMetricsExtractor`
 
-#### Class: `EDAPlotter`
+**Module**: `src.physio.preprocessing.hr_metrics_extractor`
+
+Extract comprehensive HR metrics from cleaned data.
+
+This class extracts 25 HR metrics across 5 categories:
+1. Descriptive Statistics (7): Mean, SD, Min, Max, Range, Median, IQR
+2. Trend Analysis (5): Slope, Initial_HR, Final_HR, HR_Change, Peak_Time
+3. Stability Metrics (4): HR_Stability, RMSSD_Simple, CV, MAD
+4. Response Patterns (6): Elevated_Percent, Recovery_Rate, Acceleration, etc.
+5. Contextual Metrics (3): Duration, Valid_Samples, Quality_Score
+
+Note: This is distinct from HRV metrics (already extracted from BVP pipeline).
+HR metrics focus on beat-to-beat heart rate patterns, not inter-beat intervals.
+
+**Constructor**:
 
 ```python
-from src.visualization.plotters.eda_plots import EDAPlotter
-
-# Initialize
-plotter = EDAPlotter(config_path="config/config.yaml")
-
-# Generate arousal profile
-output_path = plotter.plot_arousal_profile(
-    eda_data=data['eda'],
-    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
-)
-
-# Generate SCR distribution
-output_path = plotter.plot_scr_distribution(
-    eda_data=data['eda'],
-    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
-)
+HRMetricsExtractor(self, config: Optional[src.core.config_loader.ConfigLoader] = None)
 ```
 
 **Methods**:
 
-##### `plot_arousal_profile(eda_data, output_dir)`
+##### `extract_metrics(self, data: pandas.core.frame.DataFrame, moment: str = 'unknown') -> Dict[str, Any]`
 
-Create EDA arousal profile with tonic/phasic decomposition and SCR events.
+Extract comprehensive HR metrics from cleaned data.
 
-**Generates**: `04_eda_arousal_profile.png`
+Args:
+    data: DataFrame with columns ['time', 'hr_clean', 'hr_quality']
+    moment: Moment/task name for context
 
-##### `plot_scr_distribution(eda_data, output_dir)`
+Returns:
+    Dictionary with 25 HR metrics organized by category
 
-Create SCR amplitude distribution histogram with statistics.
+Example:
+    >>> extractor = HRMetricsExtractor()
+    >>> metrics = extractor.extract_metrics(cleaned_data, moment='therapy')
+    >>> print(f"Mean HR: {metrics['descriptive']['hr_mean']:.1f} BPM")
 
-**Generates**: `05_scr_distribution.png`
+##### `get_metrics_description(self) -> Dict[str, Dict[str, str]]`
 
----
+Get detailed descriptions of all HR metrics.
 
-## Batch Processing
+Returns:
+    Dictionary with metric descriptions by category
 
-### BatchPreprocessor
+#### Class: `HRBIDSWriter`
 
-**Module**: `scripts.batch.run_all_preprocessing.py`
+**Module**: `src.physio.preprocessing.hr_bids_writer`
 
-Automated preprocessing of all subjects/sessions.
+Write HR processing results in BIDS-compliant format.
 
-#### Class: `BatchPreprocessor`
+This class creates 7 file types per moment following the BIDS specification:
+1. _desc-processed_recording-hr.tsv: Processed HR signals (uncompressed)
+2. _desc-processed_recording-hr.json: Signal metadata and processing parameters
+3. _events.tsv: HR-related events (elevated periods, peaks, etc.)
+4. _events.json: Events metadata
+5. _desc-hr-metrics.tsv: Extracted HR metrics
+6. _desc-hr-metrics.json: Metrics metadata and descriptions  
+7. _desc-hr-summary.json: Processing summary and quality assessment
 
-```python
-from scripts.batch.run_all_preprocessing import BatchPreprocessor
+Output structure:
+derivatives/preprocessing/
+├── sub-{subject}/
+│   ├── ses-{session}/
+│   │   ├── hr/
+│   │   │   ├── sub-{subject}_ses-{session}_task-{moment}_desc-processed_recording-hr.tsv
+│   │   │   ├── sub-{subject}_ses-{session}_task-{moment}_desc-processed_recording-hr.json
+│   │   │   ├── sub-{subject}_ses-{session}_task-{moment}_events.tsv
+│   │   │   ├── sub-{subject}_ses-{session}_task-{moment}_events.json
+│   │   │   ├── sub-{subject}_ses-{session}_task-{moment}_desc-hr-metrics.tsv
+│   │   │   ├── sub-{subject}_ses-{session}_task-{moment}_desc-hr-metrics.json
+│   │   │   └── sub-{subject}_ses-{session}_task-{moment}_desc-hr-summary.json
 
-# Initialize
-preprocessor = BatchPreprocessor(
-    config_path="config/config.yaml",
-    dry_run=False,
-    skip_existing=True,
-    subjects=None  # All subjects
-)
+Changes from original:
+- Inherits from PhysioBIDSWriter base class
+- Files are now PER MOMENT (restingstate, therapy) instead of combined
+- Columns renamed: hr → HR_Clean, quality → HR_Quality, + HR_Raw added
+- Files are UNCOMPRESSED (.tsv instead of .tsv.gz)
+- Unified API with save_processed_data() method
 
-# Run batch processing
-preprocessor.run_batch()
-```
-
-**Parameters**:
-- `config_path`: Path to YAML configuration
-- `dry_run`: Preview without execution (default: False)
-- `skip_existing`: Skip already processed sessions (default: False)
-- `subjects`: List of subject IDs to process (default: None = all)
-
-**Features**:
-- Scans `data/raw/` for all `sub-*/ses-*` combinations
-- Executes BVP → EDA → HR sequentially (dependency-aware)
-- Timeout: 600 seconds per script
-- Comprehensive error tracking and logging
-- Keyboard interrupt handling (Ctrl+C shows partial results)
-
-**Outputs**:
-- Preprocessed data in `data/derivatives/preprocessing/`
-- Timestamped log: `log/batch_preprocessing_YYYYMMDD_HHMMSS.log`
-
----
-
-### BatchVisualizer
-
-**Module**: `scripts.batch.run_all_visualizations.py`
-
-Automated visualization generation for all preprocessed sessions.
-
-#### Class: `BatchVisualizer`
+**Constructor**:
 
 ```python
-from scripts.batch.run_all_visualizations import BatchVisualizer
-
-# Initialize
-visualizer = BatchVisualizer(
-    config_path="config/config.yaml",
-    dry_run=False,
-    plots=None,  # All plots (1-6)
-    subjects=None  # All subjects
-)
-
-# Run batch visualization
-visualizer.run_batch()
+HRBIDSWriter(self, config_path: Union[str, pathlib.Path, NoneType] = None)
 ```
 
-**Parameters**:
-- `config_path`: Path to YAML configuration
-- `dry_run`: Preview without generation (default: False)
-- `plots`: List of plot numbers to generate (default: None = all)
-- `subjects`: List of subject IDs to visualize (default: None = all)
+**Methods**:
 
-**Features**:
-- Auto-detects preprocessed sessions from `data/derivatives/preprocessing/`
-- Generates 6 PNG files per session
-- Per-plot error tracking and statistics
-- Keyboard interrupt handling
+##### `save_processed_data(self, subject_id: str, session_id: str, processed_results: Dict[str, pandas.core.frame.DataFrame], session_metrics: Optional[pandas.core.frame.DataFrame] = None, processing_metadata: Optional[Dict[str, Any]] = None) -> Dict[str, List[pathlib.Path]]`
 
-**Outputs**:
-- Visualizations in `data/derivatives/visualization/sub-*/ses-*/figures/`
-- Timestamped log: `log/batch_visualization_YYYYMMDD_HHMMSS.log`
+Write complete HR processing results in BIDS format.
 
-**Plot Numbering**:
-1. Multi-signal dashboard
-2. Poincaré HRV plot
-3. Autonomic balance timeline
-4. EDA arousal profile
-5. SCR distribution
-6. HR dynamics timeline
+Args:
+    subject_id: Subject identifier WITH prefix (e.g., 'sub-f01p01')
+    session_id: Session identifier WITH prefix (e.g., 'ses-01')
+    processed_results: Dictionary mapping moment names to processed DataFrames
+                     Expected columns: time, HR_Raw, HR_Clean, HR_Quality, 
+                                      HR_Outliers, HR_Interpolated
+    session_metrics: DataFrame with session-level metrics (optional)
+    processing_metadata: Additional processing metadata (optional)
+
+Returns:
+    Dictionary mapping file types to lists of paths (one per moment)
+
+Example:
+    >>> writer = HRBIDSWriter()
+    >>> processed_results = {
+    ...     'restingstate': df_resting,
+    ...     'therapy': df_therapy
+    ... }
+    >>> file_paths = writer.save_processed_data(
+    ...     'sub-f01p01', 'ses-01', processed_results, metrics, metadata
+    ... )
+    >>> print(f"Physio files: {file_paths['physio']}")
+
 
 ---
 
 ## Version History
+
+### v1.0.0 (2025-11-11)
+
+**Production Release - Phase 2 Harmonization Complete**:
+- ✅ **Code Harmonization**: All BIDS writers use identical patterns
+- ✅ **HR Format Update**: Changed to per-moment uncompressed files (14 files/session)
+- ✅ **Visualization Fix**: Integrated HR data into visualization pipeline
+- ✅ **Production Validation**: 
+  - 34/34 unit tests passing (100%)
+  - 49/51 preprocessing sessions (96% success)
+  - 306/306 visualizations generated (100% success)
+- ✅ **Performance**: ~3 min preprocessing + ~3 min visualization per full dataset
+- ✅ **Quality Tracking**: 114 quality flags across all modalities
+- ✅ **Documentation**: Complete update to v1.0.0 production status
 
 ### v0.5.0 (2025-11-11)
 
@@ -1909,7 +1062,6 @@ visualizer.run_batch()
 - ✅ Comprehensive logging with horodated files
 - ✅ Real data validation: 50/51 sessions (98% success)
 - ✅ Generated 300 visualizations
-- ✅ Complete documentation update
 
 ### v0.3.0 (2025-10-28)
 
@@ -1926,9 +1078,7 @@ visualizer.run_batch()
 - ✅ BVPCleaner: Signal processing with NeuroKit2
 - ✅ BVPMetrics: 12 essential HRV metrics
 - ✅ BVPBIDSWriter: BIDS-compliant output formatting
-- ✅ CLI scripts: `preprocess_bvp.py`, `clean_outputs.py`
-- ✅ Comprehensive testing suite
-- ✅ Full documentation
+- ✅ CLI scripts with comprehensive testing
 
 ---
 
@@ -1942,4 +1092,5 @@ For issues, questions, or contributions, please open an issue on GitHub.
 
 ---
 
-**Last Updated**: November 11, 2025
+**Generated from source code**: November 11, 2025  
+**Accuracy**: All signatures, parameters, and docstrings extracted directly from implementation

@@ -593,24 +593,24 @@ class TestEDABIDSWriter(unittest.TestCase):
         """Clean up test environment."""
         shutil.rmtree(self.temp_dir)
     
-    @patch('src.physio.preprocessing.eda_bids_writer.ConfigLoader')
+    @patch('src.physio.preprocessing.base_bids_writer.ConfigLoader')
     def test_writer_initialization(self, mock_config):
         """Test BIDS writer initialization."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
             'paths.derivatives': str(self.temp_path / "derivatives")
         }.get(key, default)
         
-        writer = EDABIDSWriter()
+        writer = EDABIDSWriter(config_path=None)
         self.assertIsInstance(writer, EDABIDSWriter)
     
-    @patch('src.physio.preprocessing.eda_bids_writer.ConfigLoader')
+    @patch('src.physio.preprocessing.base_bids_writer.ConfigLoader')
     def test_save_processed_data_basic(self, mock_config):
         """Test basic functionality of save_processed_data."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
             'paths.derivatives': str(self.temp_path / "derivatives")
         }.get(key, default)
         
-        writer = EDABIDSWriter()
+        writer = EDABIDSWriter(config_path=None)
         
         # Prepare data in expected format
         processed_results = {
@@ -636,7 +636,7 @@ class TestEDABIDSWriter(unittest.TestCase):
         total_files = sum(len(files) for files in output_files.values())
         self.assertGreater(total_files, 0)
     
-    @patch('src.physio.preprocessing.eda_bids_writer.ConfigLoader')
+    @patch('src.physio.preprocessing.base_bids_writer.ConfigLoader')
     def test_bids_directory_structure(self, mock_config):
         """Test BIDS-compliant directory structure creation."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -645,7 +645,7 @@ class TestEDABIDSWriter(unittest.TestCase):
             'output.modality_subdirs.eda': 'eda'
         }.get(key, default)
         
-        writer = EDABIDSWriter()
+        writer = EDABIDSWriter(config_path=None)
         
         processed_results = {self.test_moment: self.test_signals}
         session_metrics = pd.DataFrame([self.test_metrics])
@@ -730,7 +730,7 @@ class TestEDAPipelineIntegration(unittest.TestCase):
     @patch('src.physio.preprocessing.eda_loader.ConfigLoader')
     @patch('src.physio.preprocessing.eda_cleaner.ConfigLoader')
     @patch('src.physio.preprocessing.eda_metrics.ConfigLoader')
-    @patch('src.physio.preprocessing.eda_bids_writer.ConfigLoader')
+    @patch('src.physio.preprocessing.base_bids_writer.ConfigLoader')
     def test_full_pipeline_execution(self, mock_writer_config, mock_metrics_config,
                                      mock_cleaner_config, mock_loader_config):
         """Test complete EDA pipeline from load to write."""

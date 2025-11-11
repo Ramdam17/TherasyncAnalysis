@@ -1,23 +1,44 @@
-# Therasync Pipeline - Quick Reference Card
+# Quick Reference# Therasync Pipeline - Quick Reference Card
 
-A comprehensive command reference for the Therasync physiological data processing pipeline.
 
-## Quick Links
 
-- **Installation Guide**: `README.md` - Setup instructions
-- **Quick Start**: `QUICKSTART.md` - Fast processing guide  
-- **API Documentation**: `docs/api_reference.md` - Complete API reference
-- **Troubleshooting**: `docs/troubleshooting.md` - Common issues
+For the complete quick reference card, see **[QUICKREF.md](../QUICKREF.md)** in the root directory.A comprehensive command reference for the Therasync physiological data processing pipeline.
 
----
+
+
+This one-page reference includes:## Quick Links
+
+- ✅ Batch processing commands
+
+- ✅ Single subject workflows- **Installation Guide**: `README.md` - Setup instructions
+
+- ✅ Directory structure- **Quick Start**: `QUICKSTART.md` - Fast processing guide  
+
+- ✅ Output file listings (36 files per session)- **API Documentation**: `docs/api_reference.md` - Complete API reference
+
+- ✅ Testing commands- **Troubleshooting**: `docs/troubleshooting.md` - Common issues
+
+- ✅ Performance benchmarks
+
+- ✅ Quick validation checks---
+
+- ✅ Common issues and solutions
 
 ## Batch Processing Commands
 
+---
+
 ### Preprocessing (All Subjects)
 
-```bash
-# Process all subjects/sessions
-poetry run python scripts/batch/run_all_preprocessing.py
+**See also:**
+
+- [QUICKSTART.md](../QUICKSTART.md) - Getting started guide```bash
+
+- [README.md](../README.md) - Complete documentation# Process all subjects/sessions
+
+- [api_reference.md](api_reference.md) - API documentationpoetry run python scripts/batch/run_all_preprocessing.py
+
+- [testing_guide.md](testing_guide.md) - Testing procedures
 
 # Skip already processed (recommended)
 poetry run python scripts/batch/run_all_preprocessing.py --skip-existing
