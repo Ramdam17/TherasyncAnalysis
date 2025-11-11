@@ -178,12 +178,16 @@ def create_bvp_diagnostic_plot(subject: str, session: str, bvp_signals: Dict,
         ax = axes[0, col_idx]
         if f'{moment}_processed' in bvp_signals:
             df = bvp_signals[f'{moment}_processed']
-            if 'BVP_Filtered' in df.columns:
-                ax.plot(df['BVP_Filtered'], color=colors[moment], linewidth=0.5, alpha=0.7)
+            # Check for PPG_Clean (new naming) or BVP_Filtered (legacy)
+            bvp_col = 'PPG_Clean' if 'PPG_Clean' in df.columns else 'BVP_Filtered' if 'BVP_Filtered' in df.columns else None
+            if bvp_col:
+                ax.plot(df[bvp_col], color=colors[moment], linewidth=0.5, alpha=0.7)
                 ax.set_ylabel('BVP Filtered (a.u.)', fontsize=10)
                 ax.set_title(f'{moment.capitalize()}: Filtered BVP Signal', fontsize=11, fontweight='bold')
                 ax.grid(True, alpha=0.3)
                 ax.set_xlabel('Sample', fontsize=10)
+            else:
+                ax.text(0.5, 0.5, 'No BVP column found', ha='center', va='center', transform=ax.transAxes)
         else:
             ax.text(0.5, 0.5, 'No data', ha='center', va='center', transform=ax.transAxes)
             ax.set_title(f'{moment.capitalize()}: No BVP data', fontsize=11)
@@ -192,8 +196,12 @@ def create_bvp_diagnostic_plot(subject: str, session: str, bvp_signals: Dict,
         ax = axes[1, col_idx]
         if f'{moment}_processed' in bvp_signals:
             df = bvp_signals[f'{moment}_processed']
-            if 'Heart_Rate' in df.columns:
-                hr = df['Heart_Rate'].dropna()
+            # Check for PPG_Rate (new naming) or Heart_Rate (legacy)
+            hr_col = 'PPG_Rate' if 'PPG_Rate' in df.columns else 'Heart_Rate' if 'Heart_Rate' in df.columns else None
+            # Check for PPG_Rate (new naming) or Heart_Rate (legacy)
+            hr_col = 'PPG_Rate' if 'PPG_Rate' in df.columns else 'Heart_Rate' if 'Heart_Rate' in df.columns else None
+            if hr_col:
+                hr = df[hr_col].dropna()
                 if len(hr) > 0:
                     ax.plot(hr, color=colors[moment], linewidth=1)
                     ax.axhline(y=60, color='green', linestyle='--', alpha=0.5, label='Normal range')
@@ -204,6 +212,8 @@ def create_bvp_diagnostic_plot(subject: str, session: str, bvp_signals: Dict,
                     ax.grid(True, alpha=0.3)
                     ax.set_xlabel('Sample', fontsize=10)
                     ax.legend(fontsize=8)
+            else:
+                ax.text(0.5, 0.5, 'No HR column found', ha='center', va='center', transform=ax.transAxes)
         
         # Plot 3: HRV Frequency Analysis (if available)
         ax = axes[2, col_idx]
