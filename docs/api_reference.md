@@ -1,8 +1,8 @@
 # API Reference - TherasyncPipeline
 
 **Authors**: Lena Adel, Remy Ramadour  
-**Version**: 0.3.0 (Modular Architecture)  
-**Last Updated**: October 28, 2025
+**Version**: 0.5.0 (Visualization & Batch Processing)  
+**Last Updated**: November 11, 2025
 
 This document provides comprehensive API documentation for all modules in the TherasyncPipeline project.
 
@@ -32,7 +32,19 @@ This document provides comprehensive API documentation for all modules in the Th
    - [preprocess_bvp.py](#preprocess_bvppy)
    - [preprocess_eda.py](#preprocess_edapy)
    - [preprocess_hr.py](#preprocess_hrpy)
+   - [generate_visualizations.py](#generate_visualizationspy)
+   - [run_all_preprocessing.py](#run_all_preprocessingpy)
+   - [run_all_visualizations.py](#run_all_visualizationspy)
    - [clean_outputs.py](#clean_outputspy)
+4. [Visualization Modules](#visualization-modules)
+   - [VisualizationDataLoader](#visualizationdataloader)
+   - [VisualizationConfig](#visualizationconfig)
+   - [SignalPlotter](#signalplotter)
+   - [HRVPlotter](#hrvplotter)
+   - [EDAPlotter](#edaplotter)
+5. [Batch Processing](#batch-processing)
+   - [BatchPreprocessor](#batchpreprocessor)
+   - [BatchVisualizer](#batchvisualizer)
 
 ---
 
@@ -1573,7 +1585,339 @@ Typical processing times on standard hardware:
 
 ---
 
+## Visualization Modules
+
+### VisualizationDataLoader
+
+**Module**: `src.visualization.data_loader.py`
+
+Loads preprocessed BVP, EDA, and HR data for visualization.
+
+#### Class: `VisualizationDataLoader`
+
+```python
+from src.visualization.data_loader import VisualizationDataLoader
+
+# Initialize
+loader = VisualizationDataLoader()
+
+# Load data for one subject/session
+data = loader.load_subject_session(
+    subject="f01p01",
+    session="01",
+    config_name="therasync"
+)
+
+# List all available subjects/sessions
+subjects = loader.list_available_subjects(config_name="therasync")
+```
+
+**Methods**:
+
+##### `load_subject_session(subject, session, config_name="therasync")`
+
+Load preprocessed data for a single subject/session.
+
+**Parameters**:
+- `subject` (str): Subject ID (e.g., "f01p01")
+- `session` (str): Session number (e.g., "01")
+- `config_name` (str): Configuration name
+
+**Returns**: Dictionary with keys:
+- `bvp`: BVP signals and metrics
+  - `signals`: Dict of DataFrames per moment
+  - `metrics`: DataFrame with HRV metrics
+- `eda`: EDA signals and metrics
+  - `signals`: Dict of DataFrames per moment
+  - `scr_events`: Dict of DataFrames per moment
+  - `metrics`: DataFrame with EDA metrics
+- `hr`: HR signals and metrics
+  - `signals`: DataFrame with combined HR data
+  - `metrics`: DataFrame with HR metrics
+
+##### `list_available_subjects(config_name="therasync")`
+
+List all subjects/sessions with preprocessed data.
+
+**Returns**: List of tuples `[(subject, session), ...]`
+
+---
+
+### VisualizationConfig
+
+**Module**: `src.visualization.config.py`
+
+Configuration for plot styling and parameters.
+
+#### Class: `VisualizationConfig`
+
+```python
+from src.visualization.config import VisualizationConfig
+
+# Initialize from YAML
+config = VisualizationConfig(config_path="config/config.yaml")
+
+# Access plot settings
+dpi = config.dpi  # 300
+colors = config.colors  # Color palette
+figure_sizes = config.figure_sizes  # {'dashboard': (14, 10), ...}
+```
+
+**Attributes**:
+- `dpi`: Plot resolution (default: 300)
+- `figure_format`: Output format (default: "png")
+- `colors`: Color palette for different signal types
+- `figure_sizes`: Predefined figure dimensions
+- `font_sizes`: Font size configuration
+
+---
+
+### SignalPlotter
+
+**Module**: `src.visualization.plotters.signal_plots.py`
+
+Generate multi-signal visualizations.
+
+#### Class: `SignalPlotter`
+
+```python
+from src.visualization.plotters.signal_plots import SignalPlotter
+
+# Initialize
+plotter = SignalPlotter(config_path="config/config.yaml")
+
+# Generate dashboard
+output_path = plotter.plot_dashboard(
+    data=data,
+    subject="f01p01",
+    session="01",
+    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
+)
+
+# Generate timeline
+output_path = plotter.plot_timeline(
+    hr_signals=data['hr']['signals'],
+    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
+)
+```
+
+**Methods**:
+
+##### `plot_dashboard(data, subject, session, output_dir)`
+
+Create multi-signal dashboard with BVP, EDA, HR.
+
+**Generates**: `01_dashboard_multisignals.png`
+
+##### `plot_timeline(hr_signals, output_dir)`
+
+Create HR dynamics timeline with variability bands.
+
+**Generates**: `06_hr_dynamics_timeline.png`
+
+---
+
+### HRVPlotter
+
+**Module**: `src.visualization.plotters.hrv_plots.py`
+
+Generate HRV analysis visualizations.
+
+#### Class: `HRVPlotter`
+
+```python
+from src.visualization.plotters.hrv_plots import HRVPlotter
+
+# Initialize
+plotter = HRVPlotter(config_path="config/config.yaml")
+
+# Generate Poincaré plot
+output_path = plotter.plot_poincare(
+    bvp_data=data['bvp'],
+    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
+)
+
+# Generate autonomic balance
+output_path = plotter.plot_autonomic_balance(
+    bvp_data=data['bvp'],
+    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
+)
+```
+
+**Methods**:
+
+##### `plot_poincare(bvp_data, output_dir)`
+
+Create Poincaré plot showing HRV non-linear dynamics (SD1/SD2).
+
+**Generates**: `02_poincare_hrv.png`
+
+##### `plot_autonomic_balance(bvp_data, output_dir)`
+
+Create autonomic balance timeline (LF/HF ratio evolution).
+
+**Generates**: `03_autonomic_balance.png`
+
+---
+
+### EDAPlotter
+
+**Module**: `src.visualization.plotters.eda_plots.py`
+
+Generate EDA/arousal visualizations.
+
+#### Class: `EDAPlotter`
+
+```python
+from src.visualization.plotters.eda_plots import EDAPlotter
+
+# Initialize
+plotter = EDAPlotter(config_path="config/config.yaml")
+
+# Generate arousal profile
+output_path = plotter.plot_arousal_profile(
+    eda_data=data['eda'],
+    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
+)
+
+# Generate SCR distribution
+output_path = plotter.plot_scr_distribution(
+    eda_data=data['eda'],
+    output_dir="data/derivatives/visualization/sub-f01p01/ses-01/figures"
+)
+```
+
+**Methods**:
+
+##### `plot_arousal_profile(eda_data, output_dir)`
+
+Create EDA arousal profile with tonic/phasic decomposition and SCR events.
+
+**Generates**: `04_eda_arousal_profile.png`
+
+##### `plot_scr_distribution(eda_data, output_dir)`
+
+Create SCR amplitude distribution histogram with statistics.
+
+**Generates**: `05_scr_distribution.png`
+
+---
+
+## Batch Processing
+
+### BatchPreprocessor
+
+**Module**: `scripts.batch.run_all_preprocessing.py`
+
+Automated preprocessing of all subjects/sessions.
+
+#### Class: `BatchPreprocessor`
+
+```python
+from scripts.batch.run_all_preprocessing import BatchPreprocessor
+
+# Initialize
+preprocessor = BatchPreprocessor(
+    config_path="config/config.yaml",
+    dry_run=False,
+    skip_existing=True,
+    subjects=None  # All subjects
+)
+
+# Run batch processing
+preprocessor.run_batch()
+```
+
+**Parameters**:
+- `config_path`: Path to YAML configuration
+- `dry_run`: Preview without execution (default: False)
+- `skip_existing`: Skip already processed sessions (default: False)
+- `subjects`: List of subject IDs to process (default: None = all)
+
+**Features**:
+- Scans `data/raw/` for all `sub-*/ses-*` combinations
+- Executes BVP → EDA → HR sequentially (dependency-aware)
+- Timeout: 600 seconds per script
+- Comprehensive error tracking and logging
+- Keyboard interrupt handling (Ctrl+C shows partial results)
+
+**Outputs**:
+- Preprocessed data in `data/derivatives/preprocessing/`
+- Timestamped log: `log/batch_preprocessing_YYYYMMDD_HHMMSS.log`
+
+---
+
+### BatchVisualizer
+
+**Module**: `scripts.batch.run_all_visualizations.py`
+
+Automated visualization generation for all preprocessed sessions.
+
+#### Class: `BatchVisualizer`
+
+```python
+from scripts.batch.run_all_visualizations import BatchVisualizer
+
+# Initialize
+visualizer = BatchVisualizer(
+    config_path="config/config.yaml",
+    dry_run=False,
+    plots=None,  # All plots (1-6)
+    subjects=None  # All subjects
+)
+
+# Run batch visualization
+visualizer.run_batch()
+```
+
+**Parameters**:
+- `config_path`: Path to YAML configuration
+- `dry_run`: Preview without generation (default: False)
+- `plots`: List of plot numbers to generate (default: None = all)
+- `subjects`: List of subject IDs to visualize (default: None = all)
+
+**Features**:
+- Auto-detects preprocessed sessions from `data/derivatives/preprocessing/`
+- Generates 6 PNG files per session
+- Per-plot error tracking and statistics
+- Keyboard interrupt handling
+
+**Outputs**:
+- Visualizations in `data/derivatives/visualization/sub-*/ses-*/figures/`
+- Timestamped log: `log/batch_visualization_YYYYMMDD_HHMMSS.log`
+
+**Plot Numbering**:
+1. Multi-signal dashboard
+2. Poincaré HRV plot
+3. Autonomic balance timeline
+4. EDA arousal profile
+5. SCR distribution
+6. HR dynamics timeline
+
+---
+
 ## Version History
+
+### v0.5.0 (2025-11-11)
+
+**Sprint 5 Completed**:
+- ✅ Visualization pipeline: 6 core plots per session
+- ✅ VisualizationDataLoader: Load preprocessed data
+- ✅ Signal/HRV/EDA plotters: Publication-ready figures
+- ✅ Batch preprocessing: Automated BVP→EDA→HR pipeline
+- ✅ Batch visualization: Automated plot generation
+- ✅ Comprehensive logging with horodated files
+- ✅ Real data validation: 50/51 sessions (98% success)
+- ✅ Generated 300 visualizations
+- ✅ Complete documentation update
+
+### v0.3.0 (2025-10-28)
+
+**Modular Architecture Refactoring**:
+- ✅ Restructured entire codebase
+- ✅ Created `src/physio/preprocessing/` structure
+- ✅ Unified module signatures across BVP/EDA/HR
+- ✅ All 34 tests passing
 
 ### v0.1.0 (2025-10-28)
 
@@ -1598,4 +1942,4 @@ For issues, questions, or contributions, please open an issue on GitHub.
 
 ---
 
-**Last Updated**: October 28, 2025
+**Last Updated**: November 11, 2025

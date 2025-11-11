@@ -66,6 +66,27 @@ data/
 - BIDS-compliant output (7 files per subject/session)
 - **CLI**: `poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject <id> --session <num>`
 
+#### 4. Visualization Pipeline (Sprint 5)
+- 6 core visualizations per subject/session:
+  1. **Multi-signal Dashboard**: BVP, EDA, HR overview with moment markers
+  2. **Poincaré Plot**: HRV non-linear dynamics (SD1/SD2)
+  3. **Autonomic Balance**: LF/HF ratio evolution over time
+  4. **EDA Arousal Profile**: Tonic/phasic components with SCR events
+  5. **SCR Distribution**: Amplitude histogram and statistics
+  6. **HR Dynamics Timeline**: Heart rate evolution with variability bands
+- YAML-configured plot styles and parameters
+- Automatic data loading from preprocessing derivatives
+- **CLI**: `poetry run python scripts/visualization/generate_visualizations.py --subject <id> --session <num>`
+
+#### 5. Batch Processing (Sprint 5)
+- **Preprocessing**: Process all subjects/sessions in one command
+- **Visualization**: Generate all plots for preprocessed data
+- Comprehensive error tracking and logging
+- Dry-run mode for validation
+- Subject filtering and selective execution
+- **CLI Preprocessing**: `poetry run python scripts/batch/run_all_preprocessing.py`
+- **CLI Visualization**: `poetry run python scripts/batch/run_all_visualizations.py`
+
 ### 🔄 Modular Architecture
 
 The codebase is organized for extensibility:
@@ -76,15 +97,29 @@ src/physio/preprocessing/   # Preprocessing modules (current focus)
 ├── eda_*.py               # EDA pipeline components  
 └── hr_*.py                # HR pipeline components
 
+src/visualization/          # Visualization modules (Sprint 5)
+├── data_loader.py         # Load preprocessed data
+├── config.py              # Plot styling and configuration
+└── plotters/              # Visualization generators
+    ├── signal_plots.py    # Multi-signal dashboard, timeline
+    ├── hrv_plots.py       # HRV analysis plots
+    └── eda_plots.py       # EDA/arousal visualizations
+
 scripts/physio/preprocessing/  # CLI scripts
 ├── preprocess_bvp.py     # BVP preprocessing
 ├── preprocess_eda.py     # EDA preprocessing
 └── preprocess_hr.py      # HR preprocessing
 
+scripts/visualization/     # Visualization scripts
+└── generate_visualizations.py  # Single subject/session visualization
+
+scripts/batch/             # Batch processing scripts
+├── run_all_preprocessing.py    # Batch preprocessing
+└── run_all_visualizations.py   # Batch visualization
+
 Future modules (planned):
 ├── src/physio/synchrony/      # Dyadic synchrony analysis
-├── src/physio/emotion/        # Emotion recognition
-└── src/visualization/         # Plotting and reporting
+└── src/physio/emotion/        # Emotion recognition
 ```
 
 ## Quick Start
@@ -153,17 +188,47 @@ cat data/derivatives/preprocessing/sub-f01p01/ses-01/hr/*_hr-metrics.tsv
 
 #### Batch Processing
 ```bash
+# Preprocessing: Process all subjects and sessions
+poetry run python scripts/batch/run_all_preprocessing.py
+
+# Options
+poetry run python scripts/batch/run_all_preprocessing.py --dry-run        # Preview without execution
+poetry run python scripts/batch/run_all_preprocessing.py --skip-existing  # Skip already processed
+poetry run python scripts/batch/run_all_preprocessing.py --subjects f01p01 f02p01  # Specific subjects
+
+# Visualization: Generate all plots for preprocessed data
+poetry run python scripts/batch/run_all_visualizations.py
+
+# Options
+poetry run python scripts/batch/run_all_visualizations.py --dry-run      # Preview
+poetry run python scripts/batch/run_all_visualizations.py --plots 1 2 3  # Specific visualizations
+poetry run python scripts/batch/run_all_visualizations.py --subjects f01p01  # Specific subjects
+
 # Clean all outputs
 poetry run python scripts/utils/clean_outputs.py --derivatives --force
 
-# Process multiple subjects
-for subject in f01p01 f02p01; do
-  for session in 01 02; do
-    poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject $subject --session $session
-    poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject $subject --session $session
-    poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject $subject --session $session
-  done
-done
+# Typical workflow
+poetry run python scripts/batch/run_all_preprocessing.py --skip-existing
+poetry run python scripts/batch/run_all_visualizations.py
+```
+
+#### Single Subject Processing
+```bash
+# Process complete pipeline for one subject/session
+subject=f01p01
+session=01
+
+# 1. Preprocessing
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject $subject --session $session
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject $subject --session $session
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject $subject --session $session
+
+# 2. Visualization
+poetry run python scripts/visualization/generate_visualizations.py --subject $subject --session $session
+
+# 3. Check outputs
+tree data/derivatives/preprocessing/sub-$subject/ses-$session/
+tree data/derivatives/visualization/sub-$subject/ses-$session/figures/
 ```
 
 ## Documentation
@@ -194,8 +259,8 @@ Comprehensive documentation is available in the `docs/` directory:
 
 ### Project Status
 
-**Current Version**: 0.3.0  
-**Last Update**: October 28, 2025
+**Current Version**: 0.5.0  
+**Last Update**: November 11, 2025
 
 | Sprint | Status | Description | Files Changed |
 |--------|--------|-------------|---------------|
@@ -204,8 +269,9 @@ Comprehensive documentation is available in the `docs/` directory:
 | Sprint 3 | ✅ Complete | EDA preprocessing pipeline | 18 files (+6705 lines) |
 | Sprint 4 | ✅ Complete | HR extraction and metrics analysis | 8 files (+2500 lines) |
 | **Refactor** | ✅ **Complete** | **Modular architecture restructuring** | **30+ files** |
+| **Sprint 5** | ✅ **Complete** | **Visualization + Batch Processing** | **15+ files (+3000 lines)** |
 
-**Latest**: Restructured codebase into modular architecture with `src/physio/preprocessing/` and `scripts/physio/preprocessing/` for better extensibility and future development (synchrony analysis, emotion recognition, visualization modules).
+**Latest**: Complete visualization pipeline with 6 core plots per session, plus batch processing scripts for automated preprocessing and visualization of all subjects. Successfully processed 50/51 sessions (98% success rate) and generated 300 visualizations.
 
 ### Sprint-based Development
 
