@@ -21,96 +21,147 @@ from ..config import (
 
 def plot_eda_arousal_profile(data: Dict, output_path: str, show: bool = False) -> None:
     """
-    Plot EDA arousal profile with tonic and phasic components.
+    Plot EDA baseline arousal comparison between moments.
     
-    Visualization #4: Dual-axis plot showing:
-    - Tonic EDA (baseline arousal level) - primary y-axis
-    - Phasic EDA (reactive component) - secondary y-axis
-    - Moment differentiation with colors
+    Visualization #4: Quantitative comparison showing:
+    - Tonic EDA levels: mean, min, max (baseline arousal)
+    - Phasic variability: standard deviation (reactivity)
     
     Args:
-        data: Dictionary containing EDA signals with keys:
-            - 'eda': Dict with 'restingstate' and 'therapy' DataFrames
-                     Each should have: 'time', 'eda_tonic', 'eda_phasic'
+        data: Dictionary containing EDA signals with structure:
+            - 'eda': Dict with 'signals' containing moment DataFrames
+                     Each should have: 'EDA_Tonic', 'EDA_Phasic'
         output_path: Path to save the PNG figure
     """
     apply_plot_style()
     
-    fig, ax1 = plt.subplots(figsize=FIGSIZE['wide'])
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=FIGSIZE['wide'])
     
-    # Secondary axis for phasic
-    ax2 = ax1.twinx()
+    eda_data = data.get('eda', {})
+    if not eda_data or 'signals' not in eda_data:
+        ax1.text(0.5, 0.5, 'No EDA data available', ha='center', va='center',
+                transform=ax1.transAxes, fontsize=FONTSIZE['label'])
+        return
     
-    # Track time offset for concatenation
-    time_offset = 0
+    moments = ['restingstate', 'therapy']
+    available_moments = [m for m in moments if m in eda_data.get('signals', {})]
     
-    # Plot each moment
-    for moment in ['restingstate', 'therapy']:
-        if moment not in data['eda']:
+    if not available_moments:
+        ax1.text(0.5, 0.5, 'No EDA signals available', ha='center', va='center',
+                transform=ax1.transAxes, fontsize=FONTSIZE['label'])
+        return
+    
+    # Calculate statistics for each moment
+    stats = {}
+    for moment in available_moments:
+        df = eda_data['signals'][moment]
+        if df.empty or 'EDA_Tonic' not in df.columns or 'EDA_Phasic' not in df.columns:
             continue
         
-        df = data['eda'][moment]
-        if df.empty:
-            continue
+        # Clip tonic values to 0 (physiological minimum)
+        # Note: Negative tonic values indicate preprocessing artifacts
+        tonic_clipped = df['EDA_Tonic'].clip(lower=0)
         
-        time = df['time'].values + time_offset
-        tonic = df['eda_tonic'].values if 'eda_tonic' in df.columns else None
-        phasic = df['eda_phasic'].values if 'eda_phasic' in df.columns else None
-        
+        stats[moment] = {
+            'tonic_mean': tonic_clipped.mean(),
+            'tonic_min': tonic_clipped.min(),
+            'tonic_max': tonic_clipped.max(),
+            'phasic_std': df['EDA_Phasic'].std()
+        }
+    
+    if not stats:
+        ax1.text(0.5, 0.5, 'Insufficient EDA data', ha='center', va='center',
+                transform=ax1.transAxes, fontsize=FONTSIZE['label'])
+        return
+    
+    # Panel 1: Tonic EDA levels (mean, min, max)
+    x = np.arange(len(stats))
+    width = 0.25
+    
+    for i, moment in enumerate(stats.keys()):
         moment_color = get_moment_color(moment)
+        s = stats[moment]
         
-        # Plot tonic on primary axis (line)
-        if tonic is not None:
-            ax1.plot(
-                time, tonic,
-                color=moment_color,
-                linewidth=LINEWIDTH['signal'],
-                label=f'{moment} - Tonic',
-                alpha=0.9
-            )
+        # Mean (solid bar)
+        ax1.bar(i - width, s['tonic_mean'], width, 
+               color=moment_color, alpha=0.9, 
+               edgecolor='white', linewidth=2,
+               label='Mean' if i == 0 else '')
         
-        # Plot phasic on secondary axis (filled area)
-        if phasic is not None:
-            ax2.fill_between(
-                time, 0, phasic,
-                color=moment_color,
-                alpha=ALPHA['low'],
-                label=f'{moment} - Phasic'
-            )
-            ax2.plot(
-                time, phasic,
-                color=moment_color,
-                linewidth=LINEWIDTH['thin'],
-                alpha=0.5
-            )
+        # Min (lighter bar)
+        ax1.bar(i, s['tonic_min'], width,
+               color=moment_color, alpha=0.5,
+               edgecolor='white', linewidth=2,
+               label='Min' if i == 0 else '')
         
-        # Update offset for next moment
-        if len(time) > 0:
-            time_offset = time[-1]
+        # Max (darker bar with hatching)
+        ax1.bar(i + width, s['tonic_max'], width,
+               color=moment_color, alpha=0.7, hatch='///',
+               edgecolor='white', linewidth=2,
+               label='Max' if i == 0 else '')
+        
+        # Add value labels
+        ax1.text(i - width, s['tonic_mean'] + 0.05, f"{s['tonic_mean']:.2f}",
+                ha='center', va='bottom', fontsize=FONTSIZE['annotation'],
+                fontweight='bold', color=moment_color)
+        ax1.text(i, s['tonic_min'] + 0.05, f"{s['tonic_min']:.2f}",
+                ha='center', va='bottom', fontsize=FONTSIZE['annotation'],
+                fontweight='bold', color=moment_color)
+        ax1.text(i + width, s['tonic_max'] + 0.05, f"{s['tonic_max']:.2f}",
+                ha='center', va='bottom', fontsize=FONTSIZE['annotation'],
+                fontweight='bold', color=moment_color)
     
-    # Formatting
-    ax1.set_xlabel('Temps (s)', fontsize=FONTSIZE['label'])
-    ax1.set_ylabel('EDA Tonique (µS)', fontsize=FONTSIZE['label'], color=COLORS['tonic'])
-    ax2.set_ylabel('EDA Phasique (µS)', fontsize=FONTSIZE['label'], color=COLORS['phasic'])
+    ax1.set_xlabel('Moment', fontsize=FONTSIZE['label'], fontweight='bold')
+    ax1.set_ylabel('EDA Tonic Level (µS)', fontsize=FONTSIZE['label'], fontweight='bold')
+    ax1.set_xticks(x)
+    ax1.set_xticklabels([m.capitalize() for m in stats.keys()], 
+                        fontsize=FONTSIZE['tick'], fontweight='bold')
+    ax1.legend(loc='upper left', fontsize=FONTSIZE['legend'], framealpha=0.95)
+    ax1.grid(True, alpha=ALPHA['fill'], axis='y', linestyle='--')
+    ax1.set_title('Baseline Arousal Levels\n(Tonic EDA)', 
+                 fontsize=FONTSIZE['subtitle'], fontweight='bold')
     
-    ax1.tick_params(axis='y', labelcolor=COLORS['tonic'], labelsize=FONTSIZE['tick'])
-    ax2.tick_params(axis='y', labelcolor=COLORS['phasic'], labelsize=FONTSIZE['tick'])
-    ax1.tick_params(axis='x', labelsize=FONTSIZE['tick'])
+    # Panel 2: Phasic variability (reactivity)
+    for i, moment in enumerate(stats.keys()):
+        moment_color = get_moment_color(moment)
+        s = stats[moment]
+        
+        # Phasic std as bar
+        ax2.bar(i, s['phasic_std'], 0.6,
+               color=moment_color, alpha=0.8,
+               edgecolor='white', linewidth=2)
+        
+        # Add value label
+        ax2.text(i, s['phasic_std'] + max([stats[m]['phasic_std'] for m in stats]) * 0.02, 
+                f"{s['phasic_std']:.3f}",
+                ha='center', va='bottom', fontsize=FONTSIZE['annotation'],
+                fontweight='bold', color=moment_color)
     
-    ax1.set_title('Profil d\'Arousal EDA - Composantes Tonique et Phasique', 
-                  fontsize=FONTSIZE['title'], fontweight='bold', pad=20)
+    ax2.set_xlabel('Moment', fontsize=FONTSIZE['label'], fontweight='bold')
+    ax2.set_ylabel('EDA Phasic Std Dev (µS)', fontsize=FONTSIZE['label'], fontweight='bold')
+    ax2.set_xticks(x)
+    ax2.set_xticklabels([m.capitalize() for m in stats.keys()], 
+                        fontsize=FONTSIZE['tick'], fontweight='bold')
+    ax2.grid(True, alpha=ALPHA['fill'], axis='y', linestyle='--')
+    ax2.set_title('Emotional Reactivity\n(Phasic Variability)', 
+                 fontsize=FONTSIZE['subtitle'], fontweight='bold')
     
-    # Combined legend
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, 
-              loc='upper right', fontsize=FONTSIZE['legend'])
+    # Overall title
+    fig.suptitle(
+        f'EDA Baseline Arousal Comparison\n'
+        f'Subject {data.get("subject", "Unknown")}, Session {data.get("session", "Unknown")}',
+        fontsize=FONTSIZE['title'], fontweight='bold', y=0.98)
     
-    ax1.grid(True, alpha=ALPHA['medium'], linestyle='--', linewidth=LINEWIDTH['thin'])
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
     
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    plt.close()
+    
+    if output_path:
+        fig.savefig(output_path, dpi=300, bbox_inches='tight')
+    
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
 
 
 def plot_scr_cascade(data: Dict, output_path: str, show: bool = False) -> None:

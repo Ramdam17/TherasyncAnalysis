@@ -211,9 +211,16 @@ def plot_autonomic_balance(
     show: bool = False
 ) -> plt.Figure:
     """
-    Visualization #3: Autonomic Balance (Frequency Domain).
+    Visualization #3: HRV Variability Comparison.
     
-    Stacked bar chart showing LF and HF power with LF/HF ratio line.
+    Compares heart rate variability metrics between moments using grouped bar chart.
+    - SDNN (Standard Deviation of NN intervals): Overall HRV, reflects total variability
+    - RMSSD (Root Mean Square of Successive Differences): Short-term HRV, parasympathetic activity
+    
+    Interpretation:
+    - Higher SDNN/RMSSD = Better cardiovascular health and stress resilience
+    - RMSSD > SDNN suggests strong parasympathetic (relaxation) activity
+    - Lower values during therapy may indicate stress/activation
     
     Args:
         data: Dictionary containing 'bvp' data with metrics
@@ -225,63 +232,86 @@ def plot_autonomic_balance(
     """
     apply_plot_style()
     
-    fig, ax1 = plt.subplots(figsize=FIGSIZE['medium'])
+    fig, ax = plt.subplots(figsize=FIGSIZE['medium'])
     
     bvp_data = data.get('bvp', {})
     
     if not bvp_data or 'metrics' not in bvp_data or bvp_data['metrics'] is None:
-        ax1.text(0.5, 0.5, 'No BVP metrics available', ha='center', va='center',
-                transform=ax1.transAxes, fontsize=FONTSIZE['label'])
+        ax.text(0.5, 0.5, 'No BVP metrics available', ha='center', va='center',
+                transform=ax.transAxes, fontsize=FONTSIZE['label'])
         return fig
     
     metrics = bvp_data['metrics']
     
     # Check required columns
-    required_cols = ['moment', 'HRV_LF', 'HRV_HF', 'HRV_LFHF']
+    required_cols = ['moment', 'HRV_SDNN', 'HRV_RMSSD']
     if not all(col in metrics.columns for col in required_cols):
-        ax1.text(0.5, 0.5, 'Missing required HRV metrics', ha='center', va='center',
-                transform=ax1.transAxes, fontsize=FONTSIZE['label'])
+        ax.text(0.5, 0.5, 'Missing required HRV metrics (SDNN, RMSSD)', ha='center', va='center',
+                transform=ax.transAxes, fontsize=FONTSIZE['label'])
         return fig
     
     # Extract metrics
     moments = metrics['moment'].values
-    lf_power = metrics['HRV_LF'].values
-    hf_power = metrics['HRV_HF'].values
-    lfhf_ratio = metrics['HRV_LFHF'].values
+    sdnn = metrics['HRV_SDNN'].values
+    rmssd = metrics['HRV_RMSSD'].values
     
     x = np.arange(len(moments))
-    width = 0.6
+    width = 0.35
     
-    # Stacked bar chart
-    bar1 = ax1.bar(x, lf_power, width, label='LF Power',
-                   color=COLORS['lf'], alpha=ALPHA['solid'])
-    bar2 = ax1.bar(x, hf_power, width, bottom=lf_power, label='HF Power',
-                   color=COLORS['hf'], alpha=ALPHA['solid'])
+    # Grouped bar chart
+    for i, moment in enumerate(moments):
+        moment_color = get_moment_color(moment)
+        
+        # SDNN bar (left)
+        ax.bar(i - width/2, sdnn[i], width, 
+               color=moment_color, alpha=0.8, 
+               edgecolor='white', linewidth=2,
+               label='SDNN (overall HRV)' if i == 0 else '')
+        
+        # RMSSD bar (right) with hatching for distinction
+        ax.bar(i + width/2, rmssd[i], width,
+               color=moment_color, alpha=0.5, hatch='///',
+               edgecolor='white', linewidth=2,
+               label='RMSSD (parasympathetic)' if i == 0 else '')
+        
+        # Add value labels on bars
+        ax.text(i - width/2, sdnn[i] + max(sdnn) * 0.02, 
+                f'{sdnn[i]:.0f}',
+                ha='center', va='bottom', fontsize=FONTSIZE['annotation'],
+                fontweight='bold', color=moment_color)
+        
+        ax.text(i + width/2, rmssd[i] + max(rmssd) * 0.02, 
+                f'{rmssd[i]:.0f}',
+                ha='center', va='bottom', fontsize=FONTSIZE['annotation'],
+                fontweight='bold', color=moment_color)
     
-    ax1.set_xlabel('Moment', fontsize=FONTSIZE['label'])
-    ax1.set_ylabel('Power (ms²)', fontsize=FONTSIZE['label'])
-    ax1.set_xticks(x)
-    ax1.set_xticklabels([m.capitalize() for m in moments], fontsize=FONTSIZE['tick'])
-    ax1.legend(loc='upper left', fontsize=FONTSIZE['legend'])
-    ax1.grid(True, alpha=ALPHA['fill'], axis='y')
+    ax.set_xlabel('Moment', fontsize=FONTSIZE['label'], fontweight='bold')
+    ax.set_ylabel('Time (ms)', fontsize=FONTSIZE['label'], fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels([m.capitalize() for m in moments], 
+                        fontsize=FONTSIZE['tick'], fontweight='bold')
+    ax.grid(True, alpha=ALPHA['fill'], axis='y', linestyle='--')
     
-    # Add LF/HF ratio on secondary axis
-    ax2 = ax1.twinx()
-    line = ax2.plot(x, lfhf_ratio, color=COLORS['scr'], marker='o',
-                   linewidth=LINEWIDTH['thick'], markersize=MARKERSIZE['large'],
-                   label='LF/HF Ratio', zorder=10)
-    ax2.set_ylabel('LF/HF Ratio', fontsize=FONTSIZE['label'])
-    ax2.legend(loc='upper right', fontsize=FONTSIZE['legend'])
+    # Legend below the plot
+    from matplotlib.patches import Patch
     
-    # Add reference zone for optimal LF/HF ratio (0.5-3.0)
-    ax2.axhspan(0.5, 3.0, color=COLORS['good'], alpha=0.1, zorder=0)
-    ax2.text(len(moments)-0.5, 1.75, 'Optimal\nRange',
-            fontsize=FONTSIZE['annotation'], ha='right',
-            bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
+    legend_elements = [
+        Patch(facecolor='gray', alpha=0.8, edgecolor='white', linewidth=2,
+              label='SDNN (overall HRV)'),
+        Patch(facecolor='gray', alpha=0.5, hatch='///', edgecolor='white', linewidth=2,
+              label='RMSSD (parasympathetic)')
+    ]
     
-    # Title
-    ax1.set_title(f'Autonomic Balance - Frequency Domain Analysis\nSubject {data.get("subject", "Unknown")}, Session {data.get("session", "Unknown")}',
-                 fontsize=FONTSIZE['title'], fontweight='bold')
+    ax.legend(handles=legend_elements, loc='upper center', 
+              bbox_to_anchor=(0.5, -0.08), ncol=2, 
+              fontsize=FONTSIZE['legend'], framealpha=0.95)
+    
+    # Title with explanation
+    ax.set_title(
+        f'Heart Rate Variability (HRV) - Time Domain Metrics\n'
+        f'Subject {data.get("subject", "Unknown")}, Session {data.get("session", "Unknown")}\n'
+        f'Higher values = Better cardiovascular health & stress resilience',
+        fontsize=FONTSIZE['title'], fontweight='bold', pad=20)
     
     plt.tight_layout()
     
