@@ -335,6 +335,37 @@ Returns:
     Dictionary with extracted metrics for each moment.
     Format: {moment: {metric_name: value}}
 
+##### `extract_rr_intervals(self, peaks: numpy.ndarray, sampling_rate: float, moment: str) -> pandas.core.frame.DataFrame`
+
+Extract RR intervals (peak-to-peak) from detected BVP peaks.
+
+Calculates time intervals between consecutive peaks and validates them against
+physiological thresholds. All intervals are preserved with a validity flag.
+
+Args:
+    peaks: Array of peak indices from BVP signal processing
+    sampling_rate: Sampling rate in Hz (typically 64 Hz for BVP)
+    moment: Moment name (e.g., 'restingstate', 'therapy')
+    
+Returns:
+    DataFrame with columns:
+        - time_peak_start: Timestamp of interval start peak (seconds)
+        - time_peak_end: Timestamp of interval end peak (seconds)
+        - rr_interval_ms: Duration between peaks (milliseconds)
+        - is_valid: Validity flag (1 = valid, 0 = invalid)
+        
+Notes:
+    - Valid range defaults: 300-2000 ms (30-200 BPM)
+    - Configurable via config.yaml: physio.bvp.rr_intervals
+    - Invalid intervals marked with is_valid=0 (not filtered out)
+    - First peak has no prior interval (starts at second peak)
+
+Example:
+    >>> peaks = processing_info['peaks']
+    >>> rr_intervals = extractor.extract_rr_intervals(peaks, 64.0, 'therapy')
+    >>> valid_intervals = rr_intervals[rr_intervals['is_valid'] == 1]
+    >>> print(f"Valid rate: {len(valid_intervals) / len(rr_intervals) * 100:.1f}%")
+
 ##### `get_configured_metrics_list(self) -> List[str]`
 
 Get list of all configured metrics that will be extracted.
@@ -394,6 +425,34 @@ Args:
     
 Returns:
     Dictionary with lists of created file paths
+
+##### `save_rr_intervals(self, subject_id: str, session_id: str, moment: str, rr_intervals_df: pandas.core.frame.DataFrame) -> Tuple[pathlib.Path, pathlib.Path]`
+
+Save RR intervals data in BIDS-compliant format.
+
+Creates TSV file with RR intervals time-series and JSON sidecar with metadata.
+Files follow BIDS naming: `*_task-{moment}_desc-rrintervals_physio.{tsv,json}`
+
+Args:
+    subject_id: Subject identifier WITH prefix (e.g., 'sub-f01p01')
+    session_id: Session identifier WITH prefix (e.g., 'ses-01')
+    moment: Moment/task name (e.g., 'restingstate', 'therapy')
+    rr_intervals_df: DataFrame from BVPMetricsExtractor.extract_rr_intervals()
+                    Expected columns: time_peak_start, time_peak_end, rr_interval_ms, is_valid
+    
+Returns:
+    Tuple of (tsv_path, json_path) for created files
+
+Notes:
+    - TSV saved with 3 decimal precision for timestamps
+    - JSON sidecar includes column descriptions, units, valid range, statistics
+    - Output directory: derivatives/therasync-bvp/{subject}/{session}/physio/
+    - Statistics include total intervals, valid count, valid percentage
+
+Example:
+    >>> rr_df = extractor.extract_rr_intervals(peaks, 64.0, 'therapy')
+    >>> tsv_path, json_path = writer.save_rr_intervals('sub-f01p01', 'ses-01', 'therapy', rr_df)
+    >>> print(f"Saved {len(rr_df)} intervals to {tsv_path}")
 
 
 ---
