@@ -43,8 +43,8 @@ def plot_eda_arousal_profile(data: Dict, output_path: str, show: bool = False) -
                 transform=ax1.transAxes, fontsize=FONTSIZE['label'])
         return
     
-    moments = ['restingstate', 'therapy']
-    available_moments = [m for m in moments if m in eda_data.get('signals', {})]
+    # Get all available moments dynamically
+    available_moments = list(eda_data.get('signals', {}).keys())
     
     if not available_moments:
         ax1.text(0.5, 0.5, 'No EDA signals available', ha='center', va='center',
@@ -74,54 +74,46 @@ def plot_eda_arousal_profile(data: Dict, output_path: str, show: bool = False) -
                 transform=ax1.transAxes, fontsize=FONTSIZE['label'])
         return
     
-    # Panel 1: Tonic EDA levels (mean, min, max)
-    x = np.arange(len(stats))
-    width = 0.25
+    # Panel 1: Tonic EDA distribution (boxplot)
+    # Prepare data for boxplot
+    tonic_data = []
+    moment_labels = []
+    moment_colors = []
     
-    for i, moment in enumerate(stats.keys()):
-        moment_color = get_moment_color(moment)
-        s = stats[moment]
+    for moment in available_moments:
+        df = eda_data['signals'][moment]
+        if df.empty or 'EDA_Tonic' not in df.columns:
+            continue
         
-        # Mean (solid bar)
-        ax1.bar(i - width, s['tonic_mean'], width, 
-               color=moment_color, alpha=0.9, 
-               edgecolor='white', linewidth=2,
-               label='Mean' if i == 0 else '')
-        
-        # Min (lighter bar)
-        ax1.bar(i, s['tonic_min'], width,
-               color=moment_color, alpha=0.5,
-               edgecolor='white', linewidth=2,
-               label='Min' if i == 0 else '')
-        
-        # Max (darker bar with hatching)
-        ax1.bar(i + width, s['tonic_max'], width,
-               color=moment_color, alpha=0.7, hatch='///',
-               edgecolor='white', linewidth=2,
-               label='Max' if i == 0 else '')
-        
-        # Add value labels
-        ax1.text(i - width, s['tonic_mean'] + 0.05, f"{s['tonic_mean']:.2f}",
-                ha='center', va='bottom', fontsize=FONTSIZE['annotation'],
-                fontweight='bold', color=moment_color)
-        ax1.text(i, s['tonic_min'] + 0.05, f"{s['tonic_min']:.2f}",
-                ha='center', va='bottom', fontsize=FONTSIZE['annotation'],
-                fontweight='bold', color=moment_color)
-        ax1.text(i + width, s['tonic_max'] + 0.05, f"{s['tonic_max']:.2f}",
-                ha='center', va='bottom', fontsize=FONTSIZE['annotation'],
-                fontweight='bold', color=moment_color)
+        # Clip tonic values to 0 (physiological minimum)
+        tonic_clipped = df['EDA_Tonic'].clip(lower=0)
+        tonic_data.append(tonic_clipped.values)
+        moment_labels.append(moment.capitalize())
+        moment_colors.append(get_moment_color(moment))
+    
+    # Create boxplot
+    bp = ax1.boxplot(tonic_data, labels=moment_labels, patch_artist=True,
+                     widths=0.6, showmeans=True,
+                     meanprops=dict(marker='D', markerfacecolor='white', 
+                                   markeredgecolor='black', markersize=8),
+                     medianprops=dict(color='black', linewidth=2),
+                     boxprops=dict(linewidth=1.5),
+                     whiskerprops=dict(linewidth=1.5),
+                     capprops=dict(linewidth=1.5))
+    
+    # Color each box
+    for patch, color in zip(bp['boxes'], moment_colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.7)
     
     ax1.set_xlabel('Moment', fontsize=FONTSIZE['label'], fontweight='bold')
     ax1.set_ylabel('EDA Tonic Level (µS)', fontsize=FONTSIZE['label'], fontweight='bold')
-    ax1.set_xticks(x)
-    ax1.set_xticklabels([m.capitalize() for m in stats.keys()], 
-                        fontsize=FONTSIZE['tick'], fontweight='bold')
-    ax1.legend(loc='upper left', fontsize=FONTSIZE['legend'], framealpha=0.95)
     ax1.grid(True, alpha=ALPHA['fill'], axis='y', linestyle='--')
-    ax1.set_title('Baseline Arousal Levels\n(Tonic EDA)', 
+    ax1.set_title('Baseline Arousal Distribution\n(Tonic EDA)', 
                  fontsize=FONTSIZE['subtitle'], fontweight='bold')
     
     # Panel 2: Phasic variability (reactivity)
+    x = np.arange(len(stats))
     for i, moment in enumerate(stats.keys()):
         moment_color = get_moment_color(moment)
         s = stats[moment]
@@ -164,202 +156,158 @@ def plot_eda_arousal_profile(data: Dict, output_path: str, show: bool = False) -
         plt.close(fig)
 
 
-def plot_scr_cascade(data: Dict, output_path: str, show: bool = False) -> None:
+def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> None:
     """
-    Plot SCR cascade/waterfall showing SCR events by amplitude.
+    Plot SCR amplitude distribution with histogram and boxplot per moment.
     
-    Visualization #5: Waterfall plot where each SCR event is shown as:
-    - Stacked horizontal bars sorted by amplitude
-    - Color-coded by moment (restingstate/therapy)
-    - X-axis shows SCR amplitude, Y-axis shows event index
+    Visualization #5: Separate histogram + boxplot for each moment:
+    - Top row: Histograms showing amplitude distribution per moment
+    - Bottom row: Boxplots showing statistical summary per moment
+    - One column per moment for clear comparison
     
     Args:
         data: Dictionary containing EDA events with key:
-            - 'eda': Dict with 'events' sub-dict containing:
-                - 'restingstate': DataFrame with 'scr_amplitude', 'scr_onset'
-                - 'therapy': DataFrame with 'scr_amplitude', 'scr_onset'
+            - 'eda': Dict with 'events' sub-dict containing moment DataFrames
+                     Each should have 'amplitude' column
         output_path: Path to save the PNG figure
     """
     apply_plot_style()
     
-    fig, ax = plt.subplots(figsize=FIGSIZE['wide'])
-    
-    # Collect all SCR events
-    all_events = []
-    for moment in ['restingstate', 'therapy']:
-        if 'events' not in data['eda'] or moment not in data['eda']['events']:
-            continue
-        
-        df = data['eda']['events'][moment]
-        if df.empty or 'scr_amplitude' not in df.columns:
-            continue
-        
-        for _, row in df.iterrows():
-            all_events.append({
-                'amplitude': row['scr_amplitude'],
-                'onset': row.get('scr_onset', 0),
-                'moment': moment
-            })
-    
-    if not all_events:
-        # No events to plot
-        ax.text(0.5, 0.5, 'Aucun événement SCR détecté', 
+    # Get all available moments dynamically
+    eda_data = data.get('eda', {})
+    if not eda_data or 'events' not in eda_data:
+        fig, ax = plt.subplots(figsize=FIGSIZE['wide'])
+        ax.text(0.5, 0.5, 'No EDA events available', 
                ha='center', va='center', fontsize=FONTSIZE['title'])
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
-    else:
-        # Sort by amplitude (ascending for waterfall effect)
-        events_df = pd.DataFrame(all_events)
-        events_df = events_df.sort_values('amplitude', ascending=True)
-        
-        # Plot cascading bars
-        y_positions = np.arange(len(events_df))
-        
-        for idx, row in events_df.iterrows():
-            color = get_moment_color(row['moment'])
-            y_pos = np.where(y_positions == list(events_df.index).index(idx))[0][0]
-            
-            ax.barh(
-                y_pos,
-                row['amplitude'],
-                height=0.8,
-                color=color,
-                alpha=ALPHA['high'],
-                edgecolor='black',
-                linewidth=0.5
-            )
-        
-        # Formatting
-        ax.set_xlabel('Amplitude SCR (µS)', fontsize=FONTSIZE['label'])
-        ax.set_ylabel('Index d\'événement (trié par amplitude)', fontsize=FONTSIZE['label'])
-        ax.set_title('Cascade des Réponses Cutanées Sympathiques (SCR)', 
-                    fontsize=FONTSIZE['title'], fontweight='bold', pad=20)
-        
-        # Legend
-        rest_patch = mpatches.Patch(
-            color=get_moment_color('restingstate'), 
-            label='Restingstate', 
-            alpha=ALPHA['high']
-        )
-        therapy_patch = mpatches.Patch(
-            color=get_moment_color('therapy'), 
-            label='Therapy', 
-            alpha=ALPHA['high']
-        )
-        ax.legend(handles=[rest_patch, therapy_patch], 
-                 loc='lower right', fontsize=FONTSIZE['legend'])
-        
-        ax.grid(True, alpha=ALPHA['medium'], axis='x', linestyle='--', linewidth=LINEWIDTH['thin'])
-    
-    ax.tick_params(labelsize=FONTSIZE['tick'])
-    
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    plt.close()
-
-
-def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> None:
-    """
-    Plot SCR amplitude distribution with histogram and boxplot.
-    
-    Visualization #9: Combined plot showing:
-    - Top panel: Histogram of SCR amplitudes by moment
-    - Bottom panel: Boxplot comparing distributions
-    
-    Args:
-        data: Dictionary containing EDA events with key:
-            - 'eda': Dict with 'events' sub-dict containing:
-                - 'restingstate': DataFrame with 'scr_amplitude'
-                - 'therapy': DataFrame with 'scr_amplitude'
-        output_path: Path to save the PNG figure
-    """
-    apply_plot_style()
-    
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=FIGSIZE['medium'], 
-                                    height_ratios=[2, 1])
-    
-    # Collect SCR amplitudes by moment
-    amplitudes_by_moment = {}
-    for moment in ['restingstate', 'therapy']:
-        if 'events' not in data['eda'] or moment not in data['eda']['events']:
-            amplitudes_by_moment[moment] = []
-            continue
-        
-        df = data['eda']['events'][moment]
-        if df.empty or 'scr_amplitude' not in df.columns:
-            amplitudes_by_moment[moment] = []
+        if output_path:
+            fig.savefig(output_path, dpi=300, bbox_inches='tight')
+        if show:
+            plt.show()
         else:
-            amplitudes_by_moment[moment] = df['scr_amplitude'].values
+            plt.close(fig)
+        return
     
-    # Top panel: Histogram
-    bins = np.linspace(
-        0,
-        max([max(amps) if len(amps) > 0 else 0.1 
-             for amps in amplitudes_by_moment.values()]),
-        30
-    )
+    available_moments = list(eda_data.get('events', {}).keys())
     
-    for moment, amplitudes in amplitudes_by_moment.items():
-        if len(amplitudes) == 0:
+    if not available_moments:
+        fig, ax = plt.subplots(figsize=FIGSIZE['wide'])
+        ax.text(0.5, 0.5, 'No SCR events available', 
+               ha='center', va='center', fontsize=FONTSIZE['title'])
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        if output_path:
+            fig.savefig(output_path, dpi=300, bbox_inches='tight')
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
+        return
+    
+    # Collect amplitude data per moment
+    amplitude_data = {}
+    for moment in available_moments:
+        df = eda_data['events'][moment]
+        if df.empty or 'amplitude' not in df.columns:
             continue
+        # Filter out NaN values
+        amplitudes = df['amplitude'].values
+        amplitudes_clean = amplitudes[~np.isnan(amplitudes)]
         
-        color = get_moment_color(moment)
-        ax1.hist(
-            amplitudes,
-            bins=bins,
-            color=color,
-            alpha=ALPHA['medium'],
-            label=moment,
-            edgecolor='black',
-            linewidth=0.5
-        )
+        if len(amplitudes_clean) > 0:
+            amplitude_data[moment] = amplitudes_clean
     
-    ax1.set_ylabel('Fréquence', fontsize=FONTSIZE['label'])
-    ax1.set_title('Distribution des Amplitudes SCR', 
-                 fontsize=FONTSIZE['title'], fontweight='bold', pad=20)
-    ax1.legend(loc='upper right', fontsize=FONTSIZE['legend'])
-    ax1.grid(True, alpha=ALPHA['medium'], axis='y', linestyle='--', linewidth=LINEWIDTH['thin'])
-    ax1.tick_params(labelsize=FONTSIZE['tick'])
+    if not amplitude_data:
+        fig, ax = plt.subplots(figsize=FIGSIZE['wide'])
+        ax.text(0.5, 0.5, 'No SCR amplitude data available', 
+               ha='center', va='center', fontsize=FONTSIZE['label'])
+        if output_path:
+            fig.savefig(output_path, dpi=300, bbox_inches='tight')
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
+        return
     
-    # Bottom panel: Boxplot
-    box_data = [
-        amplitudes_by_moment['restingstate'],
-        amplitudes_by_moment['therapy']
-    ]
-    box_labels = ['Restingstate', 'Therapy']
+    # Create figure with N rows x 2 columns (N = number of moments)
+    # Column 1: Histogram, Column 2: Boxplot
+    n_moments = len(amplitude_data)
+    fig, axes = plt.subplots(n_moments, 2, figsize=(FIGSIZE['wide'][0], FIGSIZE['wide'][1] * n_moments / 2))
     
-    bp = ax2.boxplot(
-        box_data,
-        labels=box_labels,
-        patch_artist=True,
-        notch=True,
-        widths=0.6
-    )
+    # Handle single moment case (axes needs reshaping)
+    if n_moments == 1:
+        axes = axes.reshape(1, 2)
     
-    # Color boxplots
-    for patch, moment in zip(bp['boxes'], ['restingstate', 'therapy']):
-        patch.set_facecolor(get_moment_color(moment))
-        patch.set_alpha(ALPHA['high'])
+    # Calculate global min/max for amplitude normalization
+    all_amplitudes = np.concatenate(list(amplitude_data.values()))
+    amp_min = 0  # Start at 0 for physiological interpretation
+    amp_max = all_amplitudes.max() * 1.1  # Add 10% margin
     
-    ax2.set_ylabel('Amplitude (µS)', fontsize=FONTSIZE['label'])
-    ax2.set_xlabel('Moment', fontsize=FONTSIZE['label'])
-    ax1.grid(True, alpha=ALPHA['medium'], axis='y', linestyle='--', linewidth=LINEWIDTH['thin'])
-    ax2.grid(True, alpha=ALPHA['medium'], axis='y', linestyle='--', linewidth=LINEWIDTH['thin'])
-    ax2.tick_params(labelsize=FONTSIZE['tick'])
+    # Calculate global max frequency for histogram normalization
+    max_freq = 0
+    hist_data = []
+    for amplitudes in amplitude_data.values():
+        counts, _ = np.histogram(amplitudes, bins=30, range=(amp_min, amp_max))
+        max_freq = max(max_freq, counts.max())
+        hist_data.append((amplitudes, counts))
+    max_freq = max_freq * 1.1  # Add 10% margin
     
-    # Add statistics as text
-    for i, (moment, amplitudes) in enumerate(amplitudes_by_moment.items()):
-        if len(amplitudes) > 0:
-            median = np.median(amplitudes)
-            q1, q3 = np.percentile(amplitudes, [25, 75])
-            ax2.text(
-                i + 1, ax2.get_ylim()[1] * 0.95,
-                f'n={len(amplitudes)}\nM={median:.2f}µS',
-                ha='center', va='top',
-                fontsize=FONTSIZE['small'],
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
-            )
+    # Plot each moment in its own row
+    for idx, (moment, amplitudes) in enumerate(amplitude_data.items()):
+        moment_color = get_moment_color(moment)
+        
+        # Column 1: Histogram
+        ax_hist = axes[idx, 0]
+        ax_hist.hist(amplitudes, bins=30, range=(amp_min, amp_max), alpha=0.7, 
+                    color=moment_color, edgecolor='black', linewidth=1.2)
+        ax_hist.set_ylabel('Fréquence', fontsize=FONTSIZE['label'], fontweight='bold')
+        ax_hist.set_xlabel('Amplitude (µS)', fontsize=FONTSIZE['label'], fontweight='bold')
+        ax_hist.set_title(f'{moment.capitalize()} - Distribution (n={len(amplitudes)})', 
+                         fontsize=FONTSIZE['subtitle'], fontweight='bold')
+        ax_hist.set_xlim(amp_min, amp_max)
+        ax_hist.set_ylim(0, max_freq)
+        ax_hist.grid(True, alpha=ALPHA['medium'], axis='y', linestyle='--')
+        ax_hist.tick_params(labelsize=FONTSIZE['tick'])
+        
+        # Column 2: Boxplot
+        ax_box = axes[idx, 1]
+        bp = ax_box.boxplot([amplitudes], vert=True, patch_artist=True,
+                            widths=0.6, showmeans=True,
+                            meanprops=dict(marker='D', markerfacecolor='white', 
+                                          markeredgecolor='black', markersize=8),
+                            medianprops=dict(color='black', linewidth=2),
+                            boxprops=dict(linewidth=1.5),
+                            whiskerprops=dict(linewidth=1.5),
+                            capprops=dict(linewidth=1.5),
+                            flierprops=dict(marker='o', markerfacecolor='red', 
+                                           markersize=4, alpha=0.5))
+        
+        # Color the box
+        bp['boxes'][0].set_facecolor(moment_color)
+        bp['boxes'][0].set_alpha(0.7)
+        
+        ax_box.set_ylabel('Amplitude (µS)', fontsize=FONTSIZE['label'], fontweight='bold')
+        ax_box.set_title(f'{moment.capitalize()} - Statistiques', 
+                        fontsize=FONTSIZE['subtitle'], fontweight='bold')
+        ax_box.set_ylim(amp_min, amp_max)
+        ax_box.set_xticklabels([''])  # No x-axis labels needed
+        ax_box.grid(True, alpha=ALPHA['medium'], axis='y', linestyle='--')
+        ax_box.tick_params(labelsize=FONTSIZE['tick'])
     
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    plt.close()
+    # Overall title
+    fig.suptitle(
+        f'Distribution des Réponses Cutanées Sympathiques (SCR)\n'
+        f'Subject {data.get("subject", "Unknown")}, Session {data.get("session", "Unknown")}',
+        fontsize=FONTSIZE['title'], fontweight='bold', y=0.98)
+    
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    
+    if output_path:
+        fig.savefig(output_path, dpi=300, bbox_inches='tight')
+    
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+

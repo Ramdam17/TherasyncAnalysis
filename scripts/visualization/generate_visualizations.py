@@ -40,7 +40,6 @@ from src.visualization.plotters.hrv_plots import (
 )
 from src.visualization.plotters.eda_plots import (
     plot_eda_arousal_profile,
-    plot_scr_cascade,
     plot_scr_distribution
 )
 from src.visualization.plotters.comparison_plots import (
@@ -58,7 +57,7 @@ PLOT_FUNCTIONS = {
     2: ('02_poincare_hrv.png', plot_poincare_hrv),
     3: ('03_autonomic_balance.png', plot_autonomic_balance),
     4: ('04_eda_arousal_profile.png', plot_eda_arousal_profile),
-    5: ('05_scr_cascade.png', plot_scr_cascade),
+    5: ('05_scr_distribution.png', plot_scr_distribution),
     6: ('06_hr_dynamics_timeline.png', plot_hr_dynamics_timeline),
     7: ('07_correlation_matrix.png', plot_correlation_matrix),
     8: ('08_radar_comparison.png', plot_radar_comparison),
