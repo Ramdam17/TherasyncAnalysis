@@ -397,6 +397,192 @@ class TestBVPMetricsExtractor(unittest.TestCase):
             self.assertIn('restingstate', session_metrics)
             self.assertIn('therapy', session_metrics)
             self.assertEqual(mock_extract.call_count, 2)
+    
+    @patch('src.physio.preprocessing.bvp_metrics.ConfigLoader')
+    def test_extract_rr_intervals_basic(self, mock_config):
+        """Test basic RR intervals extraction."""
+        # Mock config with RR intervals settings
+        mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'physio.bvp': {
+                'rr_intervals': {
+                    'min_valid_ms': 300,
+                    'max_valid_ms': 2000
+                }
+            },
+            'physio.bvp.rr_intervals': {
+                'min_valid_ms': 300,
+                'max_valid_ms': 2000
+            }
+        }.get(key, default)
+        
+        extractor = BVPMetricsExtractor()
+        
+        # Create test peaks: regular 1-second intervals at 64 Hz
+        # Peak at 0s, 1s, 2s, 3s, 4s (indices: 0, 64, 128, 192, 256)
+        peaks = np.array([0, 64, 128, 192, 256])
+        sampling_rate = 64.0
+        
+        rr_df = extractor.extract_rr_intervals(peaks, sampling_rate, "test")
+        
+        # Verify DataFrame structure
+        self.assertEqual(len(rr_df), 4)  # 5 peaks = 4 intervals
+        self.assertIn('time_peak_start', rr_df.columns)
+        self.assertIn('time_peak_end', rr_df.columns)
+        self.assertIn('rr_interval_ms', rr_df.columns)
+        self.assertIn('is_valid', rr_df.columns)
+        
+        # Verify first interval (0s to 1s = 1000ms)
+        self.assertAlmostEqual(rr_df.iloc[0]['time_peak_start'], 0.0, places=2)
+        self.assertAlmostEqual(rr_df.iloc[0]['time_peak_end'], 1.0, places=2)
+        self.assertAlmostEqual(rr_df.iloc[0]['rr_interval_ms'], 1000.0, places=1)
+        self.assertEqual(rr_df.iloc[0]['is_valid'], 1)
+    
+    @patch('src.physio.preprocessing.bvp_metrics.ConfigLoader')
+    def test_extract_rr_intervals_validation(self, mock_config):
+        """Test RR intervals validation with thresholds."""
+        # Mock config with strict thresholds
+        mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'physio.bvp': {
+                'rr_intervals': {
+                    'min_valid_ms': 500,   # 0.5s min (120 BPM max)
+                    'max_valid_ms': 1500   # 1.5s max (40 BPM min)
+                }
+            },
+            'physio.bvp.rr_intervals': {
+                'min_valid_ms': 500,
+                'max_valid_ms': 1500
+            }
+        }.get(key, default)
+        
+        extractor = BVPMetricsExtractor()
+        
+        # Create peaks with varying intervals:
+        # 0s, 0.3s (too short), 1.3s (valid), 3.3s (too long), 4.3s (valid)
+        peaks = np.array([0, 19, 83, 211, 275])  # At 64 Hz
+        sampling_rate = 64.0
+        
+        rr_df = extractor.extract_rr_intervals(peaks, sampling_rate, "test")
+        
+        # Should have 4 intervals (5 peaks - 1)
+        self.assertEqual(len(rr_df), 4)
+        
+        # Check validity flags
+        # Interval 1: ~297ms (too short) -> invalid
+        self.assertEqual(rr_df.iloc[0]['is_valid'], 0)
+        self.assertLess(rr_df.iloc[0]['rr_interval_ms'], 500)
+        
+        # Interval 2: ~1000ms (valid) -> valid
+        self.assertEqual(rr_df.iloc[1]['is_valid'], 1)
+        
+        # Interval 3: ~2000ms (too long) -> invalid
+        self.assertEqual(rr_df.iloc[2]['is_valid'], 0)
+        self.assertGreater(rr_df.iloc[2]['rr_interval_ms'], 1500)
+        
+        # Interval 4: ~1000ms (valid) -> valid
+        self.assertEqual(rr_df.iloc[3]['is_valid'], 1)
+    
+    @patch('src.physio.preprocessing.bvp_metrics.ConfigLoader')
+    def test_extract_rr_intervals_edge_cases(self, mock_config):
+        """Test RR intervals extraction with edge cases."""
+        mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'physio.bvp': {
+                'rr_intervals': {
+                    'min_valid_ms': 300,
+                    'max_valid_ms': 2000
+                }
+            },
+            'physio.bvp.rr_intervals': {
+                'min_valid_ms': 300,
+                'max_valid_ms': 2000
+            }
+        }.get(key, default)
+        
+        extractor = BVPMetricsExtractor()
+        sampling_rate = 64.0
+        
+        # Test 1: Empty peaks array
+        empty_peaks = np.array([])
+        rr_df_empty = extractor.extract_rr_intervals(empty_peaks, sampling_rate, "test")
+        self.assertEqual(len(rr_df_empty), 0)
+        
+        # Test 2: Single peak (no intervals possible)
+        single_peak = np.array([64])
+        rr_df_single = extractor.extract_rr_intervals(single_peak, sampling_rate, "test")
+        self.assertEqual(len(rr_df_single), 0)
+        
+        # Test 3: Two peaks (one interval)
+        two_peaks = np.array([0, 64])
+        rr_df_two = extractor.extract_rr_intervals(two_peaks, sampling_rate, "test")
+        self.assertEqual(len(rr_df_two), 1)
+        self.assertAlmostEqual(rr_df_two.iloc[0]['rr_interval_ms'], 1000.0, places=1)
+    
+    @patch('src.physio.preprocessing.bvp_metrics.ConfigLoader')
+    def test_extract_rr_intervals_timestamps(self, mock_config):
+        """Test RR intervals timestamp calculation."""
+        mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'physio.bvp': {
+                'rr_intervals': {
+                    'min_valid_ms': 300,
+                    'max_valid_ms': 2000
+                }
+            },
+            'physio.bvp.rr_intervals': {
+                'min_valid_ms': 300,
+                'max_valid_ms': 2000
+            }
+        }.get(key, default)
+        
+        extractor = BVPMetricsExtractor()
+        
+        # Create peaks at known positions
+        # At 64 Hz: peak indices 0, 96, 192, 320 correspond to times 0.0, 1.5, 3.0, 5.0 seconds
+        peaks = np.array([0, 96, 192, 320])
+        sampling_rate = 64.0
+        
+        rr_df = extractor.extract_rr_intervals(peaks, sampling_rate, "test")
+        
+        # Verify timestamps
+        self.assertAlmostEqual(rr_df.iloc[0]['time_peak_start'], 0.0, places=2)
+        self.assertAlmostEqual(rr_df.iloc[0]['time_peak_end'], 1.5, places=2)
+        
+        self.assertAlmostEqual(rr_df.iloc[1]['time_peak_start'], 1.5, places=2)
+        self.assertAlmostEqual(rr_df.iloc[1]['time_peak_end'], 3.0, places=2)
+        
+        self.assertAlmostEqual(rr_df.iloc[2]['time_peak_start'], 3.0, places=2)
+        self.assertAlmostEqual(rr_df.iloc[2]['time_peak_end'], 5.0, places=2)
+    
+    @patch('src.physio.preprocessing.bvp_metrics.ConfigLoader')
+    def test_extract_rr_intervals_high_heart_rate(self, mock_config):
+        """Test RR intervals with high heart rate (short intervals)."""
+        mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'physio.bvp': {
+                'rr_intervals': {
+                    'min_valid_ms': 300,  # 200 BPM max
+                    'max_valid_ms': 2000
+                }
+            },
+            'physio.bvp.rr_intervals': {
+                'min_valid_ms': 300,
+                'max_valid_ms': 2000
+            }
+        }.get(key, default)
+        
+        extractor = BVPMetricsExtractor()
+        
+        # Simulate 150 BPM: 60000ms / 150 = 400ms per beat
+        # At 64 Hz: 400ms = 25.6 samples
+        peaks = np.array([0, 26, 51, 77, 102])  # ~400ms intervals
+        sampling_rate = 64.0
+        
+        rr_df = extractor.extract_rr_intervals(peaks, sampling_rate, "test")
+        
+        # All intervals should be valid (around 400ms, above 300ms threshold)
+        self.assertTrue(all(rr_df['is_valid'] == 1))
+        
+        # Check intervals are approximately 400ms
+        for idx in range(len(rr_df)):
+            self.assertGreater(rr_df.iloc[idx]['rr_interval_ms'], 300)
+            self.assertLess(rr_df.iloc[idx]['rr_interval_ms'], 500)
 
 
 class TestBVPBIDSWriter(unittest.TestCase):
@@ -492,6 +678,158 @@ class TestBVPBIDSWriter(unittest.TestCase):
             for file_path in file_list:
                 self.assertTrue(Path(file_path).exists())
     
+    @patch('src.physio.preprocessing.bvp_bids_writer.ConfigLoader')
+    def test_save_rr_intervals_basic(self, mock_config):
+        """Test saving RR intervals in BIDS format."""
+        mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'paths.derivatives': str(self.temp_path / "derivatives"),
+            'bids': {}
+        }.get(key, default)
+        
+        writer = BVPBIDSWriter()
+        
+        # Create mock RR intervals DataFrame
+        rr_intervals_df = pd.DataFrame({
+            'time_peak_start': [0.0, 1.0, 2.0, 3.0],
+            'time_peak_end': [1.0, 2.0, 3.0, 4.0],
+            'rr_interval_ms': [1000.0, 1000.0, 1000.0, 1000.0],
+            'is_valid': [1, 1, 1, 1]
+        })
+        
+        # Save RR intervals
+        tsv_path, json_path = writer.save_rr_intervals(
+            self.test_subject,
+            self.test_session,
+            'restingstate',
+            rr_intervals_df
+        )
+        
+        # Verify files were created
+        self.assertTrue(Path(tsv_path).exists())
+        self.assertTrue(Path(json_path).exists())
+        
+        # Verify TSV content
+        saved_df = pd.read_csv(tsv_path, sep='\t')
+        self.assertEqual(len(saved_df), 4)
+        self.assertIn('time_peak_start', saved_df.columns)
+        self.assertIn('rr_interval_ms', saved_df.columns)
+        
+        # Verify JSON metadata
+        with open(json_path, 'r') as f:
+            metadata = json.load(f)
+        
+        self.assertIn('NumberOfIntervals', metadata)
+        self.assertIn('NumberOfValidIntervals', metadata)
+        self.assertIn('PercentValid', metadata)
+        self.assertEqual(metadata['NumberOfIntervals'], 4)
+        self.assertEqual(metadata['NumberOfValidIntervals'], 4)
+        self.assertEqual(metadata['PercentValid'], 100.0)
+    
+    @patch('src.physio.preprocessing.bvp_bids_writer.ConfigLoader')
+    def test_save_rr_intervals_with_invalid(self, mock_config):
+        """Test saving RR intervals with invalid intervals."""
+        mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'paths.derivatives': str(self.temp_path / "derivatives"),
+            'bids': {}
+        }.get(key, default)
+        
+        writer = BVPBIDSWriter()
+        
+        # Create RR intervals with some invalid intervals
+        rr_intervals_df = pd.DataFrame({
+            'time_peak_start': [0.0, 0.25, 1.25, 2.5, 4.8],
+            'time_peak_end': [0.25, 1.25, 2.5, 4.8, 5.8],
+            'rr_interval_ms': [250.0, 1000.0, 1250.0, 2300.0, 1000.0],
+            'is_valid': [0, 1, 1, 0, 1]  # 2 invalid, 3 valid
+        })
+        
+        tsv_path, json_path = writer.save_rr_intervals(
+            self.test_subject,
+            self.test_session,
+            'therapy',
+            rr_intervals_df
+        )
+        
+        # Verify JSON metadata reflects correct counts
+        with open(json_path, 'r') as f:
+            metadata = json.load(f)
+        
+        self.assertEqual(metadata['NumberOfIntervals'], 5)
+        self.assertEqual(metadata['NumberOfValidIntervals'], 3)
+        self.assertEqual(metadata['PercentValid'], 60.0)
+        
+        # Verify all intervals are saved (not filtered)
+        saved_df = pd.read_csv(tsv_path, sep='\t')
+        self.assertEqual(len(saved_df), 5)
+    
+    @patch('src.physio.preprocessing.bvp_bids_writer.ConfigLoader')
+    def test_save_rr_intervals_filename_format(self, mock_config):
+        """Test RR intervals filename follows BIDS convention."""
+        mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'paths.derivatives': str(self.temp_path / "derivatives"),
+            'bids': {}
+        }.get(key, default)
+        
+        writer = BVPBIDSWriter()
+        
+        rr_intervals_df = pd.DataFrame({
+            'time_peak_start': [0.0],
+            'time_peak_end': [1.0],
+            'rr_interval_ms': [1000.0],
+            'is_valid': [1]
+        })
+        
+        tsv_path, json_path = writer.save_rr_intervals(
+            'sub-f02p03',
+            'ses-02',
+            'therapy',
+            rr_intervals_df
+        )
+        
+        # Verify BIDS filename format
+        expected_base = 'sub-f02p03_ses-02_task-therapy_desc-rrintervals_physio'
+        self.assertTrue(str(tsv_path).endswith(f'{expected_base}.tsv'))
+        self.assertTrue(str(json_path).endswith(f'{expected_base}.json'))
+        
+        # Verify correct directory structure
+        # Should be in derivatives/therasync-bvp/sub-f02p03/ses-02/physio/
+        self.assertIn('sub-f02p03', str(tsv_path))
+        self.assertIn('ses-02', str(tsv_path))
+        self.assertIn('physio', str(tsv_path))
+    
+    @patch('src.physio.preprocessing.bvp_bids_writer.ConfigLoader')
+    def test_save_rr_intervals_precision(self, mock_config):
+        """Test RR intervals are saved with proper precision."""
+        mock_config.return_value.get.side_effect = lambda key, default=None: {
+            'paths.derivatives': str(self.temp_path / "derivatives"),
+            'bids': {}
+        }.get(key, default)
+        
+        writer = BVPBIDSWriter()
+        
+        # Create data with high precision values
+        rr_intervals_df = pd.DataFrame({
+            'time_peak_start': [0.0, 1.234567],
+            'time_peak_end': [1.234567, 2.987654],
+            'rr_interval_ms': [1234.567, 1753.087],
+            'is_valid': [1, 1]
+        })
+        
+        tsv_path, _ = writer.save_rr_intervals(
+            self.test_subject,
+            self.test_session,
+            'restingstate',
+            rr_intervals_df
+        )
+        
+        # Read saved file as text to check precision
+        with open(tsv_path, 'r') as f:
+            content = f.read()
+        
+        # Should save with 3 decimal places for timestamps
+        self.assertIn('1.235', content)  # Rounded from 1.234567
+        self.assertIn('2.988', content)  # Rounded from 2.987654
+
     @patch('src.physio.preprocessing.bvp_bids_writer.ConfigLoader')
     def test_bids_filename_format(self, mock_config):
         """Test BIDS-compliant filename formatting."""
