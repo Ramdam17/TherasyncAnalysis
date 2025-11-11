@@ -38,6 +38,8 @@ def plot_multisignal_dashboard(
     - Panel 3: EDA tonic (line) + phasic (filled area)
     - Panel 4: SCR events (stem plot)
     
+    Moments are displayed sequentially with vertical separators.
+    
     Args:
         data: Dictionary containing 'bvp', 'eda', 'hr' data
         output_path: Where to save the figure
@@ -55,30 +57,51 @@ def plot_multisignal_dashboard(
     # Collect all moments for x-axis alignment
     moments = ['restingstate', 'therapy']
     
+    # Calculate moment boundaries for vertical separators
+    moment_boundaries = {}
+    offset = 0
+    for moment in moments:
+        # Try to get duration from any available modality
+        duration = None
+        for modality in ['bvp', 'eda', 'hr']:
+            if modality in data and 'signals' in data[modality]:
+                signals = data[modality]['signals']
+                if moment in signals and 'time' in signals[moment].columns:
+                    duration = signals[moment]['time'].max()
+                    break
+        
+        if duration is not None:
+            moment_boundaries[moment] = {'start': offset, 'end': offset + duration}
+            offset = offset + duration + 10  # 10s gap
+    
     # ========== Panel 1: BVP Signal ==========
     ax1 = fig.add_subplot(gs[0, 0])
-    plot_bvp_signal(ax1, data.get('bvp', {}), moments)
+    plot_bvp_signal(ax1, data.get('bvp', {}), moments, moment_boundaries)
+    add_moment_separators(ax1, moment_boundaries, label_position='top')
     ax1.set_title('Blood Volume Pulse (BVP)', fontsize=FONTSIZE['title'], fontweight='bold')
     ax1.set_ylabel('BVP (a.u.)', fontsize=FONTSIZE['label'])
     ax1.legend(loc='upper right', fontsize=FONTSIZE['legend'])
     
     # ========== Panel 2: Heart Rate ==========
     ax2 = fig.add_subplot(gs[1, 0], sharex=ax1)
-    plot_hr_signal(ax2, data.get('hr', {}), moments)
+    plot_hr_signal(ax2, data.get('hr', {}), moments, moment_boundaries)
+    add_moment_separators(ax2, moment_boundaries)
     ax2.set_title('Instantaneous Heart Rate', fontsize=FONTSIZE['title'], fontweight='bold')
     ax2.set_ylabel('HR (BPM)', fontsize=FONTSIZE['label'])
     ax2.legend(loc='upper right', fontsize=FONTSIZE['legend'])
     
     # ========== Panel 3: EDA Tonic + Phasic ==========
     ax3 = fig.add_subplot(gs[2, 0], sharex=ax1)
-    plot_eda_signal(ax3, data.get('eda', {}), moments)
+    plot_eda_signal(ax3, data.get('eda', {}), moments, moment_boundaries)
+    add_moment_separators(ax3, moment_boundaries)
     ax3.set_title('Electrodermal Activity (EDA)', fontsize=FONTSIZE['title'], fontweight='bold')
     ax3.set_ylabel('EDA (µS)', fontsize=FONTSIZE['label'])
     ax3.legend(loc='upper right', fontsize=FONTSIZE['legend'])
     
     # ========== Panel 4: SCR Events ==========
     ax4 = fig.add_subplot(gs[3, 0], sharex=ax1)
-    plot_scr_events(ax4, data.get('eda', {}), moments)
+    plot_scr_events(ax4, data.get('eda', {}), moments, moment_boundaries)
+    add_moment_separators(ax4, moment_boundaries)
     ax4.set_title('Skin Conductance Responses (SCR)', fontsize=FONTSIZE['title'], fontweight='bold')
     ax4.set_ylabel('Amplitude (µS)', fontsize=FONTSIZE['label'])
     ax4.set_xlabel('Time (seconds)', fontsize=FONTSIZE['label'])
@@ -106,20 +129,46 @@ def plot_multisignal_dashboard(
     return fig
 
 
-def plot_bvp_signal(ax: plt.Axes, bvp_data: Dict, moments: list):
+def add_moment_separators(ax: plt.Axes, moment_boundaries: Dict, label_position: str = 'none'):
+    """
+    Add vertical lines and labels to mark moment transitions.
+    
+    Args:
+        ax: Matplotlib axes
+        moment_boundaries: Dict with moment names and their start/end times
+        label_position: 'top', 'bottom', or 'none'
+    """
+    for moment, bounds in moment_boundaries.items():
+        # Vertical line at start
+        ax.axvline(bounds['start'], color=COLORS['dark_gray'], 
+                  linestyle='--', linewidth=LINEWIDTH['normal'], alpha=0.6, zorder=10)
+        
+        # Label at top of panel
+        if label_position == 'top':
+            mid_time = (bounds['start'] + bounds['end']) / 2
+            ax.text(mid_time, 0.98, moment.capitalize(),
+                   transform=ax.get_xaxis_transform(),
+                   ha='center', va='top',
+                   fontsize=FONTSIZE['annotation'],
+                   bbox=dict(boxstyle='round,pad=0.3', 
+                           facecolor=get_moment_color(moment), 
+                           alpha=0.3, edgecolor='none'))
+
+
+def plot_bvp_signal(ax: plt.Axes, bvp_data: Dict, moments: list, moment_boundaries: Dict):
     """Plot BVP signal with detected peaks."""
     if not bvp_data or 'signals' not in bvp_data:
         ax.text(0.5, 0.5, 'No BVP data available', ha='center', va='center',
                 transform=ax.transAxes, fontsize=FONTSIZE['label'])
         return
     
-    offset = 0
     for moment in moments:
-        if moment not in bvp_data['signals']:
+        if moment not in bvp_data['signals'] or moment not in moment_boundaries:
             continue
         
         signals = bvp_data['signals'][moment]
         color = get_moment_color(moment)
+        offset = moment_boundaries[moment]['start']
         
         # Plot cleaned BVP signal
         time = signals['time'].values + offset
@@ -135,46 +184,63 @@ def plot_bvp_signal(ax: plt.Axes, bvp_data: Dict, moments: list):
                 ax.scatter(peaks['time'].values + offset, peaks['PPG_Clean'].values,
                           color=COLORS['scr'], s=MARKERSIZE['small'], 
                           marker='o', zorder=5)
-        
-        # Update offset for next moment
-        offset += signals['time'].max() + 10  # 10s gap between moments
     
     ax.grid(True, alpha=ALPHA['fill'])
 
 
-def plot_hr_signal(ax: plt.Axes, hr_data: Dict, moments: list):
+def plot_hr_signal(ax: plt.Axes, hr_data: Dict, moments: list, moment_boundaries: Dict):
     """Plot instantaneous heart rate with zones."""
     if not hr_data or 'signals' not in hr_data:
         ax.text(0.5, 0.5, 'No HR data available', ha='center', va='center',
                 transform=ax.transAxes, fontsize=FONTSIZE['label'])
         return
     
-    offset = 0
     all_hr = []
     
-    for moment in moments:
-        if moment not in hr_data['signals']:
-            continue
+    # HR data is in 'combined' key, not split by moments
+    # We need to split it manually based on moment durations
+    if 'combined' in hr_data['signals']:
+        signals = hr_data['signals']['combined']
         
-        signals = hr_data['signals'][moment]
-        color = get_moment_color(moment)
-        
-        # Plot HR
-        time = signals['time'].values + offset
-        if 'HR' in signals.columns:
-            hr_values = signals['HR'].values
-            all_hr.extend(hr_values)
-            ax.plot(time, hr_values, 
-                   color=color, linewidth=LINEWIDTH['medium'],
-                   label=moment.capitalize(), alpha=ALPHA['line'])
-        
-        offset += signals['time'].max() + 10
+        # Plot HR for each moment segment
+        for moment in moments:
+            if moment not in moment_boundaries:
+                continue
+            
+            bounds = moment_boundaries[moment]
+            # Filter data for this moment's time range
+            mask = (signals['time'] >= 0) & (signals['time'] <= (bounds['end'] - bounds['start']))
+            moment_data = signals[mask].copy()
+            
+            if len(moment_data) == 0:
+                continue
+            
+            color = get_moment_color(moment)
+            time = moment_data['time'].values + bounds['start']
+            
+            if 'hr' in moment_data.columns:
+                hr_values = moment_data['hr'].values
+                all_hr.extend(hr_values)
+                ax.plot(time, hr_values, 
+                       color=color, linewidth=LINEWIDTH['medium'],
+                       label=moment.capitalize(), alpha=ALPHA['line'])
+            
+            # Move to next segment of the combined data
+            signals = signals[~mask].copy()
+            # Adjust remaining times
+            if len(signals) > 0:
+                signals['time'] = signals['time'] - (bounds['end'] - bounds['start'])
     
     # Add horizontal zones
     if all_hr:
         hr_mean = np.mean(all_hr)
         ax.axhline(hr_mean, color=COLORS['gray'], linestyle='--', 
                   linewidth=LINEWIDTH['thin'], alpha=0.5, label='Mean HR')
+        
+        # Set reasonable y-limits first
+        hr_min, hr_max = np.min(all_hr), np.max(all_hr)
+        y_margin = (hr_max - hr_min) * 0.1
+        ax.set_ylim(hr_min - y_margin, hr_max + y_margin)
         
         # Elevated zone (Mean + 20 BPM)
         ax.axhspan(hr_mean + 20, ax.get_ylim()[1], 
@@ -187,64 +253,65 @@ def plot_hr_signal(ax: plt.Axes, hr_data: Dict, moments: list):
     ax.grid(True, alpha=ALPHA['fill'])
 
 
-def plot_eda_signal(ax: plt.Axes, eda_data: Dict, moments: list):
+def plot_eda_signal(ax: plt.Axes, eda_data: Dict, moments: list, moment_boundaries: Dict):
     """Plot EDA tonic (line) and phasic (filled area)."""
     if not eda_data or 'signals' not in eda_data:
         ax.text(0.5, 0.5, 'No EDA data available', ha='center', va='center',
                 transform=ax.transAxes, fontsize=FONTSIZE['label'])
         return
     
-    offset = 0
-    
     for moment in moments:
-        if moment not in eda_data['signals']:
+        if moment not in eda_data['signals'] or moment not in moment_boundaries:
             continue
         
         signals = eda_data['signals'][moment]
         color = get_moment_color(moment)
+        offset = moment_boundaries[moment]['start']
         
         time = signals['time'].values + offset
         
-        # Plot tonic component (baseline)
+        # Plot tonic component (baseline) - use modality color
         if 'EDA_Tonic' in signals.columns:
             ax.plot(time, signals['EDA_Tonic'], 
-                   color=COLORS['tonic'], linewidth=LINEWIDTH['thick'],
+                   color=color, linewidth=LINEWIDTH['thick'],
                    label=f'{moment.capitalize()} - Tonic', alpha=ALPHA['line'])
         
-        # Plot phasic component (filled area)
+        # Plot phasic component (filled area) - lighter version of moment color
         if 'EDA_Phasic' in signals.columns:
             ax.fill_between(time, 0, signals['EDA_Phasic'],
-                           color=COLORS['phasic'], alpha=ALPHA['fill'],
+                           color=color, alpha=ALPHA['fill'],
                            label=f'{moment.capitalize()} - Phasic')
-        
-        offset += signals['time'].max() + 10
     
     ax.grid(True, alpha=ALPHA['fill'])
 
 
-def plot_scr_events(ax: plt.Axes, eda_data: Dict, moments: list):
+def plot_scr_events(ax: plt.Axes, eda_data: Dict, moments: list, moment_boundaries: Dict):
     """Plot SCR events as stem plot."""
     if not eda_data or 'events' not in eda_data:
         ax.text(0.5, 0.5, 'No SCR events available', ha='center', va='center',
                 transform=ax.transAxes, fontsize=FONTSIZE['label'])
         return
     
-    offset = 0
-    
-    for i, moment in enumerate(moments):
-        if moment not in eda_data['events']:
+    for moment in moments:
+        if moment not in eda_data['events'] or moment not in moment_boundaries:
             continue
         
         events = eda_data['events'][moment]
         color = get_moment_color(moment)
+        offset = moment_boundaries[moment]['start']
         
         if len(events) == 0:
             continue
         
-        # Get SCR onset times and amplitudes
-        if 'SCR_Onsets' in events.columns and 'SCR_Amplitude' in events.columns:
-            onsets = events['SCR_Onsets'].values + offset
-            amplitudes = events['SCR_Amplitude'].values
+        # Get SCR onset times and amplitudes (note: columns are 'onset' and 'amplitude')
+        if 'onset' in events.columns and 'amplitude' in events.columns:
+            # Filter out NaN amplitudes
+            valid_events = events.dropna(subset=['amplitude'])
+            if len(valid_events) == 0:
+                continue
+                
+            onsets = valid_events['onset'].values + offset
+            amplitudes = valid_events['amplitude'].values
             
             # Stem plot
             markerline, stemlines, baseline = ax.stem(
@@ -257,10 +324,6 @@ def plot_scr_events(ax: plt.Axes, eda_data: Dict, moments: list):
             markerline.set_label(moment.capitalize())
             stemlines.set_linewidth(LINEWIDTH['normal'])
             stemlines.set_alpha(ALPHA['overlay'])
-        
-        # Update offset
-        if moment in eda_data['signals']:
-            offset += eda_data['signals'][moment]['time'].max() + 10
     
     ax.set_ylim(bottom=0)
     ax.grid(True, alpha=ALPHA['fill'])
