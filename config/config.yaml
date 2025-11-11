@@ -51,6 +51,15 @@ physio:
       highcut_freq: 8.0  # Hz - for additional filtering if needed
       quality_threshold: 0.8  # Minimum quality for accepting peaks (0-1 scale)
                               # Note: Longer recordings (>30 min) often have lower scores (0.65-0.75) but remain usable
+    
+    # RR Intervals extraction configuration
+    rr_intervals:
+      enabled: true           # Extract and save RR intervals to file
+      min_valid_ms: 300       # Minimum valid RR interval (ms) - corresponds to ~200 BPM max
+      max_valid_ms: 2000      # Maximum valid RR interval (ms) - corresponds to ~30 BPM min
+                              # Values outside this range are marked as invalid (not removed)
+      save_all: true          # Save all RR intervals, including invalid ones (marked with is_valid=0)
+    
     metrics:
       extract_all: false
       selected_metrics:
