@@ -246,7 +246,47 @@ grep -i "error\|failed" log/batch_preprocessing_*.log
 **Solution**: Ensure you're using the latest code (Phase 2 complete). The visualization pipeline was updated to handle per-moment HR data structure.
 
 **Issue**: Tests failing  
-**Solution**: Run `poetry run pytest tests/ -v` to see which tests are failing. All 34 tests should pass in the current version.
+**Solution**: Run `poetry run pytest tests/ -v` to see which tests are failing. All 56 tests should pass in the current version.
+
+## DPPA (Dyadic Poincaré Plot Analysis)
+
+After preprocessing, you can analyze physiological synchrony between participants using DPPA.
+
+### Step 1: Compute Poincaré Centroids
+
+```bash
+# Batch: Compute centroids for all participants/sessions
+poetry run python scripts/physio/dppa/compute_poincare.py --batch
+```
+
+**Output**: `data/derivatives/dppa/sub-{participant}/ses-{session}/poincare/`  
+**Files**: 606 centroid files (2 methods × 2 tasks × 51 sessions)  
+**Time**: ~2 minutes for full dataset
+
+### Step 2: Calculate Inter-Centroid Distances (ICDs)
+
+```bash
+# Compute ICDs for all dyad pairs
+poetry run python scripts/physio/dppa/compute_dppa.py --mode both --task all --batch
+```
+
+**Outputs**:
+- Inter-session: `data/derivatives/dppa/inter_session/` (~1,275 dyad pairs)
+- Intra-family: `data/derivatives/dppa/intra_family/` (81 dyad pairs)
+**Format**: Rectangular CSV (epochs × dyads)  
+**Time**: ~5 minutes for full dataset
+
+### Interpret Results
+
+Open the CSV files in your analysis software. ICD values indicate synchrony:
+- **0-20 ms**: High synchrony (similar autonomic states)
+- **20-50 ms**: Moderate synchrony
+- **50+ ms**: Low synchrony (divergent states)
+
+**Typical workflow**:
+1. Filter dyads of interest (e.g., parent-child, therapist-family)
+2. Compare therapy vs. restingstate ICDs (baseline)
+3. Track ICD evolution across epochs (temporal dynamics)
 
 ## Performance
 

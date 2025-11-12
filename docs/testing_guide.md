@@ -1,9 +1,9 @@
 # Testing Guide for Therasync Preprocessing Pipelines
 
-**Last Updated:** November 11, 2025  
-**Project Version:** v1.0.0 (Production Ready)  
-**Test Status:** 34/34 passing (100%)  
-**Production Validation:** 49/51 sessions (96% success rate)
+**Last Updated:** November 12, 2025  
+**Project Version:** v1.2.0 (DPPA Release)  
+**Test Status:** 56/56 passing (100%)  
+**Production Validation:** 49/51 preprocessing sessions (96%), 2,514 DPPA ICD pairs (100%)
 
 This guide covers automated unit testing, integration testing, and production validation for all three preprocessing pipelines (BVP, EDA, HR) plus visualization and batch processing.
 
@@ -21,7 +21,7 @@ This guide covers automated unit testing, integration testing, and production va
 ### Running All Tests
 
 ```bash
-# Run all 34 unit tests
+# Run all 56 unit tests (34 preprocessing + 22 DPPA)
 poetry run pytest tests/
 
 # Run with coverage report
@@ -30,10 +30,11 @@ poetry run pytest --cov=src tests/
 # Run with verbose output
 poetry run pytest -v tests/
 
-# Run specific test file
+# Run specific test files
 poetry run pytest tests/test_bvp_pipeline.py
 poetry run pytest tests/test_eda_pipeline.py
 poetry run pytest tests/test_hr_pipeline.py
+poetry run pytest tests/test_dppa.py
 ```
 
 ### Test Organization
@@ -51,8 +52,9 @@ tests/
 
 ### Current Test Status (November 2025)
 
-✅ **All 34 unit tests passing (100%)**  
-✅ **Production validation: 49/51 sessions processed successfully (96%)**  
+✅ **All 56 unit tests passing (100%)** (34 preprocessing + 22 DPPA)  
+✅ **Production validation: 49/51 preprocessing sessions (96%)**  
+✅ **DPPA validation: 2,514 ICD pairs computed (100%)**  
 ✅ **Visualization: 306/306 plots generated (100%)**  
 ✅ **Quality analysis: 114 flags tracked across all modalities**
 
@@ -77,6 +79,14 @@ tests/
 - Metrics extraction (26 HR metrics)
 - BIDS output writing (14 files per session: 7 per moment)
 - Complete end-to-end pipeline integration
+
+**DPPA Pipeline Tests (22 tests):**
+- PoincareCalculator: Centroid computation with RRₙ/RRₙ₊₁ pairing (5 tests)
+- CentroidLoader: File loading with LRU caching (4 tests)
+- DyadConfigLoader: Inter-session and intra-family pair generation (4 tests)
+- ICDCalculator: Euclidean distance with NaN propagation (5 tests)
+- DPPAWriter: Rectangular CSV export (3 tests)
+- End-to-end integration test (1 test)
 
 **Phase 2 Validation:**
 - All BIDS writers harmonized with identical code patterns
@@ -249,6 +259,47 @@ poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p0
 ```bash
 poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01 --verbose
 ```
+
+### DPPA Pipeline
+
+**Expected Outputs:** 
+- Centroids: 606 TSV files (2 methods × 2 tasks × 51 sessions)
+- ICDs: 4 CSV files (2 modes × 2 tasks)
+
+**Test Commands:**
+
+```bash
+# Test centroid computation (single participant)
+poetry run python scripts/physio/dppa/compute_poincare.py -s f01p01 -e 01 -v
+
+# Test ICD calculation (single family)
+poetry run python scripts/physio/dppa/compute_dppa.py --mode intra --task therapy --batch
+
+# Run all DPPA unit tests
+poetry run pytest tests/test_dppa.py -v
+```
+
+**Expected Test Output:**
+- ✅ 22/22 tests passing (100%)
+- 5 test classes covering all modules:
+  - TestPoincareCalculator (5 tests)
+  - TestCentroidLoader (4 tests)
+  - TestDyadConfigLoader (4 tests)
+  - TestICDCalculator (5 tests)
+  - TestDPPAWriter (3 tests)
+  - TestDPPAIntegration (1 test)
+
+**Key Validations:**
+- Centroid computation: RRₙ vs RRₙ₊₁ pairing correct
+- ICD formula: Euclidean distance √[(x₁-x₂)²+(y₁-y₂)²]
+- NaN handling: Propagates correctly through pipeline
+- Output format: Rectangular CSV (epochs × dyads)
+- Batch success rate: 100% (2,514 ICD pairs computed)
+
+**Production Validation:**
+- Inter-session: 1,176 dyad pairs × 2 tasks = 2,352 ICDs
+- Intra-family: 81 dyad pairs × 2 tasks = 162 ICDs
+- Total: 2,514 ICD computations (100% success)
 
 ---
 

@@ -172,6 +172,48 @@ ls data/derivatives/visualization/sub-f01p01/ses-01/figures/
 
 ---
 
+## DPPA (Dyadic Poincaré Plot Analysis)
+
+### Compute Poincaré Centroids
+
+```bash
+# Single participant
+poetry run python scripts/physio/dppa/compute_poincare.py -s f01p01 -e 01
+
+# Batch processing (all)
+poetry run python scripts/physio/dppa/compute_poincare.py --batch
+```
+
+**Outputs**: `data/derivatives/dppa/sub-{participant}/ses-{session}/poincare/`  
+**Files**: `*_task-{task}_method-{method}_desc-poincare_physio.{tsv,json}`  
+**Methods**: nsplit120, sliding_duration30s_step5s
+
+### Compute ICDs (Inter-Centroid Distances)
+
+```bash
+# Inter-session analysis (nsplit120)
+poetry run python scripts/physio/dppa/compute_dppa.py --mode inter --task therapy
+
+# Intra-family analysis (sliding method)
+poetry run python scripts/physio/dppa/compute_dppa.py --mode intra --task therapy
+
+# Both modes, all tasks
+poetry run python scripts/physio/dppa/compute_dppa.py --mode both --task all --batch
+```
+
+**Outputs**:
+- Inter-session: `data/derivatives/dppa/inter_session/inter_session_icd_task-{task}_method-nsplit120.csv`
+- Intra-family: `data/derivatives/dppa/intra_family/intra_family_icd_task-{task}_method-sliding_duration30s_step5s.csv`
+
+**Format**: Rectangular CSV (epochs × dyads)
+
+**ICD Interpretation**:
+- **0-20 ms**: High synchrony (similar autonomic states)
+- **20-50 ms**: Moderate synchrony
+- **50+ ms**: Low synchrony (divergent states)
+
+---
+
 ## Configuration
 
 ### Main Config File
