@@ -97,6 +97,18 @@ data/
 - **CLI Quality Report**: `poetry run python scripts/analysis/generate_quality_report.py`
 - **Production Stats**: 49/51 sessions preprocessed (96%), 306/306 visualizations generated (100%)
 
+#### 6. DPPA Pipeline (Dyadic Poincaré Plot Analysis)
+- **Poincaré Centroid Computation**: Calculate centroids per participant/session/epoch from RR intervals
+- **Inter-Session Analysis**: Quantify synchrony across all sessions (~1,275 dyad pairs)
+- **Intra-Family Analysis**: Measure within-family synchrony during same session (81 dyad pairs)
+- **ICD Calculation**: Compute Inter-Centroid Distances using Euclidean formula
+- **Rectangular CSV Export**: Epochs × dyads format for statistical analysis
+- **5 Core Modules**: PoincareCalculator, CentroidLoader, ICDCalculator, DyadConfigLoader, DPPAWriter
+- **CLI Poincaré**: `poetry run python scripts/physio/dppa/compute_poincare.py --batch`
+- **CLI DPPA**: `poetry run python scripts/physio/dppa/compute_dppa.py --mode both --task all --batch`
+- **Validated on**: 51 sessions (606 centroid files), 2,514 ICD pairs (100% success)
+- **Methods**: nsplit120 (inter-session), sliding 30s/5s (intra-family)
+
 ### 🔄 Harmonized Modular Architecture (Phase 2 Complete)
 
 All three BIDS writers (BVP, EDA, HR) now use identical code patterns and structure:
