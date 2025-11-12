@@ -15,10 +15,11 @@ This document tracks all available resources (data files, images, configs, metad
 2. [Raw Data](#raw-data)
 3. [Processed Data (Derivatives)](#processed-data-derivatives)
 4. [Epoched Data](#epoched-data)
-5. [Metadata & Descriptors](#metadata--descriptors)
-6. [Logs](#logs)
-7. [Documentation](#documentation)
-8. [Future Resources](#future-resources)
+5. [DPPA (Dyadic Poincaré Plot Analysis)](#dppa-dyadic-poincaré-plot-analysis)
+6. [Metadata & Descriptors](#metadata--descriptors)
+7. [Logs](#logs)
+8. [Documentation](#documentation)
+9. [Future Resources](#future-resources)
 
 ---
 
@@ -393,6 +394,189 @@ epoch_ids = ast.literal_eval(df['epoch_sliding_duration30s_step5s'].iloc[0])
   - Sliding window duration and step
   - Enable/disable individual methods
   - File patterns to epoch (include/exclude)
+
+---
+
+### DPPA (Dyadic Poincaré Plot Analysis)
+
+#### Overview
+DPPA quantifies physiological synchrony between dyads using Inter-Centroid Distances (ICDs) derived from Poincaré plot centroids.
+
+**Pipeline Steps**:
+1. **Centroid Computation**: Calculate Poincaré centroids per participant/session/epoch
+2. **Dyad Configuration**: Define participant pairs (inter-session or intra-family)
+3. **ICD Calculation**: Compute Euclidean distances between centroids
+
+#### Directory Structure
+```
+data/derivatives/dppa/
+├── sub-{participant}/
+│   └── ses-{session}/
+│       └── poincare/
+│           ├── *_task-{task}_method-{method}_desc-poincare_physio.{tsv,json}
+│           └── ...
+├── inter_session/
+│   ├── inter_session_icd_task-{task}_method-{method}.csv
+│   └── ...
+└── intra_family/
+    ├── intra_family_icd_task-{task}_method-{method}.csv
+    └── ...
+```
+
+#### Poincaré Centroid Files
+
+**Per-Participant Files**:
+- **Path**: `data/derivatives/dppa/sub-{participant}/ses-{session}/poincare/`
+- **Files**: `*_task-{task}_method-{method}_desc-poincare_physio.{tsv,json}`
+- **Format**: TSV + JSON sidecar
+- **Epoching Methods**:
+  - `nsplit120`: 120 equal epochs (inter-session analysis)
+  - `sliding_duration30s_step5s`: Overlapping 30s windows (intra-family analysis)
+
+**Centroid Columns** (7 per row):
+- `epoch_id`: Epoch identifier (0-119 for nsplit120, 0-N for sliding)
+- `centroid_x`: Mean RRₙ interval (ms) - X-axis of Poincaré plot
+- `centroid_y`: Mean RRₙ₊₁ interval (ms) - Y-axis of Poincaré plot
+- `sd1`: Short-term variability (ms) - Perpendicular to identity line
+- `sd2`: Long-term variability (ms) - Along identity line
+- `sd_ratio`: SD1/SD2 ratio - Balance of short/long-term variability
+- `n_intervals`: Number of RR intervals in epoch
+
+**Special Values**:
+- **NaN**: Assigned when epoch has no valid RR intervals
+- **Propagation**: NaN centroids result in NaN ICDs
+
+**Viewer Use**:
+- Poincaré plot visualization per participant/epoch
+- Centroid trajectory over time
+- Variability metrics comparison
+- Quality control (epochs with sufficient data)
+
+#### Inter-Centroid Distance (ICD) Files
+
+##### Inter-Session ICDs
+**Purpose**: Quantify synchrony across all sessions (cross-dyad analysis)
+
+- **Path**: `data/derivatives/dppa/inter_session/`
+- **Files**: `inter_session_icd_task-{task}_method-nsplit120.csv`
+- **Format**: Rectangular CSV (epochs × dyads)
+  - **Rows**: 120 epochs (nsplit120 method)
+  - **Columns**: ~1,275 dyad pairs (all combinations across sessions)
+  - **First Column**: `epoch_id` (0-119)
+  - **Dyad Columns**: `{subj1}_{ses1}___{subj2}_{ses2}` (e.g., `f01p01_ses-01___f01p02_ses-01`)
+
+**Column Naming**:
+- Format: `{subj1}_{ses1}___{subj2}_{ses2}` (triple underscore separator)
+- Example: `f01p01_ses-01___f02p03_ses-02`
+- Total columns: 1 + N dyads (N ≈ 1,275)
+
+**Tasks**:
+- `therapy`: Therapy session ICDs
+- `restingstate`: Baseline ICDs (single epoch [0])
+
+##### Intra-Family ICDs
+**Purpose**: Quantify synchrony within families during same session
+
+- **Path**: `data/derivatives/dppa/intra_family/`
+- **Files**: `intra_family_icd_task-{task}_method-sliding_duration30s_step5s.csv`
+- **Format**: Rectangular CSV (epochs × dyads)
+  - **Rows**: Variable epochs (~553 for therapy)
+  - **Columns**: 81 dyad pairs (C(6,2)=15 per family × 6 families, filtered by available sessions)
+  - **First Column**: `epoch_id` (0-N)
+  - **Dyad Columns**: `{family}_{subj1}_{subj2}_{session}` (e.g., `f01_f01p01_f01p02_ses-01`)
+
+**Column Naming**:
+- Format: `{family}_{subj1}_{subj2}_{session}` (underscore separators)
+- Example: `f01_f01p01_f01p02_ses-01`
+- Total columns: 1 + 81 dyads
+
+**Dyad Selection**:
+- Only dyads with both participants having valid centroids
+- Family sessions: f01-f04 (multiple sessions), f05-f06 (single sessions)
+- Combinations: C(n_participants, 2) per family/session
+
+#### ICD Calculation
+
+**Formula**:
+```
+ICD = √[(centroid_x₁ - centroid_x₂)² + (centroid_y₁ - centroid_y₂)²]
+```
+
+**Interpretation**:
+- **Low ICD** (<20 ms): High synchrony, similar autonomic states
+- **Medium ICD** (20-50 ms): Moderate synchrony
+- **High ICD** (>50 ms): Low synchrony, divergent autonomic states
+- **NaN**: Missing data in one or both centroids
+
+**Properties**:
+- **Units**: Milliseconds (ms)
+- **Range**: 0-∞ (typically 0-100 ms)
+- **Symmetry**: ICD(A,B) = ICD(B,A)
+- **Non-negativity**: Always ≥ 0
+
+#### Configuration
+
+**Dyad Definitions**:
+- **File**: `config/dppa_dyads.yaml`
+- **Inter-Session Pairs**: All combinations of {participant, session} tuples
+- **Intra-Family Pairs**: C(n,2) combinations within same family/session
+
+**Epoching Methods**:
+- **Inter-Session**: `nsplit120` (fixed 120 epochs for standardization)
+- **Intra-Family**: `sliding_duration30s_step5s` (fine-grained temporal resolution)
+
+#### CLI Scripts
+
+**Compute Poincaré Centroids**:
+```bash
+# Single participant
+poetry run python scripts/physio/dppa/compute_poincare.py -s f01p01 -e 01
+
+# Batch processing (all participants/sessions)
+poetry run python scripts/physio/dppa/compute_poincare.py --batch
+```
+
+**Compute ICDs**:
+```bash
+# Inter-session only
+poetry run python scripts/physio/dppa/compute_dppa.py --mode inter --task therapy
+
+# Intra-family only
+poetry run python scripts/physio/dppa/compute_dppa.py --mode intra --task therapy
+
+# Both modes, all tasks
+poetry run python scripts/physio/dppa/compute_dppa.py --mode both --task all --batch
+```
+
+#### Viewer Use Cases
+
+**Poincaré Plot Visualization**:
+- Scatter plot: RRₙ vs RRₙ₊₁ per participant/epoch
+- Centroid overlay: Show (centroid_x, centroid_y) as marker
+- SD1/SD2 ellipses: Visualize variability
+- Epoch animation: Trajectory of centroid over time
+
+**ICD Heatmaps**:
+- Rows: Epochs, Columns: Dyads
+- Color scale: ICD magnitude (blue=high sync, red=low sync)
+- Time-series: ICD evolution for selected dyads
+- Family comparisons: Average ICD per family
+
+**Synchrony Dashboard**:
+- Summary statistics: Mean, median, std of ICDs per dyad
+- Dyad ranking: Sort by average ICD (most/least synchronized)
+- Epoch filtering: Focus on specific time windows
+- Task comparison: Therapy vs restingstate synchrony
+
+**Quality Control**:
+- Missing data heatmap: Identify epochs/dyads with NaN
+- Coverage report: Percentage of valid ICDs
+- Centroid quality: n_intervals per epoch (data sufficiency)
+
+**Export Options**:
+- CSV: Epoch-level ICD tables for statistical analysis
+- JSON: Metadata and processing parameters
+- PNG/SVG: Static visualizations for reports
 
 ---
 
