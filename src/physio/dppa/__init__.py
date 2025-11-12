@@ -10,6 +10,9 @@ Modules:
 - icd_calculator: Calculate Inter-Centroid Distances between dyads
 - dyad_config_loader: Load dyad configuration mappings
 - dppa_writer: Export ICD results to BIDS-compliant CSV
+- dyad_icd_loader: Load ICD data for visualization
+- dyad_centroid_loader: Load centroid data for visualization (to be added)
+- dyad_plotter: Generate dyad visualizations (to be added)
 
 Authors: Lena Adel, Remy Ramadour
 Date: November 2025
@@ -20,5 +23,17 @@ from .centroid_loader import CentroidLoader
 from .dyad_config_loader import DyadConfigLoader
 from .icd_calculator import ICDCalculator
 from .dppa_writer import DPPAWriter
+from .dyad_icd_loader import DyadICDLoader
+from .dyad_centroid_loader import DyadCentroidLoader
+from .dyad_plotter import DyadPlotter
 
-__all__ = ['PoincareCalculator', 'CentroidLoader', 'DyadConfigLoader', 'ICDCalculator', 'DPPAWriter']
+__all__ = [
+    'PoincareCalculator',
+    'CentroidLoader',
+    'DyadConfigLoader',
+    'ICDCalculator',
+    'DPPAWriter',
+    'DyadICDLoader',
+    'DyadCentroidLoader',
+    'DyadPlotter',
+]

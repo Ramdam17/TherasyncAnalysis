@@ -224,3 +224,50 @@ epoching:
     # Structure: derivatives/epoched/sub-xxx/ses-yyy/{modality}/
     # Note: task-restingstate files always get epoch_id=0 for all methods
     #       task-therapy files get proper epoch assignments based on methods
+
+# Visualization Configuration
+visualization:
+  # DPPA (Dyadic Poincaré Plot Analysis) visualization settings
+  dppa:
+    # Figure settings
+    figure:
+      width: 12           # inches
+      height: 8           # inches
+      dpi: 150            # resolution for PNG output
+      format: "png"       # output format (png, pdf, svg)
+    
+    # Color scheme
+    colors:
+      subject1: "#1f77b4"       # Blue for first subject
+      subject2: "#ff7f0e"       # Orange for second subject
+      therapy: "#d62728"        # Red for therapy data
+      resting: "#2ca02c"        # Green for resting baseline
+      trendline: "#000000"      # Black for trendline
+    
+    # Line styles
+    styles:
+      therapy_linewidth: 1.5
+      baseline_linewidth: 1.0
+      baseline_linestyle: "--"  # dashed
+      trendline_linewidth: 1.0
+      trendline_linestyle: "--"  # dashed
+    
+    # Labels and titles
+    labels:
+      icd: "Inter-Centroid Distance (ms)"
+      sd1: "SD1 (ms)"
+      sd2: "SD2 (ms)"
+      ratio: "SD1/SD2 Ratio"
+      epoch: "Epoch ID"
+    
+    # Y-axis limits for normalized visualization
+    ylimits:
+      icd: 1000           # Maximum ICD value (ms)
+      sd1: 600            # Maximum SD1 value (ms)
+      sd2: 600            # Maximum SD2 value (ms)
+      ratio: 3.0          # Maximum SD1/SD2 ratio
+    
+    # Output directory
+    output:
+      base_dir: "dppa/figures"  # derivatives/dppa/figures/
+      # Filename pattern: sub-{sub1}_ses-{ses1}_vs_sub-{sub2}_ses-{ses2}_method-{method}_desc-dyad_viz.png
