@@ -337,6 +337,36 @@ ls data/derivatives/visualization/sub-f01p01/ses-01/figures/
 - Logs are saved with timestamped filenames
 - All outputs are BIDS-compliant and self-documented
 
+## 🔗 DPPA (Dyadic Poincaré Plot Analysis)
+
+### Compute Poincaré Centroids
+
+```bash
+# Single participant
+poetry run python scripts/physio/dppa/compute_poincare.py -s f01p01 -e 01
+
+# Batch (all)
+poetry run python scripts/physio/dppa/compute_poincare.py --batch
+```
+
+### Compute ICDs (Inter-Centroid Distances)
+
+```bash
+# Inter-session analysis
+poetry run python scripts/physio/dppa/compute_dppa.py --mode inter --task therapy
+
+# Intra-family analysis  
+poetry run python scripts/physio/dppa/compute_dppa.py --mode intra --task therapy
+
+# Both modes, all tasks
+poetry run python scripts/physio/dppa/compute_dppa.py --mode both --task all --batch
+```
+
+**Output Locations**:
+- Centroids: `data/derivatives/dppa/sub-{participant}/ses-{session}/poincare/`
+- Inter-session ICDs: `data/derivatives/dppa/inter_session/`
+- Intra-family ICDs: `data/derivatives/dppa/intra_family/`
+
 ---
 
-**Version**: 1.0.0 | **Status**: Production Ready | **Tests**: 34/34 Passing
+**Version**: 1.2.0 | **Status**: Production Ready | **Tests**: 56/56 Passing
