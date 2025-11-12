@@ -174,3 +174,53 @@ logging:
   file_rotation: true
   max_file_size: "10MB"
   backup_count: 5
+
+# Epoching configuration
+# Used to segment physiological signals into time windows for analysis
+epoching:
+  enabled: true
+  
+  # Epoching methods
+  methods:
+    # Method 1: Fixed window with overlap
+    # Creates epochs of fixed duration with specified overlap
+    # Example: duration=30s, overlap=5s → epochs every 25s (step=duration-overlap)
+    fixed:
+      enabled: true
+      duration: 30        # seconds - epoch duration
+      overlap: 5          # seconds - overlap between consecutive epochs
+      min_duration_ratio: 0.0  # Keep all partial epochs (0.0=all, 1.0=only complete)
+    
+    # Method 2: N-split
+    # Divides signal into exactly N epochs of equal duration
+    # Useful for epoch shuffling (ensures same number of epochs per session)
+    nsplit:
+      enabled: true
+      n_epochs: 120       # Number of epochs (~30s each for 1h sessions)
+    
+    # Method 3: Sliding window
+    # Creates overlapping epochs with small step size
+    # Useful for Dyadic Poincaré Plot Analysis (DPPA)
+    sliding:
+      enabled: true
+      duration: 30        # seconds - epoch duration
+      step: 5             # seconds - step between consecutive epochs
+      min_duration_ratio: 0.0  # Keep all partial epochs
+  
+  # Files to epoch (glob patterns)
+  include:
+    - "*_desc-processed_recording-*.tsv"  # All processed signal files
+    - "*_desc-rrintervals_physio.tsv"     # RR intervals files
+  
+  # Files to exclude (glob patterns)
+  exclude:
+    - "*_desc-*-metrics_*.tsv"            # Metrics files (not epochable)
+    - "*_desc-*-summary_*.json"           # Summary files
+    - "*_events.tsv"                      # Event files
+  
+  # Output configuration
+  output:
+    base_dir: "epoched"  # derivatives/epoched/
+    # Structure: derivatives/epoched/sub-xxx/ses-yyy/{modality}/
+    # Note: task-restingstate files always get epoch_id=0 for all methods
+    #       task-therapy files get proper epoch assignments based on methods
