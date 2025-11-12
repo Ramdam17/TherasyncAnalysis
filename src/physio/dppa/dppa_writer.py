@@ -149,10 +149,11 @@ class DPPAWriter:
         output_name: Optional[str] = None
     ) -> Path:
         """
-        Write intra-family ICD results to long-format CSV.
+        Write intra-family ICD results to rectangular CSV.
         
-        Format: Variable rows with dyad_id column
-        Columns: family, dyad_id, subject1, subject2, session, epoch_id, icd
+        Format: Epochs as rows, dyads as columns
+        First column: epoch_id
+        Remaining columns: dyad pairs (subject1_subject2_session format)
         
         Args:
             icd_results: Dict mapping (family, subj1, subj2, session, task) -> ICD DataFrame
@@ -172,38 +173,28 @@ class DPPAWriter:
         """
         if not icd_results:
             logger.warning("No ICD results to write")
-            return None
+            return Path()  # Return empty Path
         
         # Create output directory
         intra_dir = self.output_dir / "intra_family"
         intra_dir.mkdir(parents=True, exist_ok=True)
         
-        # Build long-format DataFrame
-        long_data = []
+        # Build wide-format DataFrame (epochs × dyads)
+        wide_data = {}
         
         for (family, subj1, subj2, session, _), icd_df in icd_results.items():
-            # Create dyad_id
-            dyad_id = f"{subj1}_vs_{subj2}"
+            # Create column name: subject1_subject2_session
+            col_name = f"{subj1}_vs_{subj2}_{session}"
             
-            # Add family/dyad info to each row
-            df_copy = icd_df.copy()
-            df_copy.insert(0, 'family', family)
-            df_copy.insert(1, 'dyad_id', dyad_id)
-            df_copy.insert(2, 'subject1', subj1)
-            df_copy.insert(3, 'subject2', subj2)
-            df_copy.insert(4, 'session', session)
-            
-            long_data.append(df_copy)
+            # Add ICD column
+            wide_data[col_name] = icd_df.set_index('epoch_id')['icd']
         
-        # Concatenate all dyads
-        df_long = pd.concat(long_data, ignore_index=True)
+        # Combine all dyads into rectangular DataFrame
+        df_wide = pd.DataFrame(wide_data).reset_index()
+        df_wide = df_wide.rename(columns={'index': 'epoch_id'})
         
-        # Select and order columns
-        columns = ['family', 'dyad_id', 'subject1', 'subject2', 'session', 'epoch_id', 'icd']
-        df_long = df_long[columns]
-        
-        # Sort by family, dyad, epoch
-        df_long = df_long.sort_values(['family', 'dyad_id', 'epoch_id']).reset_index(drop=True)
+        # Sort by epoch_id
+        df_wide = df_wide.sort_values('epoch_id').reset_index(drop=True)
         
         # Generate filename
         if output_name is None:
@@ -212,7 +203,7 @@ class DPPAWriter:
         csv_file = intra_dir / f"{output_name}.csv"
         
         # Save CSV
-        df_long.to_csv(csv_file, index=False)
+        df_wide.to_csv(csv_file, index=False)
         
         # Create JSON sidecar
         json_file = csv_file.with_suffix('.json')
@@ -220,27 +211,21 @@ class DPPAWriter:
             "Description": "Intra-family Inter-Centroid Distances within same-session dyads",
             "TaskName": task,
             "EpochingMethod": method,
-            "Format": "Long format (dyad_id × epochs)",
+            "Format": "Rectangular (epochs × dyads)",
             "Columns": {
-                "family": "Family identifier (e.g., f01)",
-                "dyad_id": "Dyad pair identifier (subject1_vs_subject2)",
-                "subject1": "First participant ID",
-                "subject2": "Second participant ID",
-                "session": "Session identifier (e.g., ses-01)",
-                "epoch_id": "Epoch identifier",
-                "icd": "Inter-Centroid Distance in ms (NaN if invalid)"
+                "epoch_id": "Epoch identifier (0-indexed)",
+                "dyad_columns": "Each column = subject1_vs_subject2_session, values = ICD in ms (NaN if invalid)"
             },
             "Formula": "ICD = sqrt((centroid_x1 - centroid_x2)^2 + (centroid_y1 - centroid_y2)^2)",
             "CreationDate": datetime.now().isoformat(),
             "NumberOfDyads": len(icd_results),
-            "TotalRows": len(df_long),
-            "ValidICDs": int(df_long['icd'].notna().sum()),
-            "Families": sorted(df_long['family'].unique().tolist()),
-            "Sessions": sorted(df_long['session'].unique().tolist())
+            "NumberOfEpochs": len(df_wide),
+            "ValidICDs": int((~df_wide.iloc[:, 1:].isna()).sum().sum()),
+            "TotalICDs": int((len(df_wide)) * len(icd_results))
         }
         
         with open(json_file, 'w') as f:
             json.dump(metadata, f, indent=2)
         
-        logger.info(f"Wrote intra-family ICD: {csv_file.name} ({len(icd_results)} dyads, {len(df_long)} rows)")
+        logger.info(f"Wrote intra-family ICD: {csv_file.name} ({len(icd_results)} dyads, {len(df_wide)} epochs)")
         return csv_file
