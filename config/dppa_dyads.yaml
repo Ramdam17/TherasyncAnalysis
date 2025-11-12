@@ -1,0 +1,113 @@
+# DPPA Dyad Configuration File
+# Auto-generated from data/derivatives/epoched/ structure
+# Date: 2025-11-12
+
+# Inter-session comparison: All possible dyad pairs across all sessions
+# Method: nsplit120 (120 equal epochs across entire recording)
+# Output: Rectangular CSV per task (120 rows × ~1275 columns)
+inter_session:
+  method: nsplit120
+  tasks:
+    - restingstate
+    - therapy
+  compare: all  # All possible pairs (51 sessions choose 2 = ~1275 pairs)
+
+# Intra-family comparison: Dyads within the same family and session
+# Method: sliding_duration30s_step5s (overlapping 30s epochs every 5s)
+# Output: Single CSV per task with dyad_id column (variable rows per dyad)
+intra_family:
+  method: sliding_duration30s_step5s
+  tasks:
+    - restingstate
+    - therapy
+  
+  families:
+    # Family 01: 6 participants in ses-01, 3 participants in ses-02
+    f01:
+      ses-01:
+        - f01p01
+        - f01p02
+        - f01p03
+        - f01p04
+        - f01p05
+        - f01p06
+      ses-02:
+        - f01p01
+        - f01p02
+        - f01p03
+    
+    # Family 02: 5 participants in ses-01, 4 in ses-02, 4 in ses-03
+    f02:
+      ses-01:
+        - f02p01
+        - f02p02
+        - f02p03
+        - f02p04
+        - f02p05
+      ses-02:
+        - f02p01
+        - f02p02
+        - f02p04
+        - f02p05
+      ses-03:
+        - f02p01
+        - f02p02
+        - f02p03
+        - f02p04
+    
+    # Family 03: 6 participants in ses-01
+    f03:
+      ses-01:
+        - f03p01
+        - f03p02
+        - f03p03
+        - f03p04
+        - f03p05
+        - f03p06
+    
+    # Family 04: Multiple sessions with varying participants
+    f04:
+      ses-01:
+        - f04p01
+        - f04p02
+        - f04p03
+        - f04p04
+      ses-02:
+        - f04p01
+        - f04p02
+        - f04p04
+      ses-03:
+        - f04p01
+        - f04p02
+        - f04p04
+      ses-04:
+        - f04p01
+        - f04p02
+      ses-05:
+        - f04p01
+    
+    # Family 05: 5 participants in ses-01
+    f05:
+      ses-01:
+        - f05p01
+        - f05p02
+        - f05p03
+        - f05p05
+        - f05p06
+    
+    # Family 06: 3 participants in ses-01
+    f06:
+      ses-01:
+        - f06p01
+        - f06p02
+        - f06p03
+
+# Notes:
+# - Inter-session: Compare all participants across all sessions
+#   Example pairs: f01p01-ses01 vs f02p03-ses02, f03p05-ses01 vs f04p01-ses03, etc.
+# - Intra-family: Compare participants within same family and session only
+#   Example pairs: f01p01-ses01 vs f01p02-ses01, f02p03-ses02 vs f02p04-ses02, etc.
+# - Both modes support multiple tasks (restingstate, therapy)
+# - Dyad naming format: {participant1}-{session1}_{participant2}-{session2}
+#   Inter-session: f01p01-ses01_f02p03-ses02
+#   Intra-family: f01p01-ses01_f01p02-ses01
