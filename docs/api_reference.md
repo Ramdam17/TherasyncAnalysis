@@ -29,8 +29,11 @@ This document provides comprehensive API documentation for all modules in the Th
    - [HRCleaner](#class-hrcleaner)
    - [HRMetricsExtractor](#class-hrmetricsextractor)
    - [HRBIDSWriter](#class-hrbidswriter)
-5. [Version History](#version-history)
-6. [Support & Contribution](#support--contribution)
+5. [Epoching](#epoching)
+   - [EpochAssigner](#class-epochassigner)
+   - [EpochBIDSWriter](#class-epochbidswriter)
+6. [Version History](#version-history)
+7. [Support & Contribution](#support--contribution)
 
 ---
 
@@ -1094,7 +1097,185 @@ Example:
 
 ---
 
+## Epoching
+
+#### Class: `EpochAssigner`
+
+**Module**: `src.physio.epoching.epoch_assigner`
+
+Assigns epoch IDs to physiological time series data using multiple methods.
+
+This class segments continuous physiological signals into discrete time windows (epochs)
+for analysis. Supports three epoching methods: fixed windows with overlap, n-split
+(equal division), and sliding windows. Epoch IDs are stored as JSON-formatted lists
+(e.g., `"[0]"`, `"[0, 1, 2]"`) to handle overlapping epochs.
+
+**Constructor**:
+
+```python
+EpochAssigner(self, config: Dict[str, Any])
+```
+
+**Parameters**:
+- `config`: Configuration dictionary containing epoching settings
+
+**Methods**:
+
+##### `assign_fixed_epochs(self, time: np.ndarray, duration: float, overlap: float, min_ratio: float = 0.5) -> List[str]`
+
+Assign samples to fixed-duration epochs with overlap.
+
+Creates non-overlapping windows with a specified overlap. Samples can belong to
+1-2 epochs depending on their position relative to window boundaries.
+
+Args:
+    time: Array of timestamps in seconds.
+    duration: Epoch duration in seconds (e.g., 30).
+    overlap: Overlap between epochs in seconds (e.g., 5).
+    min_ratio: Minimum ratio of sample presence in epoch (default: 0.5).
+
+Returns:
+    List of JSON-formatted epoch ID lists (e.g., `["[0]", "[0, 1]", "[1]"]`).
+
+Example:
+    - duration=30s, overlap=5s → step=25s
+    - Sample at t=27s belongs to epochs [0, 1]
+
+##### `assign_nsplit_epochs(self, time: np.ndarray, n_epochs: int) -> np.ndarray`
+
+Divide signal into n equal epochs (no overlap).
+
+Each sample belongs to exactly one epoch. Useful for equal-duration analysis windows.
+
+Args:
+    time: Array of timestamps in seconds.
+    n_epochs: Number of epochs to create (e.g., 120).
+
+Returns:
+    Array of epoch IDs (integers 0 to n_epochs-1).
+
+##### `assign_all_epochs(self, df: pd.DataFrame, task: str, time_column: str = 'time') -> pd.DataFrame`
+
+Assign all configured epoch columns based on task type.
+
+Special case: restingstate task always assigns epoch ID `[0]` to all samples.
+For therapy tasks, applies all enabled epoching methods from configuration.
+
+Args:
+    df: DataFrame with time series data.
+    task: Task name ('restingstate' or 'therapy').
+    time_column: Name of time column (default: 'time').
+
+Returns:
+    DataFrame with added epoch columns:
+        - `epoch_fixed_duration{X}s_overlap{Y}s` (JSON list format)
+        - `epoch_nsplit{N}` (JSON list format)
+        - `epoch_sliding_duration{X}s_step{Y}s` (JSON list format)
+
+---
+
+#### Class: `EpochBIDSWriter`
+
+**Module**: `src.physio.epoching.epoch_bids_writer`
+
+BIDS-compliant file I/O for epoched physiological data.
+
+Reads preprocessed physiological signals, assigns epoch IDs, and writes
+BIDS-formatted output files with epoch columns. Handles file pattern matching,
+task detection, and JSON sidecar generation.
+
+**Constructor**:
+
+```python
+EpochBIDSWriter(self, config: Dict[str, Any])
+```
+
+**Parameters**:
+- `config`: Configuration dictionary containing paths and epoching settings
+
+**Methods**:
+
+##### `detect_task(self, filename: str) -> str`
+
+Detect task type from BIDS filename.
+
+Args:
+    filename: BIDS-formatted filename (e.g., `sub-f01p01_ses-01_task-therapy_physio.tsv`).
+
+Returns:
+    Task name ('therapy', 'restingstate', or 'unknown').
+
+##### `should_epoch_file(self, filename: str) -> bool`
+
+Check if file should be epoched based on include/exclude patterns.
+
+Applies glob pattern matching from configuration to determine which files
+to process. Typically includes RR intervals and processed_recording files,
+excludes events and metrics files.
+
+Args:
+    filename: Filename to check.
+
+Returns:
+    True if file matches include patterns and not exclude patterns.
+
+##### `process_file(self, input_path: Path, subject: str, session: str, modality: str) -> Optional[Path]`
+
+Process a single file: load, assign epochs, write output.
+
+Args:
+    input_path: Path to input TSV file.
+    subject: Subject ID (e.g., 'f01p01').
+    session: Session ID (e.g., '01').
+    modality: Modality type ('bvp', 'eda', 'hr').
+
+Returns:
+    Path to output file if successful, None if failed.
+
+##### `process_session(self, subject: str, session: str) -> Tuple[int, int, int]`
+
+Process all eligible files for one session.
+
+Args:
+    subject: Subject ID.
+    session: Session ID.
+
+Returns:
+    Tuple of (files_processed, files_skipped, files_failed).
+
+**Epoch Column Format**:
+
+All epoch columns use JSON list format for consistency:
+- Single epoch: `"[0]"`
+- Multiple epochs: `"[0, 1, 2, 3, 4]"`
+
+Parsing example:
+```python
+import ast
+epoch_ids = ast.literal_eval(df['epoch_sliding_duration30s_step5s'].iloc[0])
+# Result: [0, 1, 2, 3, 4] (Python list)
+```
+
+**Column Naming Convention**:
+- Fixed windows: `epoch_fixed_duration{duration}s_overlap{overlap}s`
+- N-split: `epoch_nsplit{n_epochs}`
+- Sliding windows: `epoch_sliding_duration{duration}s_step{step}s`
+
+---
+
 ## Version History
+
+### v1.1.0 (2025-11-11)
+
+**Epoching Module Release**:
+- ✅ **EpochAssigner**: Three epoching methods (fixed, nsplit, sliding)
+- ✅ **EpochBIDSWriter**: BIDS-compliant file I/O with pattern matching
+- ✅ **Multi-epoch Support**: Samples can belong to multiple overlapping epochs
+- ✅ **JSON Format**: Epoch IDs stored as `"[0, 1, 2]"` for type consistency
+- ✅ **Restingstate Rule**: All restingstate samples assigned to epoch `[0]`
+- ✅ **Batch Processing**: 401 files processed across 51 sessions (100% success)
+- ✅ **Testing**: 12 new tests, 55 total tests passing (100%)
+- ✅ **Configuration**: step=5s for sliding windows (3.9% epoch gaps)
 
 ### v1.0.0 (2025-11-11)
 

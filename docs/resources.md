@@ -14,10 +14,11 @@ This document tracks all available resources (data files, images, configs, metad
 1. [Configuration Files](#configuration-files)
 2. [Raw Data](#raw-data)
 3. [Processed Data (Derivatives)](#processed-data-derivatives)
-4. [Metadata & Descriptors](#metadata--descriptors)
-5. [Logs](#logs)
-6. [Documentation](#documentation)
-7. [Future Resources](#future-resources)
+4. [Epoched Data](#epoched-data)
+5. [Metadata & Descriptors](#metadata--descriptors)
+6. [Logs](#logs)
+7. [Documentation](#documentation)
+8. [Future Resources](#future-resources)
 
 ---
 
@@ -260,6 +261,138 @@ All three modalities (BVP, EDA, HR) follow harmonized architecture with consiste
   - Session overview dashboard
   - Quality control summary
   - Processing status indicators
+
+---
+
+### Epoched Data
+
+#### Directory Structure
+- **Path**: `data/derivatives/epoched/`
+- **Organization**: Same as preprocessing (BIDS-compliant)
+```
+epoched/
+└── sub-{subject}/
+    └── ses-{session}/
+        ├── bvp/   # 4 files (2 therapy + 2 restingstate)
+        ├── eda/   # 4 files (2 therapy + 2 restingstate)
+        └── hr/    # 4 files (2 therapy + 2 restingstate)
+```
+
+#### Epoched Files
+- **Files**: Same as preprocessed files with added epoch columns
+- **Format**: TSV + JSON sidecar
+- **Total**: 401 files across 51 sessions (8 files per session)
+- **File Types**:
+  - RR intervals: `*_desc-rrintervals_physio.{tsv,json}`
+  - Processed recordings: `*_desc-processed_recording-{modality}.{tsv,json}`
+
+#### Epoch Columns
+
+All epoched files contain 3 additional columns with JSON-formatted epoch ID lists:
+
+##### 1. Fixed Windows with Overlap
+- **Column Name**: `epoch_fixed_duration{duration}s_overlap{overlap}s`
+- **Example**: `epoch_fixed_duration30s_overlap5s`
+- **Method**: Non-overlapping windows (duration=30s, step=25s due to 5s overlap)
+- **Sample Assignment**: Samples can belong to 1-2 epochs
+- **Format**: JSON list (e.g., `"[0]"`, `"[0, 1]"`, `"[1, 2]"`)
+- **Use Cases**:
+  - DPPA (Dynamic Pupillometric Physiological Analysis)
+  - Time-window analysis with context preservation
+  - Averaging over overlapping windows
+
+##### 2. N-Split (Equal Division)
+- **Column Name**: `epoch_nsplit{n_epochs}`
+- **Example**: `epoch_nsplit120`
+- **Method**: Signal divided into N equal-duration epochs (no overlap)
+- **Sample Assignment**: Each sample belongs to exactly 1 epoch
+- **Format**: JSON list with single ID (e.g., `"[0]"`, `"[1]"`, `"[119]"`)
+- **Use Cases**:
+  - Equal-duration comparisons
+  - Temporal progression analysis
+  - Statistical analyses requiring independent windows
+
+##### 3. Sliding Windows
+- **Column Name**: `epoch_sliding_duration{duration}s_step{step}s`
+- **Example**: `epoch_sliding_duration30s_step5s`
+- **Method**: Overlapping windows (duration=30s, step=5s)
+- **Sample Assignment**: Samples can belong to many epochs (typically 6 with step=5s)
+- **Format**: JSON list (e.g., `"[0, 1, 2, 3, 4, 5]"`)
+- **Configuration**: step=5s reduces epoch gaps to 3.9%
+- **Use Cases**:
+  - Fine-grained temporal analysis
+  - Moving averages
+  - Event-triggered epoch selection
+  - Robustness to epoch boundary effects
+
+#### Special Case: Restingstate
+- **Rule**: All restingstate samples assigned to epoch `[0]` regardless of method
+- **Rationale**: Restingstate is a baseline reference without temporal subdivisions
+- **Format**: Always `"[0]"` for all three epoch columns
+
+#### Epoch ID Format
+
+**Consistent JSON List Format**:
+- All epoch columns use JSON-formatted lists: `"[0]"`, `"[0, 1, 2]"`
+- Type: Always `str` (object dtype in pandas)
+- Parsing: `ast.literal_eval(value)` → Python list
+
+**Example Data**:
+```tsv
+time    epoch_fixed_duration30s_overlap5s    epoch_nsplit120    epoch_sliding_duration30s_step5s
+0.77    [0]                                   [0]                [0]
+25.45   [0, 1]                                [0]                [0, 1, 2, 3, 4, 5]
+50.06   [1, 2]                                [1]                [2, 3, 4, 5, 6, 7, 8, 9, 10]
+```
+
+**Parsing Example**:
+```python
+import pandas as pd
+import ast
+
+df = pd.read_csv('epoched_file.tsv', sep='\t')
+# Parse epoch IDs from JSON list format
+epoch_ids = ast.literal_eval(df['epoch_sliding_duration30s_step5s'].iloc[0])
+# Result: [0, 1, 2, 3, 4, 5] (Python list of integers)
+```
+
+#### Viewer Use Cases
+
+- **Epoch Selection**:
+  - Filter data by epoch ID
+  - Select epochs around events
+  - Compare epochs across sessions
+
+- **Epoch Aggregation**:
+  - Average metrics per epoch
+  - Temporal trends across epochs
+  - Epoch-based statistics
+
+- **Epoch Shuffling**:
+  - Randomize epoch order for statistical analysis
+  - Bootstrap resampling within epochs
+  - Cross-validation with epoch stratification
+
+- **Visualization**:
+  - Color-code samples by epoch
+  - Plot epoch boundaries
+  - Heatmaps of epoch-based metrics
+  - Time-series with epoch overlays
+
+- **Quality Control**:
+  - Identify epochs with missing data (gap analysis)
+  - Detect epochs with poor signal quality
+  - Epoch-level quality flags
+
+#### Configuration
+- **File**: `config/config.yaml`
+- **Section**: `epoching`
+- **Customizable**:
+  - Fixed window duration and overlap
+  - N-split epoch count
+  - Sliding window duration and step
+  - Enable/disable individual methods
+  - File patterns to epoch (include/exclude)
 
 ---
 
