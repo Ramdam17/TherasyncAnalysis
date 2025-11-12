@@ -133,6 +133,33 @@ def process_single_subject(
             logger.error(f"Failed to extract metrics: {e}")
             return False
         
+        # Step 3.5: Extract RR intervals (if enabled in config)
+        rr_intervals_data = {}
+        rr_config = metrics_extractor.bvp_config.get('rr_intervals', {})
+        if rr_config.get('enabled', False):
+            logger.info("Step 3.5: Extracting RR intervals...")
+            try:
+                for moment, (processed_signals, processing_info) in processed_results.items():
+                    peaks = processing_info.get('PPG_Peaks', [])
+                    sampling_rate = processing_info.get('sampling_rate', 64)
+                    
+                    if len(peaks) >= 2:
+                        rr_df = metrics_extractor.extract_rr_intervals(
+                            peaks, sampling_rate, moment
+                        )
+                        rr_intervals_data[moment] = rr_df
+                        logger.info(
+                            f"Extracted {len(rr_df)} RR intervals for {moment} "
+                            f"({rr_df['is_valid'].sum()} valid)"
+                        )
+                    else:
+                        logger.warning(f"Insufficient peaks for RR intervals in {moment}")
+                        
+            except Exception as e:
+                logger.warning(f"Failed to extract RR intervals: {e}")
+                # Don't fail the whole process if RR extraction fails
+                rr_intervals_data = {}
+        
         # Step 4: Save results in BIDS format
         logger.info("Step 4: Saving results in BIDS format...")
         try:
@@ -153,6 +180,22 @@ def process_single_subject(
             
             total_files = sum(len(files) for files in created_files.values())
             logger.info(f"Created {total_files} BIDS-compliant output files")
+            
+            # Save RR intervals if extracted
+            if rr_intervals_data:
+                logger.info("Saving RR intervals...")
+                rr_files_created = []
+                for moment, rr_df in rr_intervals_data.items():
+                    try:
+                        tsv_path, json_path = bids_writer.save_rr_intervals(
+                            subject_id, session_id, moment, rr_df
+                        )
+                        rr_files_created.extend([tsv_path, json_path])
+                    except Exception as e:
+                        logger.warning(f"Failed to save RR intervals for {moment}: {e}")
+                
+                if rr_files_created:
+                    logger.info(f"Created {len(rr_files_created)} RR interval files")
             
         except Exception as e:
             logger.error(f"Failed to save results: {e}")

@@ -469,6 +469,90 @@ class BVPMetricsExtractor:
             logger.info("Epoched analysis not enabled in configuration")
             return pd.DataFrame()
         
-        # TODO: Implement epoched analysis
+                # TODO: Implement epoched analysis
         logger.info("Epoched HRV analysis not yet implemented")
         return pd.DataFrame()
+    
+    def extract_rr_intervals(
+        self,
+        peaks: Union[List, np.ndarray],
+        sampling_rate: int,
+        moment: str = "unknown"
+    ) -> pd.DataFrame:
+        """
+        Extract RR intervals with timestamps and validity flags.
+        
+        This method computes RR intervals (peak-to-peak intervals) from detected
+        peaks and creates a time-series dataframe with timestamps and validity flags.
+        Invalid intervals (outside physiological range) are kept but marked.
+        
+        Args:
+            peaks: Array of peak indices from BVP signal processing
+            sampling_rate: Sampling rate in Hz (e.g., 64 for Empatica E4)
+            moment: Moment/task name for logging
+            
+        Returns:
+            DataFrame with columns:
+                - time_peak_start: Timestamp of start peak (seconds)
+                - time_peak_end: Timestamp of end peak (seconds)
+                - rr_interval_ms: RR interval duration (milliseconds)
+                - is_valid: 1 if valid, 0 if outside physiological range
+                
+        Example:
+            >>> extractor = BVPMetricsExtractor()
+            >>> rr_df = extractor.extract_rr_intervals(peaks, sampling_rate=64, moment='restingstate')
+            >>> valid_rr = rr_df[rr_df['is_valid'] == 1]
+            >>> print(f"Valid RR intervals: {len(valid_rr)}/{len(rr_df)}")
+        """
+        peaks_array = np.array(peaks)
+        
+        # Get RR interval configuration
+        rr_config = self.bvp_config.get('rr_intervals', {})
+        min_valid_ms = rr_config.get('min_valid_ms', 300)
+        max_valid_ms = rr_config.get('max_valid_ms', 2000)
+        
+        if len(peaks_array) < 2:
+            logger.warning(f"Insufficient peaks for RR interval extraction in {moment}: {len(peaks_array)} peaks")
+            return pd.DataFrame(columns=['time_peak_start', 'time_peak_end', 'rr_interval_ms', 'is_valid'])
+        
+        # Calculate RR intervals in milliseconds
+        rr_intervals_ms = np.diff(peaks_array) / sampling_rate * 1000
+        
+        # Calculate timestamps for each peak (in seconds)
+        time_peaks = peaks_array / sampling_rate
+        
+        # Create arrays for start and end times
+        time_start = time_peaks[:-1]  # All peaks except last
+        time_end = time_peaks[1:]      # All peaks except first
+        
+        # Determine validity based on physiological range
+        is_valid = (rr_intervals_ms >= min_valid_ms) & (rr_intervals_ms <= max_valid_ms)
+        is_valid_int = is_valid.astype(int)
+        
+        # Count invalid intervals
+        n_invalid = (~is_valid).sum()
+        n_total = len(rr_intervals_ms)
+        
+        if n_invalid > 0:
+            logger.info(
+                f"RR intervals for {moment}: "
+                f"{n_invalid}/{n_total} ({100*n_invalid/n_total:.1f}%) outside "
+                f"valid range [{min_valid_ms}-{max_valid_ms}ms]"
+            )
+        else:
+            logger.debug(f"All {n_total} RR intervals valid for {moment}")
+        
+        # Create DataFrame
+        rr_df = pd.DataFrame({
+            'time_peak_start': time_start,
+            'time_peak_end': time_end,
+            'rr_interval_ms': rr_intervals_ms,
+            'is_valid': is_valid_int
+        })
+        
+        logger.info(
+            f"Extracted {len(rr_df)} RR intervals for {moment}: "
+            f"{is_valid_int.sum()} valid, {n_invalid} invalid"
+        )
+        
+        return rr_df

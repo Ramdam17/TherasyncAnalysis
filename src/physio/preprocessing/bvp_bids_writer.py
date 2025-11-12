@@ -416,6 +416,107 @@ class BVPBIDSWriter(PhysioBIDSWriter):
             }
         }
     
+    def save_rr_intervals(
+        self,
+        subject_id: str,
+        session_id: str,
+        moment: str,
+        rr_intervals_df: pd.DataFrame
+    ) -> Tuple[Path, Path]:
+        """
+        Save RR intervals data in BIDS format.
+        
+        Creates two files per moment:
+        1. TSV file with RR interval time-series data
+        2. JSON sidecar with metadata and column descriptions
+        
+        Args:
+            subject_id: Subject identifier WITH prefix (e.g., 'sub-f01p01')
+            session_id: Session identifier WITH prefix (e.g., 'ses-01')
+            moment: Moment/task name (e.g., 'restingstate', 'therapy')
+            rr_intervals_df: DataFrame with columns:
+                - time_peak_start: Start peak timestamp (seconds)
+                - time_peak_end: End peak timestamp (seconds)
+                - rr_interval_ms: RR interval duration (milliseconds)
+                - is_valid: 1 if valid, 0 if invalid
+                
+        Returns:
+            Tuple of (tsv_file_path, json_file_path)
+            
+        Example:
+            >>> writer = BVPBIDSWriter()
+            >>> tsv_path, json_path = writer.save_rr_intervals(
+            ...     'sub-f01p01', 'ses-01', 'restingstate', rr_df
+            ... )
+        """
+        # Ensure prefixes
+        subject_id = self._ensure_prefix(subject_id, 'sub')
+        session_id = self._ensure_prefix(session_id, 'ses')
+        
+        # Get subject/session/modality directory
+        subject_dir = self._get_subject_session_dir(subject_id, session_id)
+        
+        # Create BIDS filename
+        # Pattern: sub-{subject}_ses-{session}_task-{task}_desc-rrintervals_physio.tsv
+        base_filename = f"{subject_id}_{session_id}_task-{moment}_desc-rrintervals_physio"
+        tsv_file = subject_dir / f"{base_filename}.tsv"
+        json_file = subject_dir / f"{base_filename}.json"
+        
+        # Save TSV file
+        rr_intervals_df.to_csv(tsv_file, sep='\t', index=False, float_format='%.3f')
+        
+        # Create JSON sidecar
+        rr_config = self.config.get('physio.bvp.rr_intervals', {})
+        json_metadata = {
+            "Description": "RR intervals (peak-to-peak intervals) extracted from BVP signal",
+            "Columns": {
+                "time_peak_start": {
+                    "Description": "Timestamp of the start peak (seconds from recording start)",
+                    "Units": "seconds"
+                },
+                "time_peak_end": {
+                    "Description": "Timestamp of the end peak (seconds from recording start)",
+                    "Units": "seconds"
+                },
+                "rr_interval_ms": {
+                    "Description": "RR interval duration (time between consecutive peaks)",
+                    "Units": "milliseconds",
+                    "ValidRange": [rr_config.get('min_valid_ms', 300), rr_config.get('max_valid_ms', 2000)],
+                    "Note": "Values outside valid range are marked as invalid but preserved"
+                },
+                "is_valid": {
+                    "Description": "Validity flag for physiological range",
+                    "Levels": {
+                        "0": "Invalid (outside physiological range)",
+                        "1": "Valid (within physiological range)"
+                    }
+                }
+            },
+            "ProcessingPipeline": "therasync-bvp",
+            "ProcessingVersion": self.pipeline_version,
+            "ProcessingMethod": "Peak detection using NeuroKit2",
+            "SamplingRate": self.config.get('physio.bvp.sampling_rate', 64),
+            "TaskName": moment,
+            "ValidRangeMin_ms": rr_config.get('min_valid_ms', 300),
+            "ValidRangeMax_ms": rr_config.get('max_valid_ms', 2000),
+            "NumberOfIntervals": len(rr_intervals_df),
+            "NumberOfValidIntervals": int(rr_intervals_df['is_valid'].sum()),
+            "NumberOfInvalidIntervals": int((rr_intervals_df['is_valid'] == 0).sum()),
+            "PercentValid": float(100 * rr_intervals_df['is_valid'].sum() / len(rr_intervals_df)) if len(rr_intervals_df) > 0 else 0,
+            "CreationDate": datetime.now().isoformat()
+        }
+        
+        with open(json_file, 'w') as f:
+            json.dump(json_metadata, f, indent=2)
+        
+        logger.info(
+            f"Saved RR intervals for {subject_id}/{session_id}/{moment}: "
+            f"{len(rr_intervals_df)} intervals ({rr_intervals_df['is_valid'].sum()} valid) "
+            f"→ {tsv_file.name}"
+        )
+        
+        return tsv_file, json_file
+    
     def create_group_summary(
         self,
         subjects_data: Dict[str, Dict[str, Dict[str, float]]],

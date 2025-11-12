@@ -70,7 +70,7 @@ data/
     ├── preprocessing/
     │   └── sub-{subject}/
     │       └── ses-{session}/
-    │           ├── bvp/         # BVP preprocessing outputs (9 files)
+    │           ├── bvp/         # BVP preprocessing outputs (13 files)
     │           ├── eda/         # EDA preprocessing outputs (13 files)
     │           └── hr/          # HR preprocessing outputs (14 files)
     │
@@ -224,7 +224,31 @@ All three modalities (BVP, EDA, HR) follow harmonized architecture with consiste
   - **Tables**: Sortable, filterable metric tables
   - **Export**: CSV/JSON for further analysis
 
-##### 4. Session Summary
+##### 4. RR Intervals
+- **Files**: `*_task-{moment}_desc-rrintervals_physio.{tsv,json}`
+- **Format**: TSV + JSON sidecar (2 files per moment, 4 files per session)
+- **Purpose**: Peak-to-peak intervals from BVP signal for detailed HRV analysis
+- **Columns** (4 per row):
+  - `time_peak_start`: Timestamp of interval start peak (seconds)
+  - `time_peak_end`: Timestamp of interval end peak (seconds)
+  - `rr_interval_ms`: Duration between peaks in milliseconds
+  - `is_valid`: Validity flag (1 = valid, 0 = invalid based on physiological thresholds)
+
+- **Validation**:
+  - **Valid Range**: 300-2000 ms (30-200 BPM)
+  - **Configurable**: Thresholds defined in `config.yaml`
+  - **Preservation**: All intervals saved (invalid marked with `is_valid=0`)
+  - **Typical Valid Rate**: 95-98% for clean signals
+
+- **Viewer Use**:
+  - **Time-Series**: Plot RR intervals over time (tachogram)
+  - **Poincaré Plots**: RR(n) vs. RR(n+1) scatter plots
+  - **Histograms**: Distribution of RR intervals
+  - **Quality Filtering**: Toggle display of invalid intervals
+  - **Advanced HRV**: Custom time-domain and frequency-domain analysis
+  - **Export**: Filtered intervals for external HRV tools
+
+##### 5. Session Summary
 - **Files**: `*_desc-summary_recording-bvp.json`
 - **Format**: JSON
 - **Contains**:
