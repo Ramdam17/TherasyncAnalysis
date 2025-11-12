@@ -109,6 +109,19 @@ data/
 - **Validated on**: 51 sessions (606 centroid files), 2,514 ICD pairs (100% success)
 - **Methods**: nsplit120 (inter-session), sliding 30s/5s (intra-family)
 
+#### 7. DPPA Visualizations (nsplit120)
+- **4-Subplot Dyadic Visualizations**: ICD + SD1/SD2 metrics across epochs
+- **ICD Time Series (Top)**: Full-width plot showing therapy vs resting baseline with trendline
+- **SD1 (Bottom Left)**: Short-term variability for both subjects (0-600 ms normalized)
+- **SD2 (Bottom Center)**: Long-term variability for both subjects (0-600 ms normalized)
+- **SD1/SD2 Ratio (Bottom Right)**: Autonomic balance metric (0-3.0 normalized)
+- **3 Visualization Modules**: DyadICDLoader, DyadCentroidLoader, DyadPlotter
+- **CLI Single**: `poetry run python scripts/physio/dppa/plot_dyad.py --dyad f01p01_ses-01_vs_f01p02_ses-01 --method nsplit120`
+- **CLI Batch**: `poetry run python scripts/physio/dppa/plot_dyad.py --batch --mode inter --method nsplit120`
+- **Production Results**: 1176 inter-session figures (100% success, 309 MB, ~7 minutes)
+- **Output**: `data/derivatives/dppa/figures/nsplit120/` (PNG 12×8 inches, 150 DPI)
+- **Testing**: 25 tests (20 unit + 5 CLI integration, 100% passing)
+
 ### 🔄 Harmonized Modular Architecture (Phase 2 Complete)
 
 All three BIDS writers (BVP, EDA, HR) now use identical code patterns and structure:

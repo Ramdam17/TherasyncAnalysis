@@ -301,6 +301,63 @@ poetry run pytest tests/test_dppa.py -v
 - Intra-family: 81 dyad pairs × 2 tasks = 162 ICDs
 - Total: 2,514 ICD computations (100% success)
 
+### DPPA Visualization Pipeline
+
+**Expected Outputs:**
+- Figures: 1,176 PNG files for inter-session (nsplit120)
+- Format: 12×8 inches, 150 DPI, method-specific subdirectories
+- Size: ~260 KB per figure (~309 MB total)
+
+**Test Commands:**
+
+```bash
+# Test single dyad visualization
+poetry run python scripts/physio/dppa/plot_dyad.py \
+  --dyad f01p01_ses-01_vs_f01p02_ses-01 \
+  --method nsplit120
+
+# Test batch visualization (inter-session)
+poetry run python scripts/physio/dppa/plot_dyad.py \
+  --batch --mode inter --method nsplit120
+
+# Run all DPPA visualization tests
+poetry run pytest tests/test_dppa_viz.py -v
+```
+
+**Expected Test Output:**
+- ✅ 25/25 tests passing (100%)
+- 4 test classes covering all modules:
+  - TestDyadICDLoader (8 tests)
+  - TestDyadCentroidLoader (7 tests)
+  - TestDyadPlotter (5 tests)
+  - TestPlotDyadCLI (5 tests - CLI integration)
+
+**Key Validations:**
+- Dyad parsing: String format `{subj1}_{ses1}_vs_{subj2}_{ses2}` correct
+- ICD loading: Both inter-session and intra-family modes work
+- Centroid loading: Epoch alignment validated between subjects
+- Trendline calculation: NaN-safe linear regression
+- Plot generation: 4-subplot layout with normalized axes
+- CLI integration: Script execution, file creation, error handling
+
+**Test Coverage:**
+- Unit tests: 20 tests covering data loading, validation, plotting logic
+- Integration tests: 5 tests covering CLI script execution end-to-end
+- Real data: Uses actual DPPA outputs (f01p01_ses-01_vs_f01p02_ses-01, nsplit120)
+- Error scenarios: Missing files, invalid dyad format, empty data
+
+**Production Validation:**
+- Total figures: 1,176 inter-session dyads (100% success)
+- Processing time: ~7 minutes (~0.35s per figure)
+- Output size: 309 MB total (~260 KB per figure)
+- Directory structure: `figures/nsplit120/` organization validated
+
+**Visualization Components:**
+1. **ICD subplot**: Therapy vs resting, trendline, baseline, 0-1000ms normalized
+2. **SD1 subplot**: Both subjects, both tasks, 0-600ms normalized
+3. **SD2 subplot**: Both subjects, both tasks, 0-600ms normalized
+4. **Ratio subplot**: Both subjects, both tasks, 0-3.0 normalized
+
 ---
 
 ## Troubleshooting

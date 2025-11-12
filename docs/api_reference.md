@@ -1624,6 +1624,402 @@ poetry run python scripts/physio/dppa/compute_dppa.py --mode both --task all --b
 
 ---
 
+#### `plot_dyad.py`
+
+**Path**: `scripts/physio/dppa/plot_dyad.py`
+
+**Purpose**: Generate 4-subplot DPPA visualizations for dyad pairs.
+
+**Usage**:
+```bash
+# Single dyad visualization
+poetry run python scripts/physio/dppa/plot_dyad.py \
+  --dyad f01p01_ses-01_vs_f01p02_ses-01 \
+  --method nsplit120
+
+# Batch inter-session mode
+poetry run python scripts/physio/dppa/plot_dyad.py \
+  --batch --method nsplit120 --mode inter
+
+# Batch intra-family mode
+poetry run python scripts/physio/dppa/plot_dyad.py \
+  --batch --method nsplit120 --mode intra
+```
+
+**Options**:
+- `--dyad`: Dyad identifier (format: `{subj1}_{ses1}_vs_{subj2}_{ses2}`)
+- `--method`: Epoching method ('nsplit120', 'sliding_duration30s_step5s')
+- `--batch`: Process all dyads for specified mode
+- `--mode {inter|intra}`: Analysis mode for batch processing
+- `-c, --config`: Path to config file (default: 'config/config.yaml')
+
+**Output**:
+- **Path**: `data/derivatives/dppa/figures/{method}/`
+- **Filename**: `sub-{subj1}_ses-{ses1}_vs_sub-{subj2}_ses-{ses2}_method-{method}_desc-dyad_viz.png`
+- **Format**: PNG (12×8 inches, 150 DPI)
+
+**Plot Layout**:
+1. **Top (full width)**: Inter-Centroid Distance (ICD)
+   - Therapy (orange) vs Resting (green)
+   - Trendline with slope annotation
+   - Resting baseline (dashed line)
+   - Y-axis normalized to 1000 ms
+2. **Bottom Left**: SD1 (short-term variability)
+   - Both subjects, both tasks
+   - Y-axis normalized to 600 ms
+3. **Bottom Center**: SD2 (long-term variability)
+   - Both subjects, both tasks
+   - Y-axis normalized to 600 ms
+4. **Bottom Right**: SD1/SD2 Ratio
+   - Both subjects, both tasks
+   - Y-axis normalized to 3.0
+
+**Batch Statistics**:
+- Progress logged every 10 dyads
+- Summary: total, success, failed, success rate
+- Exit codes: 0=success, 1=partial failures, 2=all failed
+
+**Example**:
+```bash
+# Generate single dyad figure
+poetry run python scripts/physio/dppa/plot_dyad.py \
+  --dyad f01p01_ses-01_vs_f01p02_ses-01 \
+  --method nsplit120
+
+# Generate all 1176 inter-session figures
+poetry run python scripts/physio/dppa/plot_dyad.py \
+  --batch --method nsplit120 --mode inter
+```
+
+---
+
+### DPPA Visualization Classes
+
+#### Class: `DyadICDLoader`
+
+**Module**: `src.physio.dppa.dyad_icd_loader`
+
+**Purpose**: Load Inter-Centroid Distance (ICD) time series for dyad visualizations.
+
+**Constructor**:
+```python
+DyadICDLoader(config_path: Union[str, Path, None] = None)
+```
+
+**Args**:
+- `config_path`: Path to configuration YAML file (default: 'config/config.yaml')
+
+**Methods**:
+
+##### `parse_dyad_info(dyad_pair: str) -> Tuple[str, str, str, str]`
+
+Parse dyad identifier string into components.
+
+**Args**:
+- `dyad_pair` (str): Dyad identifier (format: `{subj1}_{ses1}_vs_{subj2}_{ses2}`)
+  - Example: `'f01p01_ses-01_vs_f01p02_ses-01'`
+
+**Returns**:
+- `Tuple[str, str, str, str]`: (subject1, session1, subject2, session2)
+  - Example: `('f01p01', 'ses-01', 'f01p02', 'ses-01')`
+
+**Raises**:
+- `ValueError`: If dyad_pair format is invalid
+
+**Example**:
+```python
+loader = DyadICDLoader()
+sub1, ses1, sub2, ses2 = loader.parse_dyad_info('f01p01_ses-01_vs_f01p02_ses-01')
+# Returns: ('f01p01', 'ses-01', 'f01p02', 'ses-01')
+```
+
+##### `load_icd(dyad_pair: str, method: str, task: str) -> Optional[pd.DataFrame]`
+
+Load ICD data for a specific dyad, method, and task.
+
+**Args**:
+- `dyad_pair` (str): Dyad identifier (format from `parse_dyad_info`)
+- `method` (str): Epoching method ('nsplit120', 'sliding_duration30s_step5s')
+- `task` (str): Task name ('therapy', 'restingstate')
+
+**Returns**:
+- `pd.DataFrame`: ICD time series with columns:
+  - `epoch_id`: Epoch identifier (integer)
+  - `icd_value`: Inter-centroid distance (float, ms)
+- `None`: If dyad column not found or file missing
+
+**Data Source**:
+- **Inter-session**: `data/derivatives/dppa/inter_session/inter_session_icd_task-{task}_method-{method}.csv`
+- **Intra-family**: `data/derivatives/dppa/intra_family/intra_family_icd_task-{task}_method-{method}.csv`
+
+**Column Format**:
+- Inter-session: `{subj1}_{ses1}___{subj2}_{ses2}` (triple underscore)
+- Intra-family: `{family}_{subj1}_{subj2}_{session}`
+
+**Example**:
+```python
+loader = DyadICDLoader()
+icd_df = loader.load_icd('f01p01_ses-01_vs_f01p02_ses-01', 'nsplit120', 'therapy')
+# icd_df.shape = (120, 2) for nsplit120
+# icd_df.columns = ['epoch_id', 'icd_value']
+```
+
+##### `load_both_tasks(dyad_pair: str, method: str) -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]`
+
+Load ICD data for both therapy and resting tasks.
+
+**Args**:
+- `dyad_pair` (str): Dyad identifier
+- `method` (str): Epoching method
+
+**Returns**:
+- `Tuple[pd.DataFrame, pd.DataFrame]`: (therapy_df, resting_df)
+- `Tuple[None, None]`: If either task fails to load
+
+**Example**:
+```python
+loader = DyadICDLoader()
+therapy_df, resting_df = loader.load_both_tasks('f01p01_ses-01_vs_f01p02_ses-01', 'nsplit120')
+```
+
+---
+
+#### Class: `DyadCentroidLoader`
+
+**Module**: `src.physio.dppa.dyad_centroid_loader`
+
+**Purpose**: Load Poincaré centroid data for both members of a dyad.
+
+**Constructor**:
+```python
+DyadCentroidLoader(config_path: Union[str, Path, None] = None)
+```
+
+**Args**:
+- `config_path`: Path to configuration YAML file (default: 'config/config.yaml')
+
+**Methods**:
+
+##### `load_centroids(subject: str, session: str, method: str, task: str) -> Optional[pd.DataFrame]`
+
+Load Poincaré centroid data for a single participant.
+
+**Args**:
+- `subject` (str): Participant ID (e.g., 'f01p01')
+- `session` (str): Session ID (e.g., 'ses-01', auto-prefix if needed)
+- `method` (str): Epoching method ('nsplit120', 'sliding_duration30s_step5s')
+- `task` (str): Task name ('therapy', 'restingstate')
+
+**Returns**:
+- `pd.DataFrame`: Centroid data with columns:
+  - `epoch_id`: Epoch identifier (integer)
+  - `centroid_x`, `centroid_y`: Centroid coordinates (ms)
+  - `sd1`, `sd2`: Poincaré variability metrics (ms)
+  - `sd_ratio`: SD1/SD2 ratio (dimensionless)
+  - `n_intervals`: Number of RR intervals in epoch
+- `None`: If file not found
+
+**Data Source**:
+- Path: `data/derivatives/dppa/sub-{subject}/ses-{session}/poincare/`
+- File: `sub-{subject}_ses-{session}_task-{task}_method-{method}_desc-poincare_physio.tsv`
+
+**Example**:
+```python
+loader = DyadCentroidLoader()
+df = loader.load_centroids('f01p01', 'ses-01', 'nsplit120', 'therapy')
+# df.shape = (120, 7) for nsplit120
+```
+
+##### `validate_epoch_alignment(df1: pd.DataFrame, df2: pd.DataFrame, subject1: str, subject2: str) -> bool`
+
+Validate that two centroid dataframes have matching epochs.
+
+**Args**:
+- `df1` (pd.DataFrame): First subject's centroid data
+- `df2` (pd.DataFrame): Second subject's centroid data
+- `subject1` (str): First subject ID (for logging)
+- `subject2` (str): Second subject ID (for logging)
+
+**Returns**:
+- `bool`: True if epoch IDs match, False otherwise
+
+**Validation**:
+- Checks that `epoch_id` columns are identical
+- Logs warning if mismatch detected
+
+**Example**:
+```python
+loader = DyadCentroidLoader()
+df1 = loader.load_centroids('f01p01', 'ses-01', 'nsplit120', 'therapy')
+df2 = loader.load_centroids('f01p02', 'ses-01', 'nsplit120', 'therapy')
+is_aligned = loader.validate_epoch_alignment(df1, df2, 'f01p01', 'f01p02')
+```
+
+##### `load_both_tasks(dyad_info: Tuple[str, str, str, str], method: str) -> Dict[str, Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]]`
+
+Load centroid data for both subjects and both tasks.
+
+**Args**:
+- `dyad_info` (tuple): (subject1, session1, subject2, session2)
+- `method` (str): Epoching method
+
+**Returns**:
+- Dictionary with keys:
+  - `'therapy'`: (subject1_therapy_df, subject2_therapy_df)
+  - `'restingstate'`: (subject1_resting_df, subject2_resting_df)
+
+**Validation**:
+- Epoch alignment checked for each task
+- Returns `None` values if loading fails
+
+**Example**:
+```python
+loader = DyadCentroidLoader()
+dyad_info = ('f01p01', 'ses-01', 'f01p02', 'ses-01')
+data = loader.load_both_tasks(dyad_info, 'nsplit120')
+# data['therapy'] = (df_subject1, df_subject2)
+# data['restingstate'] = (df_subject1, df_subject2)
+```
+
+---
+
+#### Class: `DyadPlotter`
+
+**Module**: `src.physio.dppa.dyad_plotter`
+
+**Purpose**: Generate 4-subplot DPPA visualizations with normalized axes.
+
+**Constructor**:
+```python
+DyadPlotter(config_path: Union[str, Path, None] = None)
+```
+
+**Args**:
+- `config_path`: Path to configuration YAML file (default: 'config/config.yaml')
+
+**Configuration** (from `config/config.yaml`):
+```yaml
+visualization:
+  dppa:
+    figure:
+      width: 12
+      height: 8
+      dpi: 150
+      format: "png"
+    colors:
+      subject1: "#1f77b4"      # Blue
+      subject2: "#ff7f0e"      # Orange
+      therapy: "#d62728"       # Red
+      resting: "#2ca02c"       # Green
+      trendline: "#000000"     # Black
+    styles:
+      therapy_linewidth: 1.5
+      baseline_linewidth: 1.0
+      baseline_linestyle: "--"
+      marker_size: 3
+      alpha_baseline: 0.5
+    labels:
+      icd: "Inter-Centroid Distance (ms)"
+      sd1: "SD1 (ms)"
+      sd2: "SD2 (ms)"
+      ratio: "SD1/SD2 Ratio"
+      epoch: "Epoch"
+    ylimits:
+      icd: 1000    # ICD max: 1000 ms
+      sd1: 600     # SD1 max: 600 ms
+      sd2: 600     # SD2 max: 600 ms
+      ratio: 3.0   # Ratio max: 3.0
+    output:
+      base_dir: "dppa/figures"
+```
+
+**Methods**:
+
+##### `plot_dyad(dyad_info: Tuple[str, str, str, str], method: str, icd_data: Dict, centroid_data: Dict, output_path: Path) -> bool`
+
+Generate complete 4-subplot dyad visualization.
+
+**Args**:
+- `dyad_info` (tuple): (subject1, session1, subject2, session2)
+- `method` (str): Epoching method
+- `icd_data` (dict): ICD dataframes from `DyadICDLoader.load_both_tasks()`
+  - Keys: `'therapy'`, `'restingstate'`
+- `centroid_data` (dict): Centroid dataframes from `DyadCentroidLoader.load_both_tasks()`
+  - Keys: `'therapy'`, `'restingstate'`
+- `output_path` (Path): Full path for output PNG file
+
+**Returns**:
+- `bool`: True if successful, False if error occurred
+
+**Plot Layout**:
+1. **Top subplot** (1×3 grid span): ICD time series
+   - Therapy task (red line)
+   - Resting baseline (green dashed)
+   - Linear trendline (black dashed) with slope annotation
+   - Y-axis: 0-1000 ms
+2. **Bottom left**: SD1 metric
+   - Both subjects (blue, orange)
+   - Both tasks (solid, dashed)
+   - Y-axis: 0-600 ms
+3. **Bottom center**: SD2 metric
+   - Both subjects (blue, orange)
+   - Both tasks (solid, dashed)
+   - Y-axis: 0-600 ms
+4. **Bottom right**: SD1/SD2 Ratio
+   - Both subjects (blue, orange)
+   - Both tasks (solid, dashed)
+   - Y-axis: 0-3.0
+
+**NaN Handling**:
+- Trendline calculation drops NaN values automatically
+- Plots skip NaN points (no visual artifacts)
+
+**Example**:
+```python
+from pathlib import Path
+
+plotter = DyadPlotter()
+dyad_info = ('f01p01', 'ses-01', 'f01p02', 'ses-01')
+output_path = Path('data/derivatives/dppa/figures/nsplit120/f01p01_ses-01_vs_f01p02_ses-01.png')
+
+# ICD data from DyadICDLoader
+icd_data = {
+    'therapy': therapy_icd_df,
+    'restingstate': resting_icd_df
+}
+
+# Centroid data from DyadCentroidLoader
+centroid_data = {
+    'therapy': (subject1_therapy_df, subject2_therapy_df),
+    'restingstate': (subject1_resting_df, subject2_resting_df)
+}
+
+success = plotter.plot_dyad(dyad_info, 'nsplit120', icd_data, centroid_data, output_path)
+```
+
+##### `_calculate_trendline(x: np.ndarray, y: np.ndarray) -> Tuple[Optional[float], Optional[float]]`
+
+Calculate linear trendline with NaN handling.
+
+**Args**:
+- `x` (np.ndarray): X-axis values (epochs)
+- `y` (np.ndarray): Y-axis values (ICD)
+
+**Returns**:
+- `Tuple[float, float]`: (slope, intercept) or (None, None) if insufficient data
+
+**NaN Handling**:
+- Automatically drops rows with NaN in either x or y
+- Returns None if <2 valid points remain
+
+**Formula**:
+```python
+# Linear regression: y = slope * x + intercept
+slope, intercept, r, p, se = scipy.stats.linregress(x_valid, y_valid)
+```
+
+---
+
 ### Interpretation Guidelines
 
 **ICD Values**:
@@ -1641,6 +2037,39 @@ poetry run python scripts/physio/dppa/compute_dppa.py --mode both --task all --b
 ---
 
 ## Version History
+
+### v1.2.0 (2025-11-12)
+
+**DPPA Module Release**:
+- ✅ **PoincareCalculator**: Compute Poincaré centroids per participant/session/epoch
+- ✅ **CentroidLoader**: Load centroid files with LRU caching
+- ✅ **ICDCalculator**: Calculate Inter-Centroid Distances (Euclidean)
+- ✅ **DyadConfigLoader**: Generate inter-session and intra-family dyad pairs
+- ✅ **DPPAWriter**: Export rectangular CSV files for analysis
+- ✅ **CLI Scripts**: compute_poincare.py (606 files) + compute_dppa.py (2,514 ICDs)
+- ✅ **Batch Processing**: 100% success rate (51 sessions, 2,514 dyad pairs)
+- ✅ **Testing**: 22 comprehensive unit tests (100% passing)
+- ✅ **Configuration**: config/dppa_dyads.yaml with inter/intra dyad definitions
+- ✅ **Output Formats**: Rectangular CSV (epochs × dyads) for inter-session and intra-family
+
+### v1.3.0 (2025-11-12)
+
+**DPPA Visualization Release (nsplit120)**:
+- ✅ **DyadICDLoader**: Load ICD time series for dyad visualizations
+- ✅ **DyadCentroidLoader**: Load Poincaré centroid data for both dyad members
+- ✅ **DyadPlotter**: Generate 4-subplot matplotlib visualizations
+  - ICD time series (full width) with trendline
+  - SD1, SD2, SD1/SD2 ratio subplots
+  - Normalized Y-axes (ICD: 1000ms, SD1/SD2: 600ms, ratio: 3.0)
+  - NaN-safe trendline calculation
+- ✅ **CLI Script**: plot_dyad.py for single/batch generation
+  - Single mode: `--dyad {dyad_pair} --method {method}`
+  - Batch mode: `--batch --mode {inter|intra} --method {method}`
+  - Method-specific subdirectories: `figures/{method}/`
+- ✅ **Production Results**: 1176 inter-session figures (100% success, 309 MB, 7 minutes)
+- ✅ **Testing**: 25 comprehensive tests (20 unit + 5 CLI integration, 100% passing)
+- ✅ **Configuration**: config.yaml visualization.dppa section with colors, styles, ylimits
+- ✅ **Output Format**: PNG (12×8 inches, 150 DPI) in method-specific directories
 
 ### v1.2.0 (2025-11-12)
 

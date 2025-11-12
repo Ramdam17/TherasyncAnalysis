@@ -212,6 +212,40 @@ poetry run python scripts/physio/dppa/compute_dppa.py --mode both --task all --b
 - **20-50 ms**: Moderate synchrony
 - **50+ ms**: Low synchrony (divergent states)
 
+### Generate DPPA Visualizations
+
+```bash
+# Single dyad visualization
+poetry run python scripts/physio/dppa/plot_dyad.py \
+  --dyad f01p01_ses-01_vs_f01p02_ses-01 \
+  --method nsplit120
+
+# Batch inter-session mode (all 1176 dyads)
+poetry run python scripts/physio/dppa/plot_dyad.py \
+  --batch --method nsplit120 --mode inter
+
+# Batch intra-family mode
+poetry run python scripts/physio/dppa/plot_dyad.py \
+  --batch --method nsplit120 --mode intra
+```
+
+**Outputs**: `data/derivatives/dppa/figures/{method}/`  
+**Filename**: `sub-{subj1}_ses-{ses1}_vs_sub-{subj2}_ses-{ses2}_method-{method}_desc-dyad_viz.png`  
+**Format**: PNG (12×8 inches, 150 DPI)
+
+**Plot Layout**:
+1. **Top (full width)**: ICD time series (therapy vs resting, trendline)
+2. **Bottom Left**: SD1 metric (both subjects, both tasks)
+3. **Bottom Center**: SD2 metric (both subjects, both tasks)
+4. **Bottom Right**: SD1/SD2 Ratio (both subjects, both tasks)
+
+**Normalized Axes**:
+- ICD: 0-1000 ms
+- SD1/SD2: 0-600 ms
+- Ratio: 0-3.0
+
+**Example Output**: For nsplit120 method, generates 1176 inter-session figures in ~7 minutes
+
 ---
 
 ## Configuration
