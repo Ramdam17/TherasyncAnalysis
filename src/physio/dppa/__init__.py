@@ -19,5 +19,6 @@ from .poincare_calculator import PoincareCalculator
 from .centroid_loader import CentroidLoader
 from .dyad_config_loader import DyadConfigLoader
 from .icd_calculator import ICDCalculator
+from .dppa_writer import DPPAWriter
 
-__all__ = ['PoincareCalculator', 'CentroidLoader', 'DyadConfigLoader', 'ICDCalculator']
+__all__ = ['PoincareCalculator', 'CentroidLoader', 'DyadConfigLoader', 'ICDCalculator', 'DPPAWriter']
