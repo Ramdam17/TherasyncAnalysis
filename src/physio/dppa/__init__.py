@@ -17,5 +17,6 @@ Date: November 2025
 
 from .poincare_calculator import PoincareCalculator
 from .centroid_loader import CentroidLoader
+from .dyad_config_loader import DyadConfigLoader
 
-__all__ = ['PoincareCalculator', 'CentroidLoader']
+__all__ = ['PoincareCalculator', 'CentroidLoader', 'DyadConfigLoader']
