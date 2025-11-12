@@ -16,5 +16,6 @@ Date: November 2025
 """
 
 from .poincare_calculator import PoincareCalculator
+from .centroid_loader import CentroidLoader
 
-__all__ = ['PoincareCalculator']
+__all__ = ['PoincareCalculator', 'CentroidLoader']
