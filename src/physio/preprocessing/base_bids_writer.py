@@ -304,3 +304,61 @@ class PhysioBIDSWriter(ABC):
         
         logger.debug(f"Saved TSV file: {tsv_path}")
         return tsv_path
+    
+    def _add_epoch_columns(
+        self,
+        df: pd.DataFrame,
+        task: str,
+        time_column: str = 'time'
+    ) -> pd.DataFrame:
+        """
+        Add epoch ID columns to DataFrame if epoching is enabled in preprocessing mode.
+        
+        This method checks the configuration and, if epoching is enabled with 
+        mode='preprocessing', adds epoch columns using the EpochAssigner.
+        
+        Args:
+            df: DataFrame with time series data
+            task: Task/moment name (e.g., 'restingstate', 'therapy')
+            time_column: Name of time column (default: 'time')
+            
+        Returns:
+            DataFrame with added epoch columns (if enabled), or original DataFrame
+            
+        Note:
+            Epoch columns are named automatically based on method and parameters:
+            - epoch_fixed_duration{X}s_overlap{Y}s
+            - epoch_nsplit{N}
+            - epoch_sliding_duration{X}s_step{Y}s
+        """
+        epoching_config = self.config.get("epoching", {})
+        
+        # Check if epoching is enabled and in preprocessing mode
+        if not epoching_config.get("enabled", False):
+            logger.debug("Epoching not enabled, skipping epoch column addition")
+            return df
+        
+        mode = epoching_config.get("mode", "separate")
+        if mode != "preprocessing":
+            logger.debug(f"Epoching mode is '{mode}', not 'preprocessing', skipping epoch column addition")
+            return df
+        
+        # Import EpochAssigner lazily (avoid circular imports)
+        from src.physio.epoching.epoch_assigner import EpochAssigner
+        
+        logger.info(f"Adding epoch columns for task '{task}' (mode: preprocessing)")
+        
+        try:
+            assigner = EpochAssigner(self.config.config_path)
+            df_with_epochs = assigner.assign_all_epochs(df, task, time_column)
+            
+            # Count added columns
+            epoch_cols = [c for c in df_with_epochs.columns if c.startswith('epoch_')]
+            logger.info(f"Added {len(epoch_cols)} epoch columns: {', '.join(epoch_cols)}")
+            
+            return df_with_epochs
+            
+        except Exception as e:
+            logger.error(f"Failed to add epoch columns for task '{task}': {e}")
+            logger.warning("Returning DataFrame without epoch columns")
+            return df

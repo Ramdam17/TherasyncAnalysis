@@ -176,6 +176,9 @@ class BVPBIDSWriter(PhysioBIDSWriter):
             time_values = np.arange(len(output_data)) / sampling_rate
             output_data.insert(0, 'time', time_values)
         
+        # Add epoch columns if epoching is enabled in preprocessing mode
+        output_data = self._add_epoch_columns(output_data, moment, time_column='time')
+        
         # Save TSV file
         output_data.to_csv(signals_tsv, sep='\t', index=False, na_rep='n/a')
         created_files.append(signals_tsv)
@@ -455,6 +458,9 @@ class BVPBIDSWriter(PhysioBIDSWriter):
         
         # Get subject/session/modality directory
         subject_dir = self._get_subject_session_dir(subject_id, session_id)
+        
+        # Add epoch columns if epoching is enabled in preprocessing mode
+        rr_intervals_df = self._add_epoch_columns(rr_intervals_df, moment, time_column='time_peak_start')
         
         # Create BIDS filename
         # Pattern: sub-{subject}_ses-{session}_task-{task}_desc-rrintervals_physio.tsv

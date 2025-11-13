@@ -169,8 +169,15 @@ class EDABIDSWriter(PhysioBIDSWriter):
             time_values = np.arange(len(output_data)) / sampling_rate
             output_data.insert(0, 'time', time_values)
         
+        # Add epoch columns if epoching is enabled in preprocessing mode
+        output_data = self._add_epoch_columns(output_data, moment, time_column='time')
+        
         # Select columns to save (include EDA_Quality, exclude SCR_Peaks binary if present)
         columns_to_save = ['time', 'EDA_Raw', 'EDA_Clean', 'EDA_Tonic', 'EDA_Phasic', 'EDA_Quality']
+        # Also include any epoch columns
+        epoch_cols = [col for col in output_data.columns if col.startswith('epoch_')]
+        columns_to_save.extend(epoch_cols)
+        
         columns_available = [col for col in columns_to_save if col in output_data.columns]
         output_data_filtered = output_data[columns_available]
         
