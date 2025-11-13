@@ -26,9 +26,11 @@ output:
 moments:
   # Current study has 2 moments
   - name: "restingstate"
+    displayname: "Resting State"
     description: "Baseline resting state recording (~1 minute)"
     duration_expected: 60  # seconds, approximate
   - name: "therapy"
+    displayname: "Therapy Session"
     description: "Therapeutic session recording (40-120 minutes)"
     duration_expected: 3600  # seconds, approximate
   

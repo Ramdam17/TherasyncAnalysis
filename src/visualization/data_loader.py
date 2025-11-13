@@ -160,7 +160,8 @@ class VisualizationDataLoader:
             'subject': subject,
             'session': session,
             'subject_id': subject_id,
-            'session_id': session_id
+            'session_id': session_id,
+            'config': self.config  # Include config for plotters
         }
         
         # Load each modality

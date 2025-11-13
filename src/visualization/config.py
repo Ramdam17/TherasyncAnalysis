@@ -9,6 +9,17 @@ Date: November 2025
 
 from typing import Dict
 import matplotlib.pyplot as plt
+from src.core.config_loader import ConfigLoader
+
+# Load configuration and build moment labels from config.yaml
+_config_loader = ConfigLoader()
+_config = _config_loader.config
+
+# Build MOMENT_LABELS dictionary from config.yaml moments
+MOMENT_LABELS = {
+    moment['name']: moment.get('displayname', moment['name'])
+    for moment in _config.get('moments', [])
+}
 
 # Color Schemes
 COLORS = {
@@ -129,12 +140,6 @@ DPI = {
 # Export formats
 EXPORT_FORMATS = ['png', 'pdf', 'svg']
 
-# Moment labels (for display)
-MOMENT_LABELS = {
-    'restingstate': 'Resting State',
-    'therapy': 'Therapy Session',
-}
-
 # Metric labels and units
 METRIC_LABELS = {
     # BVP/HRV metrics
@@ -228,40 +233,26 @@ def get_moment_color(moment) -> str:
         return COLORS['gray']
 
 
-def get_moment_label(moment: str, config: Dict = None) -> str:
+def get_moment_label(moment: str, config: dict | None = None) -> str:
     """
     Get display label for a moment.
     
-    Priority order:
-    1. Label from config.yaml override (if provided)
-    2. Known moment labels from MOMENT_LABELS dict
-    3. Auto-generated: capitalize and replace underscores
+    Reads from MOMENT_LABELS dict built from config.yaml at module initialization.
+    Falls back to moment name if not found.
     
     Args:
         moment: Moment name (e.g., 'restingstate', 'baseline', 'intervention')
-        config: Optional config dict with custom labels
+        config: Unused (kept for backward compatibility)
     
     Returns:
-        Formatted display label
+        Display label from config's displayname field, or moment name if not found
     
     Examples:
-        get_moment_label('restingstate')        # 'Resting State'
-        get_moment_label('therapy')             # 'Therapy Session'
-        get_moment_label('baseline')            # 'Baseline'
-        get_moment_label('post_intervention')   # 'Post Intervention'
+        get_moment_label('restingstate')  # 'Resting State' (from config.yaml)
+        get_moment_label('therapy')       # 'Therapy Session' (from config.yaml)
+        get_moment_label('unknown')       # 'unknown' (fallback to name)
     """
-    # Check config override
-    if config and 'visualization' in config:
-        moment_labels = config.get('visualization', {}).get('moment_labels', {})
-        if moment in moment_labels:
-            return moment_labels[moment]
-    
-    # Check known labels
-    if moment in MOMENT_LABELS:
-        return MOMENT_LABELS[moment]
-    
-    # Auto-generate: capitalize and replace underscores
-    return moment.replace('_', ' ').title()
+    return MOMENT_LABELS.get(moment, moment)
 
 
 def get_moment_order(moment: str, moments_list: list) -> int:
