@@ -180,32 +180,52 @@ logging:
 epoching:
   enabled: true
   
+  # Processing mode
+  # Options:
+  #   - "preprocessing": Add epoch columns during preprocessing (recommended - no data duplication)
+  #   - "separate": Create separate epoched files in derivatives/epoched/ (legacy mode)
+  mode: "preprocessing"  # "preprocessing" or "separate"
+  
   # Epoching methods
+  # Each method can have different parameters per moment (task)
   methods:
     # Method 1: Fixed window with overlap
     # Creates epochs of fixed duration with specified overlap
     # Example: duration=30s, overlap=5s → epochs every 25s (step=duration-overlap)
     fixed:
       enabled: true
-      duration: 30        # seconds - epoch duration
-      overlap: 5          # seconds - overlap between consecutive epochs
-      min_duration_ratio: 0.0  # Keep all partial epochs (0.0=all, 1.0=only complete)
+      restingstate:
+        duration: 30        # seconds - epoch duration
+        overlap: 5          # seconds - overlap between consecutive epochs
+        min_duration_ratio: 0.0  # Keep all partial epochs (0.0=all, 1.0=only complete)
+      therapy:
+        duration: 30        # seconds - epoch duration
+        overlap: 5          # seconds - overlap between consecutive epochs
+        min_duration_ratio: 0.0  # Keep all partial epochs (0.0=all, 1.0=only complete)
     
     # Method 2: N-split
     # Divides signal into exactly N epochs of equal duration
     # Useful for epoch shuffling (ensures same number of epochs per session)
     nsplit:
       enabled: true
-      n_epochs: 120       # Number of epochs (~30s each for 1h sessions)
+      restingstate:
+        n_epochs: 1         # Single epoch for resting state baseline
+      therapy:
+        n_epochs: 120       # Number of epochs (~30s each for 1h sessions)
     
     # Method 3: Sliding window
     # Creates overlapping epochs with small step size
     # Useful for Dyadic Poincaré Plot Analysis (DPPA)
     sliding:
       enabled: true
-      duration: 30        # seconds - epoch duration
-      step: 5             # seconds - step between consecutive epochs
-      min_duration_ratio: 0.0  # Keep all partial epochs
+      restingstate:
+        duration: 30        # seconds - epoch duration
+        step: 5             # seconds - step between consecutive epochs
+        min_duration_ratio: 0.0  # Keep all partial epochs
+      therapy:
+        duration: 30        # seconds - epoch duration
+        step: 5             # seconds - step between consecutive epochs
+        min_duration_ratio: 0.0  # Keep all partial epochs
   
   # Files to epoch (glob patterns)
   include:
