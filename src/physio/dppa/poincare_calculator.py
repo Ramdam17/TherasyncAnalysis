@@ -1,7 +1,7 @@
 """
 Poincaré Calculator for DPPA (Dyadic Poincaré Plot Analysis).
 
-Computes Poincaré plot centroids and metrics for epoched RR interval data.
+Computes Poincaré plot centroids and metrics for RR interval data with epoch columns.
 Each centroid represents the center of the Poincaré cloud (RRn vs RRn+1) 
 within a given epoch.
 
@@ -23,7 +23,10 @@ logger = logging.getLogger(__name__)
 
 class PoincareCalculator:
     """
-    Calculate Poincaré plot centroids and metrics from epoched RR intervals.
+    Calculate Poincaré plot centroids and metrics from RR intervals with epoch columns.
+    
+    Reads RR interval files from derivatives/preprocessing/ directory.
+    Files contain epoch_id columns added during preprocessing.
     
     Poincaré Plot Metrics:
     - centroid_x: mean(RRn) - average of current RR intervals
@@ -42,10 +45,12 @@ class PoincareCalculator:
             config_path: Path to configuration file (optional)
         """
         self.config = ConfigLoader(config_path)
-        self.epoched_dir = Path(self.config.get('paths.epoched', 
-                                                'data/derivatives/epoched'))
+        # Read from preprocessing directory (files now have epoch columns)
+        derivatives_dir = Path(self.config.get('paths.derivatives', 'data/derivatives'))
+        preprocessing_dir = self.config.get('output.preprocessing_dir', 'preprocessing')
+        self.preprocessing_dir = derivatives_dir / preprocessing_dir
         
-        logger.info("Poincaré Calculator initialized")
+        logger.info(f"Poincaré Calculator initialized (reading from {self.preprocessing_dir})")
     
     def compute_poincare_metrics(
         self,
@@ -176,7 +181,7 @@ class PoincareCalculator:
         Returns:
             Nested dict: {task: {method: DataFrame}}
         """
-        subject_dir = self.epoched_dir / f"sub-{subject}" / session / "bvp"
+        subject_dir = self.preprocessing_dir / f"sub-{subject}" / session / "bvp"
         
         if not subject_dir.exists():
             raise FileNotFoundError(f"Subject directory not found: {subject_dir}")

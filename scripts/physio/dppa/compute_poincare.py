@@ -57,16 +57,16 @@ def setup_logging(log_dir: Path, verbose: bool = False):
     logger.info(f"Logging to: {log_file}")
 
 
-def find_all_sessions(epoched_dir: Path) -> List[Tuple[str, str]]:
+def find_all_sessions(preprocessing_dir: Path) -> List[Tuple[str, str]]:
     """
-    Find all subject/session pairs in epoched data.
+    Find all subject/session pairs in preprocessing data.
     
     Returns:
         List of (subject, session) tuples
     """
     sessions = []
     
-    for sub_dir in sorted(epoched_dir.glob("sub-*")):
+    for sub_dir in sorted(preprocessing_dir.glob("sub-*")):
         if not sub_dir.is_dir():
             continue
         
@@ -165,7 +165,7 @@ def save_poincare_results(
 def main():
     """Main execution function."""
     parser = argparse.ArgumentParser(
-        description="Compute Poincaré plot centroids from epoched RR intervals",
+        description="Compute Poincaré plot centroids from RR intervals (with epoch columns)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -215,8 +215,13 @@ Examples:
     
     # Determine sessions to process
     if args.batch:
-        epoched_dir = Path(paths.get("epoched", "data/derivatives/epoched"))
-        sessions = find_all_sessions(epoched_dir)
+        # Get preprocessing directory
+        paths = config.get('paths', {})
+        derivatives_dir = Path(paths.get('derivatives', 'data/derivatives'))
+        preprocessing_subdir = config.get('output', {}).get('preprocessing_dir', 'preprocessing')
+        preprocessing_dir = derivatives_dir / preprocessing_subdir
+        
+        sessions = find_all_sessions(preprocessing_dir)
         
         # Filter by subjects if specified
         if args.subjects:

@@ -1,9 +1,9 @@
 """
 Epoch Animator Module
 
-Generate frame-by-frame Poincaré plot animations from epoched RR intervals.
-Loads RR interval data, computes Poincaré points per epoch, and prepares data
-for visualization.
+Generate frame-by-frame Poincaré plot animations from RR intervals with epoch columns.
+Loads RR interval data from preprocessing directory (with inline epoch columns),
+computes Poincaré points per epoch, and prepares data for visualization.
 
 Author: Lena Adel, Remy Ramadour
 Date: 2025-11-12
@@ -26,8 +26,8 @@ class EpochAnimator:
     """
     Prepare epoch-by-epoch data for Poincaré plot animations.
     
-    Loads RR intervals from epoched files and computes Poincaré points
-    (RRn, RRn+1 pairs) for each epoch.
+    Loads RR intervals from preprocessing files (with inline epoch columns)
+    and computes Poincaré points (RRn, RRn+1 pairs) for each epoch.
     """
     
     def __init__(self, config_path: Optional[Path] = None):
@@ -49,7 +49,7 @@ class EpochAnimator:
         method: str
     ) -> pd.DataFrame:
         """
-        Load RR intervals from epoched BVP file.
+        Load RR intervals from preprocessing directory (with epoch columns).
         
         Args:
             subject: Subject ID (e.g., 'g01p01')
@@ -72,9 +72,9 @@ class EpochAnimator:
         if not session.startswith('ses-'):
             session = f'ses-{session}'
         
-        # Build file path
+        # Build file path (preprocessing directory)
         rr_file = (
-            self.data_root / 'derivatives' / 'epoched' / 
+            self.data_root / 'derivatives' / 'preprocessing' / 
             f'sub-{subject}' / session / 'bvp' /
             f'sub-{subject}_{session}_task-{task}_desc-rrintervals_physio.tsv'
         )
