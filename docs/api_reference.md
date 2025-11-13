@@ -1117,6 +1117,10 @@ for analysis. Supports three epoching methods: fixed windows with overlap, n-spl
 (equal division), and sliding windows. Epoch IDs are stored as JSON-formatted lists
 (e.g., `"[0]"`, `"[0, 1, 2]"`) to handle overlapping epochs.
 
+**Integration**: As of November 2025, epoching is integrated into preprocessing via
+`mode="preprocessing"` (default). Epoch columns are added directly to signal files
+in `derivatives/preprocessing/` during preprocessing, eliminating data duplication.
+
 **Constructor**:
 
 ```python
@@ -1124,7 +1128,7 @@ EpochAssigner(self, config: Dict[str, Any])
 ```
 
 **Parameters**:
-- `config`: Configuration dictionary containing epoching settings
+- `config`: Configuration dictionary containing epoching settings with per-moment parameters
 
 **Methods**:
 
@@ -1165,27 +1169,36 @@ Returns:
 
 Assign all configured epoch columns based on task type.
 
-Special case: restingstate task always assigns epoch ID `[0]` to all samples.
-For therapy tasks, applies all enabled epoching methods from configuration.
+**Per-Moment Configuration**: Reads parameters from `config.epoching.methods.{method}.{task}`.
+For example, `config.epoching.methods.nsplit.restingstate.n_epochs` vs
+`config.epoching.methods.nsplit.therapy.n_epochs` allows different epoching per task.
 
 Args:
     df: DataFrame with time series data.
-    task: Task name ('restingstate' or 'therapy').
+    task: Task name (e.g., 'restingstate', 'therapy').
     time_column: Name of time column (default: 'time').
 
 Returns:
-    DataFrame with added epoch columns:
+    DataFrame with added epoch columns (names depend on task-specific params):
         - `epoch_fixed_duration{X}s_overlap{Y}s` (JSON list format)
-        - `epoch_nsplit{N}` (JSON list format)
+        - `epoch_nsplit{N}` (JSON list format, N varies by task)
         - `epoch_sliding_duration{X}s_step{Y}s` (JSON list format)
+
+Example:
+    With config: `nsplit.restingstate.n_epochs=1` and `nsplit.therapy.n_epochs=120`
+    - Restingstate: adds column `epoch_nsplit1`
+    - Therapy: adds column `epoch_nsplit120`
 
 ---
 
-#### Class: `EpochBIDSWriter`
+#### Class: `EpochBIDSWriter` (DEPRECATED)
 
 **Module**: `src.physio.epoching.epoch_bids_writer`
 
-BIDS-compliant file I/O for epoched physiological data.
+⚠️ **DEPRECATED**: This class is deprecated as of November 2025. Epoching is now integrated
+directly into preprocessing (mode="preprocessing"). Use this only for legacy `mode="separate"`.
+
+BIDS-compliant file I/O for epoched physiological data in separate directory.
 
 Reads preprocessed physiological signals, assigns epoch IDs, and writes
 BIDS-formatted output files with epoch columns. Handles file pattern matching,
