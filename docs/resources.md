@@ -265,27 +265,23 @@ All three modalities (BVP, EDA, HR) follow harmonized architecture with consiste
 
 ---
 
-### Epoched Data
+### Epoching (Integrated into Preprocessing)
 
-#### Directory Structure
-- **Path**: `data/derivatives/epoched/`
-- **Organization**: Same as preprocessing (BIDS-compliant)
-```
-epoched/
-└── sub-{subject}/
-    └── ses-{session}/
-        ├── bvp/   # 4 files (2 therapy + 2 restingstate)
-        ├── eda/   # 4 files (2 therapy + 2 restingstate)
-        └── hr/    # 4 files (2 therapy + 2 restingstate)
-```
+#### Overview
+As of November 2025, epoching is **integrated directly into the preprocessing pipeline**. Epoch ID columns are added to preprocessed signal files, eliminating data duplication.
 
-#### Epoched Files
-- **Files**: Same as preprocessed files with added epoch columns
-- **Format**: TSV + JSON sidecar
-- **Total**: 401 files across 51 sessions (8 files per session)
-- **File Types**:
-  - RR intervals: `*_desc-rrintervals_physio.{tsv,json}`
-  - Processed recordings: `*_desc-processed_recording-{modality}.{tsv,json}`
+#### Configuration
+- **Mode**: `epoching.mode: "preprocessing"` (default)
+- **Location**: Epoch columns in `data/derivatives/preprocessing/` files
+- **Legacy Mode**: `epoching.mode: "separate"` (deprecated, creates `derivatives/epoched/`)
+
+#### Files with Epoch Columns
+Epoch columns are automatically added to signal-level files during preprocessing:
+- **BVP signals**: `*_desc-processed_recording-bvp.tsv`
+- **RR intervals**: `*_desc-rrintervals_physio.tsv`
+- **EDA signals**: `*_desc-processed_recording-eda.tsv`
+
+**Note**: Metrics files (HRV, EDA metrics, HR metrics) do NOT contain epoch columns as they are session-level aggregates.
 
 #### Epoch Columns
 
@@ -326,8 +322,26 @@ All epoched files contain 3 additional columns with JSON-formatted epoch ID list
   - Event-triggered epoch selection
   - Robustness to epoch boundary effects
 
-#### Special Case: Restingstate
-- **Rule**: All restingstate samples assigned to epoch `[0]` regardless of method
+#### Per-Moment Configuration
+Epoching parameters are configured **per task/moment** in `config/config.yaml`:
+
+```yaml
+epoching:
+  enabled: true
+  mode: "preprocessing"  # Adds columns directly to preprocessing files
+  methods:
+    fixed:
+      restingstate: {duration: 30, overlap: 5}
+      therapy: {duration: 30, overlap: 5}
+    nsplit:
+      restingstate: {n_epochs: 1}    # Single epoch for baseline
+      therapy: {n_epochs: 120}        # Fine-grained for therapy analysis
+    sliding:
+      restingstate: {duration: 30, step: 5}
+      therapy: {duration: 30, step: 5}
+```
+
+**Result**: Different epoch column names per task (e.g., `epoch_nsplit1` vs `epoch_nsplit120`)
 - **Rationale**: Restingstate is a baseline reference without temporal subdivisions
 - **Format**: Always `"[0]"` for all three epoch columns
 

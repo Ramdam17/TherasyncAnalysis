@@ -24,30 +24,61 @@ Branche : feature/dppa-viz
 
 ---
 
-## 🔄 Intégration de l'epoching dans le preprocessing
+## ✅ ~~Intégration de l'epoching dans le preprocessing~~ - **TERMINÉ**
 
-**Problème** : Redondance et duplication des données entre preprocessing et epoching.
+**Status** : ✅ Complété le 2025-11-12  
+**Branche** : `feature/epoching-integration-testing`  
+**Commits** :
+- `f0ef644` - config: restructure epoching methods with per-moment parameters
+- `bb263a9` - config: remove obsolete epoching file patterns and output config
+- `2c7d8b8` - refactor(epoching): adapt EpochAssigner for per-moment configuration
+- `0dbb31a` - refactor(preprocessing): integrate epoching into preprocessing writers
+- `ada78db` - refactor(dppa): adapt to read from preprocessing directory
+- `9ef3f6a` - refactor(epoching): deprecate separate epoching mode files
+- `fe9dce3` - docs: finalize epoching integration (Phase 6/6)
 
-**Situation actuelle** :
-1. **Preprocessing** : Génère `*_desc-rrintervals_physio.tsv` (colonnes : time, rr_interval)
-2. **Epoching** : 
-   - Charge les fichiers preprocessed
-   - Copie les données
-   - Ajoute 3 colonnes : `epoch_id`, `epoch_start`, `epoch_duration`
-   - Sauvegarde dans `data/derivatives/epoched/`
+**Résultat** :
+- ✅ Epoch columns ajoutées directement dans preprocessing (`mode="preprocessing"`)
+- ✅ Configuration per-moment (restingstate: nsplit1, therapy: nsplit120)
+- ✅ BVP signals, RR intervals, EDA signals epochés automatiquement
+- ✅ DPPA modules adaptés pour lire depuis `derivatives/preprocessing/`
+- ✅ Anciens fichiers dépréciés avec warnings (`mode="separate"` legacy)
+- ✅ Validation réussie sur g01p01 (2 sessions)
+- ✅ Documentation mise à jour
 
-**Problèmes identifiés** :
-- 📦 **Redondance** : Données RR stockées deux fois (preprocessed + epoched)
-- 💾 **Espace disque** : ~2x l'espace nécessaire pour les RR intervals
-- 🔄 **Pipeline** : Étape supplémentaire qui pourrait être intégrée
-- ⚡ **Performance** : I/O double (lecture + écriture)
+**Bénéfices obtenus** :
+- 💾 Réduction espace disque (~50% - pas de duplication)
+- ⚡ Performance améliorée (pas d'étape séparée)
+- 🔧 Pipeline simplifié (epoching intégré)
+- � Moins de fichiers à gérer (un seul répertoire)
+- 🎯 Flexibilité per-moment (params différents par task)
 
-**Solution proposée** :
+**Configuration finale** (`config/config.yaml`) :
+```yaml
+epoching:
+  enabled: true
+  mode: "preprocessing"  # Intégré dans preprocessing (default)
+  methods:
+    fixed:
+      restingstate: {duration: 30, overlap: 5}
+      therapy: {duration: 30, overlap: 5}
+    nsplit:
+      restingstate: {n_epochs: 1}
+      therapy: {n_epochs: 120}
+    sliding:
+      restingstate: {duration: 30, step: 5}
+      therapy: {duration: 30, step: 5}
+```
 
-### Option 1 : Epoching dans preprocessing (recommandé)
-Ajouter les colonnes d'epoch dès le preprocessing pour les signaux pertinents.
+**Fichiers modifiés** :
+- Config : `config/config.yaml`
+- Epoching : `src/physio/epoching/epoch_assigner.py`
+- Preprocessing : `base_bids_writer.py`, `bvp_bids_writer.py`, `eda_bids_writer.py`
+- DPPA : `poincare_calculator.py`, `epoch_animator.py`, `compute_poincare.py`
+- Deprecated : `epoch_bids_writer.py`, `epoch_all_signals.py`
+- Docs : `docs/epoching-integration-plan.md`, `docs/resources.md`, `docs/api_reference.md`
 
-**Avantages** :
+---
 - ✅ Pas de duplication des données
 - ✅ Pipeline simplifié (une étape en moins)
 - ✅ Cohérence : toutes les infos dans un seul fichier
@@ -96,65 +127,13 @@ for method in epoch_methods:
 
 2. **Preprocessing** :
    - `src/physio/preprocessing/bvp_bids_writer.py` : Ajouter logique d'epoching dans `save_rr_intervals()`
-   - `src/physio/preprocessing/base_bids_writer.py` : Méthodes helper pour epoching
-
-3. **Epoching (simplification)** :
-   - `scripts/physio/epoching/epoch_all_signals.py` : Devient optionnel ou supprimé
-   - `src/physio/epoching/epoch_bids_writer.py` : Peut être simplifié ou supprimé
-   - Tests : Adapter pour vérifier que preprocessing inclut les epochs
-
-4. **Modules dépendants** :
-   - `src/physio/dppa/epoch_animator.py` : Charger depuis preprocessing au lieu d'epoched
-   - `src/physio/dppa/poincare_calculator.py` : Idem
-   - `src/physio/dppa/centroid_loader.py` : Ajuster les chemins de chargement
-
-**Migration des données** :
-```bash
-# Script de migration (une fois)
-poetry run python scripts/utils/migrate_epoch_data.py \
-  --delete-epoched-dir  # Supprimer data/derivatives/epoched/ après migration
-```
-
-### Option 2 : Epoching séparé mais optimisé (alternative)
-Garder l'étape séparée mais utiliser des liens symboliques ou références.
-
-**Avantages** :
-- ✅ Séparation des responsabilités
-- ✅ Flexibilité pour différentes méthodes d'epoching
-
-**Inconvénients** :
-- ❌ Toujours de la duplication
-- ❌ Pipeline plus complexe
-
----
-
-**Décision** : Option 1 recommandée
-
-**Estimation** : 6-8 heures
-- Configuration + helper functions : 2h
-- Modification preprocessing : 2h
-- Tests et validation : 2h
-- Migration données existantes : 1-2h
-- Documentation : 1h
-
-**Priorité** : Haute (optimisation importante)  
-**Impact** : 
-- 💾 Réduction espace disque (~50% pour RR intervals)
-- ⚡ Performance améliorée
-- 🔧 Pipeline simplifié
-- 📦 Moins de fichiers à gérer
-
-**Risques** :
-- ⚠️ Breaking change : nécessite migration des données existantes
-- ⚠️ Tests à adapter (chemins de fichiers modifiés)
-- ⚠️ Documentation à mettre à jour
-
-**Questions ouvertes** :
-1. Faut-il supporter plusieurs méthodes d'epoching simultanément dans un même fichier ?
-   - Si oui : colonnes `epoch_id_nsplit120`, `epoch_id_sliding`, etc.
-   - Si non : un fichier par méthode (comme actuellement)
-2. Garder `data/derivatives/epoched/` pour compatibilité ou supprimer complètement ?
-3. Appliquer aussi aux autres modalités (EDA, HR) ou seulement BVP/RR ?
+**Fichiers modifiés** :
+- Config : `config/config.yaml`
+- Epoching : `src/physio/epoching/epoch_assigner.py`
+- Preprocessing : `base_bids_writer.py`, `bvp_bids_writer.py`, `eda_bids_writer.py`
+- DPPA : `poincare_calculator.py`, `epoch_animator.py`, `compute_poincare.py`
+- Deprecated : `epoch_bids_writer.py`, `epoch_all_signals.py`
+- Docs : `docs/epoching-integration-plan.md`, `docs/resources.md`, `docs/api_reference.md`
 
 ---
 
