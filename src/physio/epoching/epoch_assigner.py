@@ -28,7 +28,8 @@ class EpochAssigner:
     2. N-split: Divide signal into N equal epochs
     3. Sliding window: Fixed duration with small step (high overlap)
     
-    Special case: task-restingstate always gets epoch_id=0 for all methods.
+    Each method reads its parameters from the configuration per task/moment.
+    Example: config.epoching.methods.fixed.restingstate.duration
     """
     
     def __init__(self, config_path: Optional[Union[str, Path]] = None):
@@ -147,7 +148,7 @@ class EpochAssigner:
         
         Args:
             df: DataFrame with time series data
-            task: Task name ('restingstate' or 'therapy')
+            task: Task name (e.g., 'restingstate', 'therapy')
             time_column: Name of time column (default: 'time')
         
         Returns:
@@ -157,121 +158,106 @@ class EpochAssigner:
                 - epoch_sliding_duration{X}s_step{Y}s
         
         Note:
-            For task='restingstate', all epoch columns are set to 0.
-            For task='therapy', epochs are assigned based on methods config.
+            Each method reads its parameters from config.epoching.methods.{method}.{task}
+            Example: config.epoching.methods.fixed.restingstate.duration
         """
         if time_column not in df.columns:
             raise ValueError(f"Time column '{time_column}' not found in DataFrame")
         
         time = df[time_column].values
         
-        # Special case: restingstate always epoch 0
-        if task == "restingstate":
-            logger.info(f"Task is restingstate: assigning epoch_id=0 to all {len(df)} samples")
-            
-            # Build column names from config (same as therapy)
-            methods = self.epoching_config.get("methods", {})
-            
-            if methods.get("fixed", {}).get("enabled", False):
-                fixed = methods["fixed"]
-                duration = fixed.get("duration", 30)
-                overlap = fixed.get("overlap", 5)
-                col_name = f"epoch_fixed_duration{duration}s_overlap{overlap}s"
-                df[col_name] = "[0]"  # JSON list format for consistency
-            
-            if methods.get("nsplit", {}).get("enabled", False):
-                nsplit = methods["nsplit"]
-                n_epochs = nsplit.get("n_epochs", 120)
-                col_name = f"epoch_nsplit{n_epochs}"
-                df[col_name] = "[0]"  # JSON list format for consistency
-            
-            if methods.get("sliding", {}).get("enabled", False):
-                sliding = methods["sliding"]
-                duration = sliding.get("duration", 30)
-                step = sliding.get("step", 1)
-                col_name = f"epoch_sliding_duration{duration}s_step{step}s"
-                df[col_name] = "[0]"  # JSON list format for consistency
-            
-            return df
-        
-        # Normal epoching for therapy
-        logger.info(f"Task is {task}: assigning epochs based on methods configuration")
+        logger.info(f"Task '{task}': assigning epochs based on methods configuration")
         
         methods = self.epoching_config.get("methods", {})
         
         # Method 1: Fixed window (with overlap - samples can be in multiple epochs)
         if methods.get("fixed", {}).get("enabled", False):
-            fixed = methods["fixed"]
-            duration = fixed.get("duration", 30)
-            overlap = fixed.get("overlap", 5)
-            min_ratio = fixed.get("min_duration_ratio", 0.0)
-            step = duration - overlap
-            
-            col_name = f"epoch_fixed_duration{duration}s_overlap{overlap}s"
-            
-            # Each sample can belong to multiple epochs (due to overlap)
-            epoch_lists = []
-            for t in time:
-                # Find all epochs that contain this time point
-                # Epoch i spans [i*step, i*step + duration[
-                epochs = []
-                epoch_start = 0
-                epoch_id = 0
-                while epoch_start <= t:
-                    epoch_end = epoch_start + duration
-                    if epoch_start <= t < epoch_end:
-                        epochs.append(epoch_id)
-                    epoch_start += step
-                    epoch_id += 1
+            # Read parameters for this specific task
+            task_params = methods["fixed"].get(task, {})
+            if not task_params:
+                logger.warning(f"No fixed window params for task '{task}', skipping")
+            else:
+                duration = task_params.get("duration", 30)
+                overlap = task_params.get("overlap", 5)
+                min_ratio = task_params.get("min_duration_ratio", 0.0)
+                step = duration - overlap
                 
-                # Convert list to JSON format string
-                epoch_lists.append(str(epochs) if epochs else '[]')
-            
-            df[col_name] = epoch_lists
+                col_name = f"epoch_fixed_duration{duration}s_overlap{overlap}s"
+                
+                # Each sample can belong to multiple epochs (due to overlap)
+                epoch_lists = []
+                for t in time:
+                    # Find all epochs that contain this time point
+                    # Epoch i spans [i*step, i*step + duration[
+                    epochs = []
+                    epoch_start = 0
+                    epoch_id = 0
+                    while epoch_start <= t:
+                        epoch_end = epoch_start + duration
+                        if epoch_start <= t < epoch_end:
+                            epochs.append(epoch_id)
+                        epoch_start += step
+                        epoch_id += 1
+                    
+                    # Convert list to JSON format string
+                    epoch_lists.append(str(epochs) if epochs else '[]')
+                
+                df[col_name] = epoch_lists
+                logger.info(f"Fixed epochs ({task}): duration={duration}s, overlap={overlap}s")
         
         # Method 2: N-split (single epoch per sample, stored as JSON list for consistency)
         if methods.get("nsplit", {}).get("enabled", False):
-            nsplit = methods["nsplit"]
-            n_epochs = nsplit.get("n_epochs", 120)
-            
-            col_name = f"epoch_nsplit{n_epochs}"
-            # Convert to JSON list format: [0], [1], [2], etc.
-            epoch_ids = self.assign_nsplit_epochs(time, n_epochs)
-            df[col_name] = ['[' + str(eid) + ']' for eid in epoch_ids]
+            # Read parameters for this specific task
+            task_params = methods["nsplit"].get(task, {})
+            if not task_params:
+                logger.warning(f"No nsplit params for task '{task}', skipping")
+            else:
+                n_epochs = task_params.get("n_epochs", 120)
+                
+                col_name = f"epoch_nsplit{n_epochs}"
+                # Convert to JSON list format: [0], [1], [2], etc.
+                epoch_ids = self.assign_nsplit_epochs(time, n_epochs)
+                df[col_name] = ['[' + str(eid) + ']' for eid in epoch_ids]
+                logger.info(f"N-split epochs ({task}): n_epochs={n_epochs}")
         
         # Method 3: Sliding window (samples can be in multiple epochs)
         if methods.get("sliding", {}).get("enabled", False):
-            sliding = methods["sliding"]
-            duration = sliding.get("duration", 30)
-            step = sliding.get("step", 1)
-            min_ratio = sliding.get("min_duration_ratio", 0.0)
-            
-            col_name = f"epoch_sliding_duration{duration}s_step{step}s"
-            
-            # Each sample can belong to multiple epochs (due to sliding windows)
-            epoch_lists = []
-            for t in time:
-                # Find all epochs that contain this time point
-                # Epoch at index i starts at i*step and spans [i*step, i*step + duration[
-                epochs = []
+            # Read parameters for this specific task
+            task_params = methods["sliding"].get(task, {})
+            if not task_params:
+                logger.warning(f"No sliding window params for task '{task}', skipping")
+            else:
+                duration = task_params.get("duration", 30)
+                step = task_params.get("step", 1)
+                min_ratio = task_params.get("min_duration_ratio", 0.0)
                 
-                # Find first epoch that could contain t
-                # Epoch i contains t if: i*step <= t < i*step + duration
-                # i.e., t - duration < i*step <= t
-                # i.e., (t - duration)/step < i <= t/step
-                first_epoch = max(0, int(np.floor((t - duration + step) / step)))
-                last_epoch = int(np.floor(t / step))
+                col_name = f"epoch_sliding_duration{duration}s_step{step}s"
                 
-                for epoch_id in range(first_epoch, last_epoch + 1):
-                    epoch_start = epoch_id * step
-                    epoch_end = epoch_start + duration
-                    if epoch_start <= t < epoch_end:
-                        epochs.append(epoch_id)
+                # Each sample can belong to multiple epochs (due to sliding windows)
+                epoch_lists = []
+                for t in time:
+                    # Find all epochs that contain this time point
+                    # Epoch at index i starts at i*step and spans [i*step, i*step + duration[
+                    epochs = []
+                    
+                    # Find first epoch that could contain t
+                    # Epoch i contains t if: i*step <= t < i*step + duration
+                    # i.e., t - duration < i*step <= t
+                    # i.e., (t - duration)/step < i <= t/step
+                    first_epoch = max(0, int(np.floor((t - duration + step) / step)))
+                    last_epoch = int(np.floor(t / step))
+                    
+                    for epoch_id in range(first_epoch, last_epoch + 1):
+                        epoch_start = epoch_id * step
+                        epoch_end = epoch_start + duration
+                        if epoch_start <= t < epoch_end:
+                            epochs.append(epoch_id)
+                    
+                    # Convert list to JSON format string
+                    epoch_lists.append(str(epochs) if epochs else '[]')
                 
-                # Convert list to JSON format string
-                epoch_lists.append(str(epochs) if epochs else '[]')
-            
-            df[col_name] = epoch_lists
+                df[col_name] = epoch_lists
+                logger.info(f"Sliding epochs ({task}): duration={duration}s, step={step}s")
         
         logger.info(f"Added {len([c for c in df.columns if c.startswith('epoch_')])} epoch columns")
         
