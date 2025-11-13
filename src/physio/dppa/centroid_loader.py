@@ -32,7 +32,7 @@ class CentroidLoader:
     
     Example:
         >>> loader = CentroidLoader()
-        >>> df = loader.load_centroid('f01p01', 'ses-01', 'therapy', 'nsplit120')
+        >>> df = loader.load_centroid('g01p01', 'ses-01', 'therapy', 'nsplit120')
         >>> if df is not None:
         ...     print(f"Loaded {len(df)} epochs")
     """
@@ -67,7 +67,7 @@ class CentroidLoader:
         Load Poincaré centroid data for a specific subject/session/task/method.
         
         Args:
-            subject: Subject ID (e.g., 'f01p01')
+            subject: Subject ID (e.g., 'g01p01')
             session: Session ID (e.g., 'ses-01')
             task: Task name (e.g., 'therapy', 'restingstate')
             method: Epoching method (e.g., 'nsplit120', 'sliding_duration30s_step5s')
@@ -79,7 +79,7 @@ class CentroidLoader:
         
         Example:
             >>> loader = CentroidLoader()
-            >>> df = loader.load_centroid('f01p01', 'ses-01', 'therapy', 'nsplit120')
+            >>> df = loader.load_centroid('g01p01', 'ses-01', 'therapy', 'nsplit120')
         """
         # Normalize session format
         if not session.startswith('ses-'):
@@ -138,7 +138,7 @@ class CentroidLoader:
         Load all centroid files for a subject/session.
         
         Args:
-            subject: Subject ID (e.g., 'f01p01')
+            subject: Subject ID (e.g., 'g01p01')
             session: Session ID (e.g., 'ses-01')
             task: Optional task filter (if None, load all tasks)
             method: Optional method filter (if None, load all methods)
@@ -148,7 +148,7 @@ class CentroidLoader:
         
         Example:
             >>> loader = CentroidLoader()
-            >>> results = loader.load_subject_session('f01p01', 'ses-01')
+            >>> results = loader.load_subject_session('g01p01', 'ses-01')
             >>> therapy_nsplit = results['therapy']['nsplit120']
         """
         # Normalize session format

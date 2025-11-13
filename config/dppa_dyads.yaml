@@ -23,91 +23,81 @@ intra_family:
   
   families:
     # Family 01: 6 participants in ses-01, 3 participants in ses-02
-    f01:
+    g01:
       ses-01:
-        - f01p01
-        - f01p02
-        - f01p03
-        - f01p04
-        - f01p05
-        - f01p06
+        - g01p01
+        - g01p02
+        - g01p03
+        - g01p04
+        - g01p05
+        - g01p06
       ses-02:
-        - f01p01
-        - f01p02
-        - f01p03
+        - g01p01
+        - g01p02
+        - g01p03
     
     # Family 02: 5 participants in ses-01, 4 in ses-02, 4 in ses-03
-    f02:
+    g02:
       ses-01:
-        - f02p01
-        - f02p02
-        - f02p03
-        - f02p04
-        - f02p05
+        - g02p01
+        - g02p02
+        - g02p03
+        - g02p04
+        - g02p05
       ses-02:
-        - f02p01
-        - f02p02
-        - f02p04
-        - f02p05
+        - g02p01
+        - g02p02
+        - g02p04
+        - g02p05
       ses-03:
-        - f02p01
-        - f02p02
-        - f02p03
-        - f02p04
+        - g02p01
+        - g02p02
+        - g02p03
+        - g02p04
     
     # Family 03: 6 participants in ses-01
-    f03:
+    g03:
       ses-01:
-        - f03p01
-        - f03p02
-        - f03p03
-        - f03p04
-        - f03p05
-        - f03p06
+        - g03p01
+        - g03p02
+        - g03p03
+        - g03p04
+        - g03p05
+        - g03p06
     
     # Family 04: Multiple sessions with varying participants
-    f04:
+    g04:
       ses-01:
-        - f04p01
-        - f04p02
-        - f04p03
-        - f04p04
+        - g04p01
+        - g04p02
+        - g04p03
+        - g04p04
       ses-02:
-        - f04p01
-        - f04p02
-        - f04p04
+        - g04p01
+        - g04p02
+        - g04p04
       ses-03:
-        - f04p01
-        - f04p02
-        - f04p04
+        - g04p01
+        - g04p02
+        - g04p04
       ses-04:
-        - f04p01
-        - f04p02
+        - g04p01
+        - g04p02
       ses-05:
-        - f04p01
+        - g04p01
     
     # Family 05: 5 participants in ses-01
-    f05:
+    g05:
       ses-01:
-        - f05p01
-        - f05p02
-        - f05p03
-        - f05p05
-        - f05p06
+        - g05p01
+        - g05p02
+        - g05p03
+        - g05p05
+        - g05p06
     
     # Family 06: 3 participants in ses-01
-    f06:
+    g06:
       ses-01:
-        - f06p01
-        - f06p02
-        - f06p03
-
-# Notes:
-# - Inter-session: Compare all participants across all sessions
-#   Example pairs: f01p01-ses01 vs f02p03-ses02, f03p05-ses01 vs f04p01-ses03, etc.
-# - Intra-family: Compare participants within same family and session only
-#   Example pairs: f01p01-ses01 vs f01p02-ses01, f02p03-ses02 vs f02p04-ses02, etc.
-# - Both modes support multiple tasks (restingstate, therapy)
-# - Dyad naming format: {participant1}-{session1}_{participant2}-{session2}
-#   Inter-session: f01p01-ses01_f02p03-ses02
-#   Intra-family: f01p01-ses01_f01p02-ses01
+        - g06p01
+        - g06p02
+        - g06p03

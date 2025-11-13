@@ -62,7 +62,7 @@ class HRLoader:
         Load HR data for a specific subject/session, optionally filtered by moment.
         
         Args:
-            subject: Subject ID (e.g., 'sub-f01p01')
+            subject: Subject ID (e.g., 'sub-g01p01')
             session: Session ID (e.g., 'ses-01')
             moment: Optional moment/task name (e.g., 'restingstate', 'therapy').
                    If None, loads and concatenates all moments.
@@ -78,7 +78,7 @@ class HRLoader:
         
         Example:
             >>> loader = HRLoader()
-            >>> data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
+            >>> data, metadata = loader.load_subject_session('sub-g01p01', 'ses-01', moment='restingstate')
             >>> print(f"Loaded {len(data)} samples at {metadata['SamplingFrequency']} Hz")
         """
         logger.info(f"Loading HR data: {subject}/{session}" + (f"/{moment}" if moment else ""))
@@ -158,7 +158,7 @@ class HRLoader:
         Find all HR TSV and JSON file pairs for a subject/session.
         
         Args:
-            subject: Subject ID (e.g., 'sub-f01p01')
+            subject: Subject ID (e.g., 'sub-g01p01')
             session: Session ID (e.g., 'ses-01')
         
         Returns:
@@ -292,7 +292,7 @@ class HRLoader:
         moments = []
         for tsv_file, _ in file_pairs:
             # Extract task name from filename
-            # Format: sub-f01p01_ses-01_task-restingstate_recording-hr.tsv
+            # Format: sub-g01p01_ses-01_task-restingstate_recording-hr.tsv
             filename = tsv_file.name
             if '_task-' in filename and '_recording-hr' in filename:
                 task_part = filename.split('_task-')[1].split('_recording-hr')[0]

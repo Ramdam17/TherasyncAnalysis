@@ -10,7 +10,7 @@ Branche : feature/dppa-viz
 **Problème** : Convention de nommage actuelle utilise `f` (famille) mais devrait être `g` (groupe).
 
 **Format cible** :
-- Ancien : `sub-f01p02` 
+- Ancien : `sub-g01p02` 
 - Nouveau : `sub-g01p02` (g = groupe, p = participant)
 
 **Fichiers à modifier** :
@@ -39,16 +39,16 @@ Branche : feature/dppa-viz
 **Problème** : Le code n'a pas été testé avec un nombre variable de sessions par participant.
 
 **Cas à tester** :
-- ✅ 1 session (f05, f06)
-- ✅ 2 sessions (f01, f03)
-- ✅ 3 sessions (f02)
-- ⚠️ 5 sessions (f04) - **À VALIDER**
+- ✅ 1 session (g05, g06)
+- ✅ 2 sessions (g01, g03)
+- ✅ 3 sessions (g02)
+- ⚠️ 5 sessions (g04) - **À VALIDER**
 - ❌ Sessions manquantes (gaps)
 - ❌ Sessions non-séquentielles
 
 **Tests à implémenter** :
 1. `test_variable_session_counts.py`
-   - Traitement de f04 (5 sessions)
+   - Traitement de g04 (5 sessions)
    - Gestion des sessions manquantes
    - Validation des outputs inter-session
 

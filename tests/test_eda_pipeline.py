@@ -38,7 +38,7 @@ class TestEDALoader(unittest.TestCase):
         self.temp_path = Path(self.temp_dir)
         
         # Create test data structure
-        self.test_subject = "sub-f01p01"
+        self.test_subject = "sub-g01p01"
         self.test_session = "ses-01"
         self.test_moment = "restingstate"
         
@@ -114,7 +114,7 @@ class TestEDALoader(unittest.TestCase):
             "Units": ["s", "μS"],
             "TaskName": self.test_moment,
             "RecordingType": "EDA",
-            "FamilyID": "f01",
+            "FamilyID": "g01",
             "DeviceManufacturer": "Empatica",
             "DeviceModel": "E4"
         }
@@ -548,7 +548,7 @@ class TestEDABIDSWriter(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.temp_path = Path(self.temp_dir)
         
-        self.test_subject = "sub-f01p01"
+        self.test_subject = "sub-g01p01"
         self.test_session = "ses-01"
         self.test_moment = "restingstate"
         
@@ -582,7 +582,7 @@ class TestEDABIDSWriter(unittest.TestCase):
         self.test_metadata = {
             'SamplingFrequency': 4.0,
             'TaskName': self.test_moment,
-            'FamilyID': 'f01'
+            'FamilyID': 'g01'
         }
         
         self.test_config = {
@@ -672,7 +672,7 @@ class TestEDAPipelineIntegration(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.temp_path = Path(self.temp_dir)
         
-        self.test_subject = "sub-f01p01"
+        self.test_subject = "sub-g01p01"
         self.test_session = "ses-01"
         self.test_moment = "restingstate"
         
@@ -721,7 +721,7 @@ class TestEDAPipelineIntegration(unittest.TestCase):
             "Units": ["s", "μS"],
             "TaskName": self.test_moment,
             "RecordingType": "EDA",
-            "FamilyID": "f01"
+            "FamilyID": "g01"
         }
         
         with open(physio_dir / f"{base_filename}.json", 'w') as f:

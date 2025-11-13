@@ -12,7 +12,7 @@ Usage:
     python scripts/batch/run_all_visualizations.py --dry-run
     
     # Generate for specific subjects only
-    python scripts/batch/run_all_visualizations.py --subjects f01p01 f01p02
+    python scripts/batch/run_all_visualizations.py --subjects g01p01 g01p02
     
     # Generate specific visualizations only
     python scripts/batch/run_all_visualizations.py --plots 1 2 3
@@ -110,7 +110,7 @@ class BatchVisualizer:
         Generate visualizations for one subject/session.
         
         Args:
-            subject: Subject ID (e.g., 'f01p01')
+            subject: Subject ID (e.g., 'g01p01')
             session: Session ID (e.g., '01')
             plots: List of plot numbers to generate (None = all)
         
@@ -353,7 +353,7 @@ Examples:
   python scripts/batch/run_all_visualizations.py --dry-run
   
   # Generate for specific subjects only
-  python scripts/batch/run_all_visualizations.py --subjects f01p01 f01p02
+  python scripts/batch/run_all_visualizations.py --subjects g01p01 g01p02
   
   # Generate specific visualizations only
   python scripts/batch/run_all_visualizations.py --plots 1 2 3
@@ -364,7 +364,7 @@ Examples:
         '--subjects',
         type=str,
         nargs='+',
-        help='Process only these subjects (e.g., f01p01 f02p01)'
+        help='Process only these subjects (e.g., g01p01 g02p01)'
     )
     parser.add_argument(
         '--plots',

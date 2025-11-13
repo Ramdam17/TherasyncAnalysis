@@ -103,7 +103,7 @@ class PhysioBIDSWriter(ABC):
         this method to save their modality-specific data.
         
         Args:
-            subject_id: Subject identifier (format: 'sub-f01p01')
+            subject_id: Subject identifier (format: 'sub-g01p01')
             session_id: Session identifier (format: 'ses-01')
             processed_results: Dictionary mapping moment names to processed DataFrames
                              Keys: moment names (e.g., 'restingstate', 'therapy')
@@ -128,7 +128,7 @@ class PhysioBIDSWriter(ABC):
         Get the output directory for a subject/session.
         
         Args:
-            subject_id: Subject identifier (format: 'sub-f01p01')
+            subject_id: Subject identifier (format: 'sub-g01p01')
             session_id: Session identifier (format: 'ses-01')
             
         Returns:
@@ -155,7 +155,7 @@ class PhysioBIDSWriter(ABC):
         Ensure identifier has the correct prefix.
         
         Args:
-            identifier: Identifier string (e.g., 'f01p01' or 'sub-f01p01')
+            identifier: Identifier string (e.g., 'g01p01' or 'sub-g01p01')
             prefix: Required prefix (e.g., 'sub-' or 'ses-')
             
         Returns:
@@ -170,11 +170,11 @@ class PhysioBIDSWriter(ABC):
         Remove prefix from identifier.
         
         Args:
-            identifier: Identifier string (e.g., 'sub-f01p01')
+            identifier: Identifier string (e.g., 'sub-g01p01')
             prefix: Prefix to remove (e.g., 'sub-')
             
         Returns:
-            Identifier without prefix (e.g., 'f01p01')
+            Identifier without prefix (e.g., 'g01p01')
         """
         if identifier.startswith(prefix):
             return identifier[len(prefix):]

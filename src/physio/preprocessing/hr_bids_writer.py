@@ -84,7 +84,7 @@ class HRBIDSWriter(PhysioBIDSWriter):
         Write complete HR processing results in BIDS format.
         
         Args:
-            subject_id: Subject identifier WITH prefix (e.g., 'sub-f01p01')
+            subject_id: Subject identifier WITH prefix (e.g., 'sub-g01p01')
             session_id: Session identifier WITH prefix (e.g., 'ses-01')
             processed_results: Dictionary mapping moment names to processed DataFrames
                              Expected columns: time, HR_Raw, HR_Clean, HR_Quality, 
@@ -102,7 +102,7 @@ class HRBIDSWriter(PhysioBIDSWriter):
             ...     'therapy': df_therapy
             ... }
             >>> file_paths = writer.save_processed_data(
-            ...     'sub-f01p01', 'ses-01', processed_results, metrics, metadata
+            ...     'sub-g01p01', 'ses-01', processed_results, metrics, metadata
             ... )
             >>> print(f"Physio files: {file_paths['physio']}")
         """

@@ -8,16 +8,16 @@ HR Loader → HR Cleaner → HR Metrics Extractor → HR BIDS Writer
 
 Usage:
     # Process single subject/session
-    python scripts/preprocess_hr.py --subject f01p01 --session 01
+    python scripts/preprocess_hr.py --subject g01p01 --session 01
     
     # Process with specific moment
-    python scripts/preprocess_hr.py --subject f01p01 --session 01 --moment therapy
+    python scripts/preprocess_hr.py --subject g01p01 --session 01 --moment therapy
     
     # Batch process multiple subjects
     python scripts/preprocess_hr.py --batch --config-file config/hr_batch.yaml
     
     # Process with custom config
-    python scripts/preprocess_hr.py --subject f01p01 --session 01 --config config/custom_hr.yaml
+    python scripts/preprocess_hr.py --subject g01p01 --session 01 --config config/custom_hr.yaml
 
 Authors: Lena Adel, Remy Ramadour
 """
@@ -107,7 +107,7 @@ class HRPreprocessor:
         Process HR data for a single subject/session.
         
         Args:
-            subject: Subject identifier (e.g., 'f01p01')
+            subject: Subject identifier (e.g., 'g01p01')
             session: Session identifier (e.g., '01')
             moment: Optional specific moment to process (if None, processes all available moments)
         
@@ -326,16 +326,16 @@ def main():
         epilog="""
 Examples:
   # Process single subject/session
-  python scripts/preprocess_hr.py --subject f01p01 --session 01
+  python scripts/preprocess_hr.py --subject g01p01 --session 01
   
   # Process specific moment
-  python scripts/preprocess_hr.py --subject f01p01 --session 01 --moment therapy
+  python scripts/preprocess_hr.py --subject g01p01 --session 01 --moment therapy
   
   # Auto-discover and process all subjects
   python scripts/preprocess_hr.py --batch
   
   # Use custom configuration
-  python scripts/preprocess_hr.py --subject f01p01 --session 01 --config config/custom.yaml
+  python scripts/preprocess_hr.py --subject g01p01 --session 01 --config config/custom.yaml
         """
     )
     
@@ -343,7 +343,7 @@ Examples:
     parser.add_argument(
         '--subject', 
         type=str,
-        help='Subject identifier (e.g., f01p01)'
+        help='Subject identifier (e.g., g01p01)'
     )
     parser.add_argument(
         '--session',

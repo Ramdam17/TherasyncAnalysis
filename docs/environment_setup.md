@@ -106,10 +106,10 @@ poetry run pytest --cov=src tests/
 poetry run pytest tests/test_bvp_pipeline.py -v
 
 # Verify all pipelines work
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
-poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01
-poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01
-poetry run python scripts/visualization/generate_visualizations.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject g01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject g01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject g01p01 --session 01
+poetry run python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01
 ```
 poetry run pytest --cov=src tests/
 
@@ -241,16 +241,16 @@ After successful installation, you can run the preprocessing scripts:
 
 ```bash
 # BVP preprocessing
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject g01p01 --session 01
 
 # EDA preprocessing
-poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject g01p01 --session 01
 
 # HR preprocessing
-poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject g01p01 --session 01
 
 # Clean outputs (if needed)
-poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01
+poetry run python scripts/utils/clean_outputs.py --subject g01p01 --session 01
 ```
 
 ## Configuration

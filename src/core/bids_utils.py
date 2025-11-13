@@ -84,7 +84,7 @@ class BIDSUtils:
         Create a BIDS-compliant filename.
         
         Args:
-            subject: Subject identifier (e.g., 'f01p01').
+            subject: Subject identifier (e.g., 'g01p01').
             session: Session identifier (e.g., '01').
             task: Task identifier (e.g., 'restingstate', 'therapy').
             datatype: Data type (e.g., 'physio').
@@ -359,7 +359,7 @@ if __name__ == "__main__":
     
     # Create example filename
     filename = bids_utils.create_bids_filename(
-        subject="f01p01",
+        subject="g01p01",
         session="01", 
         task="restingstate",
         datatype="physio",
@@ -368,9 +368,9 @@ if __name__ == "__main__":
     print(f"Example filename: {filename}")
     
     # Parse subject ID
-    subject_info = bids_utils.parse_subject_id("f01p01")
+    subject_info = bids_utils.parse_subject_id("g01p01")
     print(f"Subject info: {subject_info}")
     
     # Create BIDS path
-    path = bids_utils.create_bids_path("f01p01", "01", create_dirs=False)
+    path = bids_utils.create_bids_path("g01p01", "01", create_dirs=False)
     print(f"BIDS path: {path}")

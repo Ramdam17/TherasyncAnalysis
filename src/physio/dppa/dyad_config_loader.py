@@ -141,7 +141,7 @@ class DyadConfigLoader:
         Get intra-family dyad pairs (within same session).
         
         Args:
-            family: Optional family filter (e.g., 'f01')
+            family: Optional family filter (e.g., 'g01')
             session: Optional session filter (e.g., 'ses-01')
             task: Optional task filter (e.g., 'therapy')
         
@@ -150,7 +150,7 @@ class DyadConfigLoader:
         
         Example:
             >>> loader = DyadConfigLoader()
-            >>> pairs = loader.get_intra_family_pairs(family='f01', session='ses-01')
+            >>> pairs = loader.get_intra_family_pairs(family='g01', session='ses-01')
             >>> # Returns 15 pairs (6 participants choose 2)
         """
         intra = self.config['intra_family']
@@ -221,7 +221,7 @@ class DyadConfigLoader:
         Get list of sessions for a specific family.
         
         Args:
-            family: Family ID (e.g., 'f01')
+            family: Family ID (e.g., 'g01')
         
         Returns:
             List of session IDs (e.g., ['ses-01', 'ses-02'])

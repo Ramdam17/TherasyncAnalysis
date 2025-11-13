@@ -47,7 +47,7 @@ poetry run python scripts/batch/run_all_preprocessing.py --skip-existing
 poetry run python scripts/batch/run_all_preprocessing.py --dry-run
 
 # Process specific subjects
-poetry run python scripts/batch/run_all_preprocessing.py --subjects f01p01 f02p01
+poetry run python scripts/batch/run_all_preprocessing.py --subjects g01p01 g02p01
 
 # Verbose output
 poetry run python scripts/batch/run_all_preprocessing.py --verbose
@@ -70,7 +70,7 @@ poetry run python scripts/batch/run_all_visualizations.py --dry-run
 poetry run python scripts/batch/run_all_visualizations.py --plots 1 2 3
 
 # Specific subjects
-poetry run python scripts/batch/run_all_visualizations.py --subjects f01p01
+poetry run python scripts/batch/run_all_visualizations.py --subjects g01p01
 
 # Verbose output
 poetry run python scripts/batch/run_all_visualizations.py --verbose
@@ -89,14 +89,14 @@ poetry run python scripts/batch/run_all_visualizations.py --verbose
 ```bash
 # Basic usage
 poetry run python scripts/physio/preprocessing/preprocess_bvp.py \
-  --subject f01p01 --session 01
+  --subject g01p01 --session 01
 
 # Custom config
 poetry run python scripts/physio/preprocessing/preprocess_bvp.py \
-  --subject f01p01 --session 01 --config config/custom.yaml
+  --subject g01p01 --session 01 --config config/custom.yaml
 
 # View outputs
-tree data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/
+tree data/derivatives/preprocessing/sub-g01p01/ses-01/bvp/
 ```
 
 **Outputs** (9 files):
@@ -111,13 +111,13 @@ tree data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/
 ```bash
 # Basic usage
 poetry run python scripts/physio/preprocessing/preprocess_eda.py \
-  --subject f01p01 --session 01
+  --subject g01p01 --session 01
 
 # View SCR events
-head data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_scr_events.tsv
+head data/derivatives/preprocessing/sub-g01p01/ses-01/eda/*_scr_events.tsv
 
 # View metrics
-cat data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_eda-metrics_physio.tsv
+cat data/derivatives/preprocessing/sub-g01p01/ses-01/eda/*_eda-metrics_physio.tsv
 ```
 
 **Outputs** (13 files):
@@ -132,10 +132,10 @@ cat data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_eda-metrics_physio.ts
 ```bash
 # Basic usage
 poetry run python scripts/physio/preprocessing/preprocess_hr.py \
-  --subject f01p01 --session 01
+  --subject g01p01 --session 01
 
 # View metrics
-cat data/derivatives/preprocessing/sub-f01p01/ses-01/hr/*_hr-metrics.tsv
+cat data/derivatives/preprocessing/sub-g01p01/ses-01/hr/*_hr-metrics.tsv
 ```
 
 **Outputs** (7 files):
@@ -150,14 +150,14 @@ cat data/derivatives/preprocessing/sub-f01p01/ses-01/hr/*_hr-metrics.tsv
 ```bash
 # Generate all 6 plots
 poetry run python scripts/visualization/generate_visualizations.py \
-  --subject f01p01 --session 01
+  --subject g01p01 --session 01
 
 # Custom config
 poetry run python scripts/visualization/generate_visualizations.py \
-  --subject f01p01 --session 01 --config config/custom.yaml
+  --subject g01p01 --session 01 --config config/custom.yaml
 
 # View outputs
-ls data/derivatives/visualization/sub-f01p01/ses-01/figures/
+ls data/derivatives/visualization/sub-g01p01/ses-01/figures/
 ```
 
 **Outputs** (6 PNG files):
@@ -178,7 +178,7 @@ ls data/derivatives/visualization/sub-f01p01/ses-01/figures/
 
 ```bash
 # Single participant
-poetry run python scripts/physio/dppa/compute_poincare.py -s f01p01 -e 01
+poetry run python scripts/physio/dppa/compute_poincare.py -s g01p01 -e 01
 
 # Batch processing (all)
 poetry run python scripts/physio/dppa/compute_poincare.py --batch
@@ -217,7 +217,7 @@ poetry run python scripts/physio/dppa/compute_dppa.py --mode both --task all --b
 ```bash
 # Single dyad visualization
 poetry run python scripts/physio/dppa/plot_dyad.py \
-  --dyad f01p01_ses-01_vs_f01p02_ses-01 \
+  --dyad g01p01_ses-01_vs_g01p02_ses-01 \
   --method nsplit120
 
 # Batch inter-session mode (all 1176 dyads)
@@ -414,7 +414,7 @@ poetry run python scripts/batch/run_all_visualizations.py
 ### Single Subject Complete Pipeline
 
 ```bash
-export SUBJECT=f01p01
+export SUBJECT=g01p01
 export SESSION=01
 
 # Preprocessing
@@ -433,7 +433,7 @@ poetry run python scripts/visualization/generate_visualizations.py --subject $SU
 poetry run python scripts/batch/run_all_visualizations.py
 
 # Or specific subjects
-poetry run python scripts/batch/run_all_visualizations.py --subjects f01p01 f02p01
+poetry run python scripts/batch/run_all_visualizations.py --subjects g01p01 g02p01
 ```
 
 ### Clean and Restart
@@ -470,7 +470,7 @@ poetry run python scripts/batch/run_all_visualizations.py --plots 1 2 3
 
 # For single subject
 poetry run python scripts/visualization/generate_visualizations.py \
-  --subject f01p01 --session 01
+  --subject g01p01 --session 01
 ```
 
 ---

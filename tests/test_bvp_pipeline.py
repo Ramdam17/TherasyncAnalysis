@@ -35,7 +35,7 @@ class TestBVPLoader(unittest.TestCase):
         self.temp_path = Path(self.temp_dir)
         
         # Create test data structure
-        self.test_subject = "sub-f01p01"
+        self.test_subject = "sub-g01p01"
         self.test_session = "ses-01"
         self.test_moment = "restingstate"
         
@@ -82,7 +82,7 @@ class TestBVPLoader(unittest.TestCase):
             "Units": ["s", "AU"],
             "TaskName": self.test_moment,
             "RecordingType": "BVP",
-            "FamilyID": "f01"
+            "FamilyID": "g01"
         }
         
         with open(json_file, 'w') as f:
@@ -599,7 +599,7 @@ class TestBVPBIDSWriter(unittest.TestCase):
         }
         
         # Create test data
-        self.test_subject = "sub-f01p01"
+        self.test_subject = "sub-g01p01"
         self.test_session = "ses-01"
         self.mock_processed_results = self._create_mock_data()
         self.mock_session_metrics = {
@@ -780,20 +780,20 @@ class TestBVPBIDSWriter(unittest.TestCase):
         })
         
         tsv_path, json_path = writer.save_rr_intervals(
-            'sub-f02p03',
+            'sub-g02p03',
             'ses-02',
             'therapy',
             rr_intervals_df
         )
         
         # Verify BIDS filename format
-        expected_base = 'sub-f02p03_ses-02_task-therapy_desc-rrintervals_physio'
+        expected_base = 'sub-g02p03_ses-02_task-therapy_desc-rrintervals_physio'
         self.assertTrue(str(tsv_path).endswith(f'{expected_base}.tsv'))
         self.assertTrue(str(json_path).endswith(f'{expected_base}.json'))
         
         # Verify correct directory structure
-        # Should be in derivatives/therasync-bvp/sub-f02p03/ses-02/physio/
-        self.assertIn('sub-f02p03', str(tsv_path))
+        # Should be in derivatives/therasync-bvp/sub-g02p03/ses-02/physio/
+        self.assertIn('sub-g02p03', str(tsv_path))
         self.assertIn('ses-02', str(tsv_path))
         self.assertIn('physio', str(tsv_path))
     
@@ -878,7 +878,7 @@ class TestBVPPipelineIntegration(unittest.TestCase):
         self.temp_path = Path(self.temp_dir)
         
         # Create complete test data structure
-        self.test_subject = "sub-f01p01"
+        self.test_subject = "sub-g01p01"
         self.test_session = "ses-01"
         self.test_moment = "restingstate"
         
@@ -929,7 +929,7 @@ class TestBVPPipelineIntegration(unittest.TestCase):
             "Units": ["s", "AU"],
             "TaskName": self.test_moment,
             "RecordingType": "BVP",
-            "FamilyID": "f01"
+            "FamilyID": "g01"
         }
         
         with open(json_file, 'w') as f:

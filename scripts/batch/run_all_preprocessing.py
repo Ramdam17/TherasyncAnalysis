@@ -13,7 +13,7 @@ Usage:
     python scripts/batch/run_all_preprocessing.py --dry-run
     
     # Process specific subjects only
-    python scripts/batch/run_all_preprocessing.py --subjects f01p01 f01p02
+    python scripts/batch/run_all_preprocessing.py --subjects g01p01 g01p02
     
     # Skip subjects that already have outputs
     python scripts/batch/run_all_preprocessing.py --skip-existing
@@ -102,7 +102,7 @@ class BatchPreprocessor:
         Check which modalities have already been processed.
         
         Args:
-            subject_id: Subject ID (e.g., 'f01p01')
+            subject_id: Subject ID (e.g., 'g01p01')
             session_id: Session ID (e.g., '01')
         
         Returns:
@@ -426,7 +426,7 @@ Examples:
   python scripts/batch/run_all_preprocessing.py --dry-run
   
   # Process specific subjects only
-  python scripts/batch/run_all_preprocessing.py --subjects f01p01 f01p02
+  python scripts/batch/run_all_preprocessing.py --subjects g01p01 g01p02
   
   # Skip already processed subjects
   python scripts/batch/run_all_preprocessing.py --skip-existing
@@ -437,7 +437,7 @@ Examples:
         '--subjects',
         type=str,
         nargs='+',
-        help='Process only these subjects (e.g., f01p01 f02p01)'
+        help='Process only these subjects (e.g., g01p01 g02p01)'
     )
     parser.add_argument(
         '--skip-existing',

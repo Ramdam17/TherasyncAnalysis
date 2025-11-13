@@ -463,11 +463,11 @@ data/derivatives/dppa/
   - **Rows**: 120 epochs (nsplit120 method)
   - **Columns**: ~1,275 dyad pairs (all combinations across sessions)
   - **First Column**: `epoch_id` (0-119)
-  - **Dyad Columns**: `{subj1}_{ses1}___{subj2}_{ses2}` (e.g., `f01p01_ses-01___f01p02_ses-01`)
+  - **Dyad Columns**: `{subj1}_{ses1}___{subj2}_{ses2}` (e.g., `g01p01_ses-01___g01p02_ses-01`)
 
 **Column Naming**:
 - Format: `{subj1}_{ses1}___{subj2}_{ses2}` (triple underscore separator)
-- Example: `f01p01_ses-01___f02p03_ses-02`
+- Example: `g01p01_ses-01___g02p03_ses-02`
 - Total columns: 1 + N dyads (N ≈ 1,275)
 
 **Tasks**:
@@ -483,16 +483,16 @@ data/derivatives/dppa/
   - **Rows**: Variable epochs (~553 for therapy)
   - **Columns**: 81 dyad pairs (C(6,2)=15 per family × 6 families, filtered by available sessions)
   - **First Column**: `epoch_id` (0-N)
-  - **Dyad Columns**: `{family}_{subj1}_{subj2}_{session}` (e.g., `f01_f01p01_f01p02_ses-01`)
+  - **Dyad Columns**: `{family}_{subj1}_{subj2}_{session}` (e.g., `g01_g01p01_g01p02_ses-01`)
 
 **Column Naming**:
 - Format: `{family}_{subj1}_{subj2}_{session}` (underscore separators)
-- Example: `f01_f01p01_f01p02_ses-01`
+- Example: `g01_g01p01_g01p02_ses-01`
 - Total columns: 1 + 81 dyads
 
 **Dyad Selection**:
 - Only dyads with both participants having valid centroids
-- Family sessions: f01-f04 (multiple sessions), f05-f06 (single sessions)
+- Family sessions: g01-g04 (multiple sessions), g05-g06 (single sessions)
 - Combinations: C(n_participants, 2) per family/session
 
 #### ICD Calculation
@@ -530,7 +530,7 @@ ICD = √[(centroid_x₁ - centroid_x₂)² + (centroid_y₁ - centroid_y₂)²]
 **Compute Poincaré Centroids**:
 ```bash
 # Single participant
-poetry run python scripts/physio/dppa/compute_poincare.py -s f01p01 -e 01
+poetry run python scripts/physio/dppa/compute_poincare.py -s g01p01 -e 01
 
 # Batch processing (all participants/sessions)
 poetry run python scripts/physio/dppa/compute_poincare.py --batch
@@ -739,23 +739,23 @@ All visualizations are automatically generated during preprocessing and saved as
 const sessions = await fetch('data/derivatives/therasync-bvp/subjects.json');
 
 // Get specific session metrics
-const metrics = await fetch('data/derivatives/therasync-bvp/sub-f01p01/ses-01/physio/sub-f01p01_ses-01_desc-bvpmetrics_physio.tsv');
-const metadata = await fetch('data/derivatives/therasync-bvp/sub-f01p01/ses-01/physio/sub-f01p01_ses-01_desc-bvpmetrics_physio.json');
+const metrics = await fetch('data/derivatives/therasync-bvp/sub-g01p01/ses-01/physio/sub-g01p01_ses-01_desc-bvpmetrics_physio.tsv');
+const metadata = await fetch('data/derivatives/therasync-bvp/sub-g01p01/ses-01/physio/sub-g01p01_ses-01_desc-bvpmetrics_physio.json');
 ```
 
 #### 2. Display Time-Series
 ```javascript
 // Load processed signal
-const signal = await d3.tsv('data/derivatives/therasync-bvp/sub-f01p01/ses-01/physio/sub-f01p01_ses-01_task-restingstate_desc-processed_recording-bvp.tsv');
+const signal = await d3.tsv('data/derivatives/therasync-bvp/sub-g01p01/ses-01/physio/sub-g01p01_ses-01_task-restingstate_desc-processed_recording-bvp.tsv');
 
 // Load processing info for peak markers
-const processing = await fetch('data/derivatives/therasync-bvp/sub-f01p01/ses-01/physio/sub-f01p01_ses-01_task-restingstate_desc-processing_recording-bvp.json');
+const processing = await fetch('data/derivatives/therasync-bvp/sub-g01p01/ses-01/physio/sub-g01p01_ses-01_task-restingstate_desc-processing_recording-bvp.json');
 ```
 
 #### 3. Compare Moments
 ```javascript
 // Load metrics for both moments
-const metrics = await d3.tsv('data/derivatives/therasync-bvp/sub-f01p01/ses-01/physio/sub-f01p01_ses-01_desc-bvpmetrics_physio.tsv');
+const metrics = await d3.tsv('data/derivatives/therasync-bvp/sub-g01p01/ses-01/physio/sub-g01p01_ses-01_desc-bvpmetrics_physio.tsv');
 
 // Filter by moment
 const restingstate = metrics.filter(d => d.moment === 'restingstate');
@@ -765,7 +765,7 @@ const therapy = metrics.filter(d => d.moment === 'therapy');
 #### 4. Quality Dashboard
 ```javascript
 // Load all processing metadata
-const sessions = ['sub-f01p01/ses-01', 'sub-f01p01/ses-02'];
+const sessions = ['sub-g01p01/ses-01', 'sub-g01p01/ses-02'];
 const quality = await Promise.all(
   sessions.map(s => fetch(`data/derivatives/therasync-bvp/${s}/physio/*_desc-summary_recording-bvp.json`))
 );

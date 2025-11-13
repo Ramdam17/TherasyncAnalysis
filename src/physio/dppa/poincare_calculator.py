@@ -168,7 +168,7 @@ class PoincareCalculator:
         Compute Poincaré centroids for a subject/session.
         
         Args:
-            subject: Subject ID (e.g., 'f01p01')
+            subject: Subject ID (e.g., 'g01p01')
             session: Session ID (e.g., 'ses-01')
             task: Optional task filter (e.g., 'restingstate', 'therapy')
             method: Optional epoching method filter

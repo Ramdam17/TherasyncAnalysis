@@ -6,7 +6,7 @@ This script orchestrates the complete EDA preprocessing pipeline:
 Load → Clean → Extract Metrics → Save in BIDS format
 
 Usage:
-    python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01
+    python scripts/preprocess_eda.py --subject sub-g01p01 --session ses-01
     python scripts/preprocess_eda.py --config config/config.yaml --batch
     python scripts/preprocess_eda.py --help
 """
@@ -109,7 +109,7 @@ def process_single_subject(
     Process EDA data for a single subject and session.
     
     Args:
-        subject_id: Subject identifier (e.g., 'sub-f01p01')
+        subject_id: Subject identifier (e.g., 'sub-g01p01')
         session_id: Session identifier (e.g., 'ses-01')
         config_path: Path to configuration file
         moments: List of moments to process (if None, processes all)
@@ -361,19 +361,19 @@ def main():
         epilog="""
 Examples:
   # Process single subject/session
-  python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01
+  python scripts/preprocess_eda.py --subject sub-g01p01 --session ses-01
   
   # Process with custom config
-  python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --config custom_config.yaml
+  python scripts/preprocess_eda.py --subject sub-g01p01 --session ses-01 --config custom_config.yaml
   
   # Process specific moments only
-  python scripts/preprocess_eda.py --subject sub-f01p01 --session ses-01 --moments restingstate therapy
+  python scripts/preprocess_eda.py --subject sub-g01p01 --session ses-01 --moments restingstate therapy
   
   # Batch process all subjects
   python scripts/preprocess_eda.py --batch
   
   # Batch process with pattern matching
-  python scripts/preprocess_eda.py --batch --subject-pattern "sub-f01*"
+  python scripts/preprocess_eda.py --batch --subject-pattern "sub-g01*"
         """
     )
     
@@ -381,7 +381,7 @@ Examples:
     parser.add_argument(
         '--subject', '-s',
         type=str,
-        help='Subject identifier (e.g., sub-f01p01)'
+        help='Subject identifier (e.g., sub-g01p01)'
     )
     
     parser.add_argument(

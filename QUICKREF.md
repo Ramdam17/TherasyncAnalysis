@@ -12,13 +12,13 @@ One-page reference for common commands and workflows.## 🎯 Most Common Command
 
 ```bash# Single subject
 
-# Process all data + generate all visualizationspoetry run python scripts/physio/preprocessing/preprocess_bvp.py -s f01p01 -e 01
+# Process all data + generate all visualizationspoetry run python scripts/physio/preprocessing/preprocess_bvp.py -s g01p01 -e 01
 
 poetry run python scripts/batch/run_all_preprocessing.py --skip-existing
 
 poetry run python scripts/batch/run_all_visualizations.py# With config
 
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py -s f01p01 -e 01 -c config/config.yaml
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py -s g01p01 -e 01 -c config/config.yaml
 
 # Generate quality report```
 
@@ -30,13 +30,13 @@ poetry run python scripts/analysis/generate_quality_report.py
 
 ## 📦 Batch Processing# Single subject
 
-poetry run python scripts/physio/preprocessing/preprocess_eda.py -s f01p01 -e 01
+poetry run python scripts/physio/preprocessing/preprocess_eda.py -s g01p01 -e 01
 
 ### Preprocessing (All Modalities)
 
 ```bash# Verbose output
 
-# Process everythingpoetry run python scripts/physio/preprocessing/preprocess_eda.py -s f01p01 -e 01 -v
+# Process everythingpoetry run python scripts/physio/preprocessing/preprocess_eda.py -s g01p01 -e 01 -v
 
 poetry run python scripts/batch/run_all_preprocessing.py```
 
@@ -48,9 +48,9 @@ poetry run python scripts/batch/run_all_preprocessing.py```
 
 --dry-run               # Preview without execution# Single subject
 
---verbose               # Detailed loggingpoetry run python scripts/physio/preprocessing/preprocess_hr.py -s f01p01 -e 01
+--verbose               # Detailed loggingpoetry run python scripts/physio/preprocessing/preprocess_hr.py -s g01p01 -e 01
 
---subjects f01p01 f02p01  # Specific subjects only```
+--subjects g01p01 g02p01  # Specific subjects only```
 
 ```
 
@@ -72,11 +72,11 @@ poetry run python scripts/batch/run_all_visualizations.py
 
 --plots 1 6             # Specific plots only
 
---subjects f01p01       # Specific subjects### Clean Specific Subject
+--subjects g01p01       # Specific subjects### Clean Specific Subject
 
 ``````bash
 
-poetry run python scripts/utils/clean_outputs.py -d -s f01p01 -e 01 -f
+poetry run python scripts/utils/clean_outputs.py -d -s g01p01 -e 01 -f
 
 ### Quality Analysis```
 
@@ -98,7 +98,7 @@ data/derivatives/preprocessing/         # Pipeline outputs (modular)
 
 # Set variables      ├── bvp/                          # BVP/HRV outputs
 
-export SUBJECT=f01p01      ├── eda/                          # EDA outputs
+export SUBJECT=g01p01      ├── eda/                          # EDA outputs
 
 export SESSION=01      └── hr/                           # HR outputs
 
@@ -126,19 +126,19 @@ poetry run python scripts/visualization/generate_visualizations.py --subject $SU
 
 ```
 
-```data/raw/sub-f01p01/ses-01/physio/
+```data/raw/sub-g01p01/ses-01/physio/
 
-TherasyncPipeline/├── sub-f01p01_ses-01_task-restingstate_recording-bvp.tsv
+TherasyncPipeline/├── sub-g01p01_ses-01_task-restingstate_recording-bvp.tsv
 
-├── config/config.yaml          # Configuration├── sub-f01p01_ses-01_task-restingstate_recording-bvp.json
+├── config/config.yaml          # Configuration├── sub-g01p01_ses-01_task-restingstate_recording-bvp.json
 
-├── data/├── sub-f01p01_ses-01_task-restingstate_recording-eda.tsv
+├── data/├── sub-g01p01_ses-01_task-restingstate_recording-eda.tsv
 
-│   ├── raw/                    # Input: BIDS-formatted source data├── sub-f01p01_ses-01_task-restingstate_recording-eda.json
+│   ├── raw/                    # Input: BIDS-formatted source data├── sub-g01p01_ses-01_task-restingstate_recording-eda.json
 
-│   │   └── sub-*/ses-*/physio/├── sub-f01p01_ses-01_task-restingstate_recording-hr.tsv
+│   │   └── sub-*/ses-*/physio/├── sub-g01p01_ses-01_task-restingstate_recording-hr.tsv
 
-│   └── derivatives/            # Output: Processed data└── sub-f01p01_ses-01_task-restingstate_recording-hr.json
+│   └── derivatives/            # Output: Processed data└── sub-g01p01_ses-01_task-restingstate_recording-hr.json
 
 │       ├── preprocessing/      # BVP, EDA, HR outputs```
 
@@ -148,7 +148,7 @@ TherasyncPipeline/├── sub-f01p01_ses-01_task-restingstate_recording-bvp.ts
 
 │       │       ├── eda/        # 13 files per session```
 
-│       │       └── hr/         # 14 files per session (7 per moment)data/derivatives/preprocessing/sub-f01p01/ses-01/
+│       │       └── hr/         # 14 files per session (7 per moment)data/derivatives/preprocessing/sub-g01p01/ses-01/
 
 │       ├── visualization/      # 6 PNG plots per session├── bvp/
 
@@ -210,25 +210,25 @@ TherasyncPipeline/├── sub-f01p01_ses-01_task-restingstate_recording-bvp.ts
 
 # List all outputs for a subject
 
-### HR (14 files)tree data/derivatives/preprocessing/sub-f01p01/
+### HR (14 files)tree data/derivatives/preprocessing/sub-g01p01/
 
 - `*_task-{moment}_desc-processed_recording-hr.tsv` (×2)
 
 - `*_task-{moment}_desc-processed_recording-hr.json` (×2)# Check BVP metrics
 
-- `*_task-{moment}_desc-outliers_events.tsv` (×2)cat data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/*_desc-bvp-metrics_physio.tsv
+- `*_task-{moment}_desc-outliers_events.tsv` (×2)cat data/derivatives/preprocessing/sub-g01p01/ses-01/bvp/*_desc-bvp-metrics_physio.tsv
 
 - `*_task-{moment}_desc-outliers_events.json` (×2)
 
 - `*_task-{moment}_desc-hr-metrics_physio.json` (×2)# Check EDA metrics
 
-- `*_desc-hr-metrics_physio.tsv` (combined metrics)cat data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_desc-eda-metrics_physio.tsv
+- `*_desc-hr-metrics_physio.tsv` (combined metrics)cat data/derivatives/preprocessing/sub-g01p01/ses-01/eda/*_desc-eda-metrics_physio.tsv
 
 - `*_desc-hr-summary.json`
 
 - `*_desc-hr-summary.txt`# Check HR metrics
 
-cat data/derivatives/preprocessing/sub-f01p01/ses-01/hr/*_hr-metrics.tsv
+cat data/derivatives/preprocessing/sub-g01p01/ses-01/hr/*_hr-metrics.tsv
 
 ### Visualizations (6 files)
 
@@ -248,19 +248,19 @@ cat data/derivatives/preprocessing/sub-f01p01/ses-01/hr/*_hr-metrics.tsv
 
 ## 🧪 Testing# 1. Process
 
-PYTHONPATH=. poetry run python scripts/preprocess_bvp.py -s sub-f01p01 -e ses-01 -v
+PYTHONPATH=. poetry run python scripts/preprocess_bvp.py -s sub-g01p01 -e ses-01 -v
 
 ```bash
 
 # Run all tests (should be 34/34 passing)# 2. Check
 
-poetry run pytest tests/ -vls -R data/derivatives/therasync-bvp/sub-f01p01/
+poetry run pytest tests/ -vls -R data/derivatives/therasync-bvp/sub-g01p01/
 
 
 
 # Run with coverage# 3. Clean
 
-poetry run pytest --cov=src tests/PYTHONPATH=. poetry run python scripts/clean_outputs.py -d -s sub-f01p01 -e ses-01 -f
+poetry run pytest --cov=src tests/PYTHONPATH=. poetry run python scripts/clean_outputs.py -d -s sub-g01p01 -e ses-01 -f
 
 
 
@@ -307,8 +307,8 @@ find data/derivatives/visualization -name "*.png" | wc -l  # Should be 306
 grep -i "error\|failed" *.log
 
 # View specific session
-tree data/derivatives/preprocessing/sub-f01p01/ses-01/
-ls data/derivatives/visualization/sub-f01p01/ses-01/figures/
+tree data/derivatives/preprocessing/sub-g01p01/ses-01/
+ls data/derivatives/visualization/sub-g01p01/ses-01/figures/
 ```
 
 ## ⚠️ Common Issues
@@ -343,7 +343,7 @@ ls data/derivatives/visualization/sub-f01p01/ses-01/figures/
 
 ```bash
 # Single participant
-poetry run python scripts/physio/dppa/compute_poincare.py -s f01p01 -e 01
+poetry run python scripts/physio/dppa/compute_poincare.py -s g01p01 -e 01
 
 # Batch (all)
 poetry run python scripts/physio/dppa/compute_poincare.py --batch

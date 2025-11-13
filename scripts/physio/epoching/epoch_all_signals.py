@@ -7,7 +7,7 @@ for time-windowed analysis. Supports batch processing of multiple subjects/sessi
 
 Usage:
     # Single session
-    python scripts/physio/epoching/epoch_all_signals.py --subject f01p01 --session 01
+    python scripts/physio/epoching/epoch_all_signals.py --subject g01p01 --session 01
     
     # Batch process all sessions
     python scripts/physio/epoching/epoch_all_signals.py --batch
@@ -89,7 +89,7 @@ def main():
         epilog="""
 Examples:
   # Process single session
-  python scripts/physio/epoching/epoch_all_signals.py --subject f01p01 --session 01
+  python scripts/physio/epoching/epoch_all_signals.py --subject g01p01 --session 01
   
   # Batch process all sessions
   python scripts/physio/epoching/epoch_all_signals.py --batch
@@ -98,11 +98,11 @@ Examples:
   python scripts/physio/epoching/epoch_all_signals.py --batch --dry-run
   
   # Process specific subjects only
-  python scripts/physio/epoching/epoch_all_signals.py --batch --subjects f01p01 f01p02
+  python scripts/physio/epoching/epoch_all_signals.py --batch --subjects g01p01 g01p02
         """
     )
     
-    parser.add_argument('--subject', type=str, help='Subject ID (e.g., f01p01)')
+    parser.add_argument('--subject', type=str, help='Subject ID (e.g., g01p01)')
     parser.add_argument('--session', type=str, help='Session ID (e.g., 01)')
     parser.add_argument('--batch', action='store_true', help='Process all subjects/sessions')
     parser.add_argument('--subjects', nargs='+', help='Process only these subjects')

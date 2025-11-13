@@ -84,8 +84,8 @@ find data/derivatives/preprocessing -type d -name "bvp" | wc -l  # Should be 49-
 find data/derivatives/visualization -name "*.png" | wc -l        # Should be 306
 
 # Browse specific session
-tree data/derivatives/preprocessing/sub-f01p01/ses-01/
-tree data/derivatives/visualization/sub-f01p01/ses-01/figures/
+tree data/derivatives/preprocessing/sub-g01p01/ses-01/
+tree data/derivatives/visualization/sub-g01p01/ses-01/figures/
 ```
 
 ## Processing Single Subject
@@ -94,7 +94,7 @@ For testing or re-processing specific subjects:
 
 ```bash
 # Set subject and session
-export SUBJECT=f01p01
+export SUBJECT=g01p01
 export SESSION=01
 
 # Run preprocessing pipeline
@@ -116,7 +116,7 @@ ls data/derivatives/visualization/sub-$SUBJECT/ses-$SESSION/figures/
 
 ```bash
 # Process specific subjects only
-poetry run python scripts/batch/run_all_preprocessing.py --subjects f01p01 f02p01 f03p01
+poetry run python scripts/batch/run_all_preprocessing.py --subjects g01p01 g02p01 g03p01
 
 # Skip already processed (incremental updates)
 poetry run python scripts/batch/run_all_preprocessing.py --skip-existing
@@ -135,7 +135,7 @@ poetry run python scripts/batch/run_all_preprocessing.py --verbose
 poetry run python scripts/batch/run_all_visualizations.py --plots 1 2 3
 
 # Process specific subjects
-poetry run python scripts/batch/run_all_visualizations.py --subjects f01p01 f02p01
+poetry run python scripts/batch/run_all_visualizations.py --subjects g01p01 g02p01
 
 # Dry run
 poetry run python scripts/batch/run_all_visualizations.py --dry-run
@@ -157,13 +157,13 @@ Each subject/session gets 6 publication-ready plots:
 ```
 data/derivatives/
 ├── preprocessing/
-│   └── sub-f01p01/
+│   └── sub-g01p01/
 │       └── ses-01/
 │           ├── bvp/    # 9 files: processed signals, peaks, HRV metrics
 │           ├── eda/    # 13 files: signals, tonic/phasic, SCR events, metrics
 │           └── hr/     # 14 files: 7 per moment (restingstate + therapy)
 ├── visualization/
-│   └── sub-f01p01/
+│   └── sub-g01p01/
 │       └── ses-01/
 │           └── figures/  # 6 PNG files (300 DPI, publication-ready)
 └── reports/

@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
 **Usage:**
 ```bash
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject g01p01 --session 01
 ```
 
 Note: No PYTHONPATH manipulation needed; scripts handle path setup internally.

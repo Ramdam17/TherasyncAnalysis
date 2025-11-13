@@ -8,7 +8,7 @@ This script creates 4-subplot visualizations for dyad pairs:
 
 Usage:
     # Single dyad
-    python scripts/physio/dppa/plot_dyad.py --dyad f01p01_ses-01_vs_f01p02_ses-01 --method nsplit120
+    python scripts/physio/dppa/plot_dyad.py --dyad g01p01_ses-01_vs_g01p02_ses-01 --method nsplit120
     
     # Batch mode (all dyads from config)
     python scripts/physio/dppa/plot_dyad.py --batch --method nsplit120 --mode inter
@@ -72,7 +72,7 @@ def plot_single_dyad(
     Plot a single dyad visualization.
     
     Args:
-        dyad_pair: Dyad identifier (e.g., "f01p01_ses-01_vs_f01p02_ses-01")
+        dyad_pair: Dyad identifier (e.g., "g01p01_ses-01_vs_g01p02_ses-01")
         method: Poincaré method (e.g., "nsplit120")
         output_dir: Output directory for figures
         icd_loader: DyadICDLoader instance
@@ -169,8 +169,8 @@ def plot_batch_dyads(
         raise ValueError(f"Invalid mode: {mode}. Must be 'inter' or 'intra'.")
     
     # Convert tuples to string format
-    # Inter-session: (('f01p01', 'ses-01'), ('f01p02', 'ses-01')) -> "f01p01_ses-01_vs_f01p02_ses-01"
-    # Intra-family: ('f01p01', 'f01p02', 'ses-01') -> "f01p01_ses-01_vs_f01p02_ses-01"
+    # Inter-session: (('g01p01', 'ses-01'), ('g01p02', 'ses-01')) -> "g01p01_ses-01_vs_g01p02_ses-01"
+    # Intra-family: ('g01p01', 'g01p02', 'ses-01') -> "g01p01_ses-01_vs_g01p02_ses-01"
     dyad_pairs = []
     for pair in raw_pairs:
         if mode == "inter":
@@ -243,7 +243,7 @@ def main():
         epilog="""
 Examples:
   # Single dyad
-  python scripts/physio/dppa/plot_dyad.py --dyad f01p01_ses-01_vs_f01p02_ses-01 --method nsplit120
+  python scripts/physio/dppa/plot_dyad.py --dyad g01p01_ses-01_vs_g01p02_ses-01 --method nsplit120
   
   # Batch inter-session
   python scripts/physio/dppa/plot_dyad.py --batch --method nsplit120 --mode inter
@@ -265,7 +265,7 @@ Examples:
     parser.add_argument(
         "--dyad",
         type=str,
-        help="Dyad identifier (e.g., f01p01_ses-01_vs_f01p02_ses-01)"
+        help="Dyad identifier (e.g., g01p01_ses-01_vs_g01p02_ses-01)"
     )
     
     # Batch mode

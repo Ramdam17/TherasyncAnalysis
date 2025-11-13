@@ -41,7 +41,7 @@ def test_frame_generation_sample():
     """
     Test frame generation with small sample (5 epochs).
     
-    This is a real-world integration test using f01p01 vs f01p02 data.
+    This is a real-world integration test using g01p01 vs g01p02 data.
     """
     output_dir = PROJECT_ROOT / 'data' / 'derivatives' / 'dppa' / 'frames' / 'test_sample'
     
@@ -55,7 +55,7 @@ def test_frame_generation_sample():
     result = subprocess.run(
         [
             'poetry', 'run', 'python', str(SCRIPT_PATH),
-            '--dyad', 'f01p01_ses-01_vs_f01p02_ses-01',
+            '--dyad', 'g01p01_ses-01_vs_g01p02_ses-01',
             '--method', 'sliding_duration30s_step5s',
             '--task', 'therapy',
             '--max-epochs', '5',

@@ -35,7 +35,7 @@ class TestDyadICDLoader:
     @pytest.fixture
     def valid_dyad_pair(self):
         """Provide a valid dyad pair string."""
-        return "f01p01_ses-01_vs_f01p02_ses-01"
+        return "g01p01_ses-01_vs_g01p02_ses-01"
 
     def test_parse_dyad_info_valid(self, loader, valid_dyad_pair):
         """Test parsing valid dyad pair string."""
@@ -46,17 +46,17 @@ class TestDyadICDLoader:
         assert "ses1" in result
         assert "sub2" in result
         assert "ses2" in result
-        assert result["sub1"] == "f01p01"
+        assert result["sub1"] == "g01p01"
         assert result["ses1"] == "01"
-        assert result["sub2"] == "f01p02"
+        assert result["sub2"] == "g01p02"
         assert result["ses2"] == "01"
 
     def test_parse_dyad_info_invalid_format(self, loader):
         """Test parsing invalid dyad pair format raises ValueError."""
         invalid_pairs = [
-            "f01p01_vs_f01p02",  # Missing sessions
+            "g01p01_vs_g01p02",  # Missing sessions
             "invalid_format",     # Wrong format
-            "f01p01_ses-01",      # Missing second subject
+            "g01p01_ses-01",      # Missing second subject
             "",                   # Empty string
         ]
         
@@ -98,7 +98,7 @@ class TestDyadICDLoader:
         """Test loading ICD for non-existent method raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
             loader.load_icd(
-                dyad_pair="f01p01_ses-01_vs_f01p02_ses-01",
+                dyad_pair="g01p01_ses-01_vs_g01p02_ses-01",
                 task="therapy",
                 method="nonexistent_method999"
             )
@@ -137,7 +137,7 @@ class TestDyadICDLoader:
         """Test loading both tasks with missing method file."""
         with pytest.raises(FileNotFoundError):
             loader.load_both_tasks(
-                dyad_pair="f01p01_ses-01_vs_f01p02_ses-01",
+                dyad_pair="g01p01_ses-01_vs_g01p02_ses-01",
                 method="nonexistent_method999"
             )
 
@@ -161,9 +161,9 @@ class TestDyadCentroidLoader:
     def valid_dyad_info(self):
         """Provide valid dyad info dictionary."""
         return {
-            "sub1": "f01p01",
+            "sub1": "g01p01",
             "ses1": "01",
-            "sub2": "f01p02",
+            "sub2": "g01p02",
             "ses2": "01",
         }
 
@@ -211,7 +211,7 @@ class TestDyadCentroidLoader:
         invalid_dyad_info = {
             "sub1": "nonexistent999",
             "ses1": "99",
-            "sub2": "f01p02",
+            "sub2": "g01p02",
             "ses2": "01",
         }
         
@@ -281,7 +281,7 @@ class TestDyadCentroidLoader:
         invalid_dyad_info = {
             "sub1": "nonexistent999",
             "ses1": "99",
-            "sub2": "f01p02",
+            "sub2": "g01p02",
             "ses2": "01",
         }
         
@@ -358,9 +358,9 @@ class TestDyadPlotter:
     def sample_dyad_info(self):
         """Provide sample dyad info."""
         return {
-            "sub1": "f01p01",
+            "sub1": "g01p01",
             "ses1": "01",
-            "sub2": "f01p02",
+            "sub2": "g01p02",
             "ses2": "01"
         }
 
@@ -396,7 +396,7 @@ class TestDyadPlotter:
         from src.physio.dppa.dyad_icd_loader import DyadICDLoader
         from src.physio.dppa.dyad_centroid_loader import DyadCentroidLoader
         
-        dyad_pair = "f01p01_ses-01_vs_f01p02_ses-01"
+        dyad_pair = "g01p01_ses-01_vs_g01p02_ses-01"
         method = "nsplit120"
         
         # Load real data
@@ -470,7 +470,7 @@ class TestPlotDyadCLI:
     @pytest.fixture
     def valid_dyad_pair(self):
         """Provide a valid dyad pair for testing."""
-        return "f01p01_ses-01_vs_f01p02_ses-01"
+        return "g01p01_ses-01_vs_g01p02_ses-01"
 
     @pytest.fixture
     def method(self):
@@ -508,7 +508,7 @@ class TestPlotDyadCLI:
         method_dir = temp_output_dir / method
         assert method_dir.exists(), f"Method directory not created: {method_dir}"
         
-        expected_file = method_dir / f"sub-f01p01_ses-01_vs_sub-f01p02_ses-01_method-{method}_desc-dyad_viz.png"
+        expected_file = method_dir / f"sub-g01p01_ses-01_vs_sub-g01p02_ses-01_method-{method}_desc-dyad_viz.png"
         assert expected_file.exists(), f"Output file not created: {expected_file}"
         
         # Check file size (should be > 100 KB for a valid plot)

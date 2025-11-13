@@ -54,7 +54,7 @@ class BVPLoader:
         Load all BVP data for a subject and session across specified moments.
         
         Args:
-            subject_id: Subject identifier (e.g., 'sub-f01p01')
+            subject_id: Subject identifier (e.g., 'sub-g01p01')
             session_id: Session identifier (e.g., 'ses-01')
             moments: List of moment names to load. If None, loads all configured moments.
             
@@ -104,7 +104,7 @@ class BVPLoader:
         Load BVP data for a specific moment (task).
         
         Args:
-            subject_id: Subject identifier (e.g., 'sub-f01p01')
+            subject_id: Subject identifier (e.g., 'sub-g01p01')
             session_id: Session identifier (e.g., 'ses-01')
             moment: Moment name (e.g., 'restingstate', 'therapy')
             

@@ -387,5 +387,5 @@ if __name__ == "__main__":
     module_logger.info("Module-specific log message")
     
     # Test processing logger
-    proc_logger = setup.create_processing_logger("f01p01", "01", "restingstate")
+    proc_logger = setup.create_processing_logger("g01p01", "01", "restingstate")
     proc_logger.info("Processing specific log message")

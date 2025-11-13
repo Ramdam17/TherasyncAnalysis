@@ -46,7 +46,7 @@ class TestEpochAnimator:
     def test_load_rr_intervals_real_data(self, animator):
         """Test loading RR intervals from real file."""
         rr_df = animator.load_rr_intervals(
-            'f01p01', 'ses-01', 'therapy', 'sliding_duration30s_step5s'
+            'g01p01', 'ses-01', 'therapy', 'sliding_duration30s_step5s'
         )
         
         assert isinstance(rr_df, pd.DataFrame)
@@ -57,8 +57,8 @@ class TestEpochAnimator:
     def test_load_rr_intervals_session_prefix(self, animator):
         """Test session prefix auto-addition."""
         # Should work with or without 'ses-' prefix
-        rr_df1 = animator.load_rr_intervals('f01p01', 'ses-01', 'therapy', 'sliding_duration30s_step5s')
-        rr_df2 = animator.load_rr_intervals('f01p01', '01', 'therapy', 'sliding_duration30s_step5s')
+        rr_df1 = animator.load_rr_intervals('g01p01', 'ses-01', 'therapy', 'sliding_duration30s_step5s')
+        rr_df2 = animator.load_rr_intervals('g01p01', '01', 'therapy', 'sliding_duration30s_step5s')
         
         assert len(rr_df1) == len(rr_df2)
     
@@ -126,7 +126,7 @@ class TestEpochAnimator:
     
     def test_compute_poincare_for_epoch_real_data(self, animator):
         """Test Poincaré computation with real data."""
-        rr_df = animator.load_rr_intervals('f01p01', 'ses-01', 'therapy', 'sliding_duration30s_step5s')
+        rr_df = animator.load_rr_intervals('g01p01', 'ses-01', 'therapy', 'sliding_duration30s_step5s')
         
         result = animator.compute_poincare_for_epoch(rr_df, 0, 'sliding_duration30s_step5s')
         

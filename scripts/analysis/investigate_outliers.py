@@ -12,7 +12,7 @@ Phase 2 of preprocessing artifacts investigation (PREPROCESSING_ISSUES.md).
 
 Usage:
     poetry run python scripts/analysis/investigate_outliers.py
-    poetry run python scripts/analysis/investigate_outliers.py --sessions sub-f03p03/ses-01 sub-f04p04/ses-03
+    poetry run python scripts/analysis/investigate_outliers.py --sessions sub-g03p03/ses-01 sub-g04p04/ses-03
     poetry run python scripts/analysis/investigate_outliers.py --top-n 5 --verbose
 
 Author: TherasyncPipeline Team
@@ -495,7 +495,7 @@ Examples:
     poetry run python scripts/analysis/investigate_outliers.py --top-n 3
     
     # Investigate specific sessions
-    poetry run python scripts/analysis/investigate_outliers.py --sessions sub-f03p03/ses-01 sub-f04p04/ses-03
+    poetry run python scripts/analysis/investigate_outliers.py --sessions sub-g03p03/ses-01 sub-g04p04/ses-03
     
     # Verbose output
     poetry run python scripts/analysis/investigate_outliers.py --top-n 5 --verbose

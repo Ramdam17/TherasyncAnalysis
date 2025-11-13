@@ -151,7 +151,7 @@ class TestCentroidLoader(unittest.TestCase):
         """Create test centroid TSV and JSON files."""
         # Create directory structure
         poincare_dir = (self.temp_path / "derivatives" / "dppa" / 
-                       "sub-f01p01" / "ses-01" / "poincare")
+                       "sub-g01p01" / "ses-01" / "poincare")
         poincare_dir.mkdir(parents=True)
         
         # Create centroid TSV
@@ -166,7 +166,7 @@ class TestCentroidLoader(unittest.TestCase):
         }
         df = pd.DataFrame(centroid_data)
         
-        tsv_file = poincare_dir / "sub-f01p01_ses-01_task-therapy_method-nsplit120_desc-poincare_physio.tsv"
+        tsv_file = poincare_dir / "sub-g01p01_ses-01_task-therapy_method-nsplit120_desc-poincare_physio.tsv"
         df.to_csv(tsv_file, sep='\t', index=False)
         
         # Create JSON sidecar
@@ -181,7 +181,7 @@ class TestCentroidLoader(unittest.TestCase):
     
     def test_load_centroid_success(self):
         """Test successful centroid loading."""
-        df = self.loader.load_centroid('f01p01', 'ses-01', 'therapy', 'nsplit120')
+        df = self.loader.load_centroid('g01p01', 'ses-01', 'therapy', 'nsplit120')
         
         self.assertIsNotNone(df)
         self.assertEqual(len(df), 120)  # nsplit120 method creates 120 epochs
@@ -198,11 +198,11 @@ class TestCentroidLoader(unittest.TestCase):
     def test_load_centroid_caching(self):
         """Test that caching improves performance."""
         # First load (from disk)
-        df1 = self.loader.load_centroid('f01p01', 'ses-01', 'therapy', 'nsplit120')
+        df1 = self.loader.load_centroid('g01p01', 'ses-01', 'therapy', 'nsplit120')
         cache_info1 = self.loader.get_cache_info()
         
         # Second load (from cache)
-        df2 = self.loader.load_centroid('f01p01', 'ses-01', 'therapy', 'nsplit120')
+        df2 = self.loader.load_centroid('g01p01', 'ses-01', 'therapy', 'nsplit120')
         cache_info2 = self.loader.get_cache_info()
         
         # Check cache hit
@@ -212,7 +212,7 @@ class TestCentroidLoader(unittest.TestCase):
     def test_clear_cache(self):
         """Test cache clearing."""
         # Load some data
-        self.loader.load_centroid('f01p01', 'ses-01', 'therapy', 'nsplit120')
+        self.loader.load_centroid('g01p01', 'ses-01', 'therapy', 'nsplit120')
         info_before = self.loader.get_cache_info()
         self.assertGreater(info_before['entries'], 0)
         
@@ -240,12 +240,12 @@ class TestDyadConfigLoader(unittest.TestCase):
                 'method': 'sliding_duration30s_step5s',
                 'tasks': ['therapy', 'restingstate'],
                 'families': {
-                    'f01': {
-                        'ses-01': ['f01p01', 'f01p02', 'f01p03'],
-                        'ses-02': ['f01p01', 'f01p02']
+                    'g01': {
+                        'ses-01': ['g01p01', 'g01p02', 'g01p03'],
+                        'ses-02': ['g01p01', 'g01p02']
                     },
-                    'f02': {
-                        'ses-01': ['f02p01', 'f02p02', 'f02p03', 'f02p04']
+                    'g02': {
+                        'ses-01': ['g02p01', 'g02p02', 'g02p03', 'g02p04']
                     }
                 }
             }
@@ -281,9 +281,9 @@ class TestDyadConfigLoader(unittest.TestCase):
         """Test intra-family pair generation."""
         pairs = self.loader.get_intra_family_pairs()
         
-        # f01/ses-01: 3 participants → C(3,2) = 3 pairs
-        # f01/ses-02: 2 participants → C(2,2) = 1 pair
-        # f02/ses-01: 4 participants → C(4,2) = 6 pairs
+        # g01/ses-01: 3 participants → C(3,2) = 3 pairs
+        # g01/ses-02: 2 participants → C(2,2) = 1 pair
+        # g02/ses-01: 4 participants → C(4,2) = 6 pairs
         # Total: 3 + 1 + 6 = 10 pairs
         self.assertEqual(len(pairs), 10)
         
@@ -295,28 +295,28 @@ class TestDyadConfigLoader(unittest.TestCase):
     
     def test_get_intra_family_pairs_with_filter(self):
         """Test intra-family pair generation with family filter."""
-        pairs = self.loader.get_intra_family_pairs(family='f01')
+        pairs = self.loader.get_intra_family_pairs(family='g01')
         
-        # f01/ses-01: 3 pairs + f01/ses-02: 1 pair = 4 pairs
+        # g01/ses-01: 3 pairs + g01/ses-02: 1 pair = 4 pairs
         self.assertEqual(len(pairs), 4)
         
-        # All pairs should be from f01
+        # All pairs should be from g01
         for pair in pairs:
-            self.assertEqual(pair[0][0], 'f01')  # First tuple, family field
-            self.assertEqual(pair[1][0], 'f01')  # Second tuple, family field
+            self.assertEqual(pair[0][0], 'g01')  # First tuple, family field
+            self.assertEqual(pair[1][0], 'g01')  # Second tuple, family field
     
     def test_get_intra_family_pairs_single_participant(self):
         """Test handling of session with single participant (no pairs)."""
         # Modify config to have single-participant session
-        self.config_data['intra_family']['families']['f03'] = {
-            'ses-01': ['f03p01']  # Only 1 participant
+        self.config_data['intra_family']['families']['g03'] = {
+            'ses-01': ['g03p01']  # Only 1 participant
         }
         
         with open(self.config_file, 'w') as f:
             yaml.dump(self.config_data, f)
         
         loader = DyadConfigLoader(str(self.config_file))
-        pairs = loader.get_intra_family_pairs(family='f03')
+        pairs = loader.get_intra_family_pairs(family='g03')
         
         # Should return 0 pairs (can't make dyad from 1 participant)
         self.assertEqual(len(pairs), 0)
@@ -495,22 +495,22 @@ class TestDPPAWriter(unittest.TestCase):
         
         # Create test ICD data
         self.inter_session_data = {
-            ('f01p01', 'ses-01', 'f01p02', 'ses-01'): pd.DataFrame({
+            ('g01p01', 'ses-01', 'g01p02', 'ses-01'): pd.DataFrame({
                 'epoch_id': [0, 1, 2],
                 'icd': [50.0, 55.0, 52.0]
             }),
-            ('f01p01', 'ses-01', 'f01p03', 'ses-01'): pd.DataFrame({
+            ('g01p01', 'ses-01', 'g01p03', 'ses-01'): pd.DataFrame({
                 'epoch_id': [0, 1, 2],
                 'icd': [60.0, 65.0, 62.0]
             })
         }
         
         self.intra_family_data = {
-            ('f01', 'f01p01', 'f01p02', 'ses-01', 'therapy'): pd.DataFrame({
+            ('g01', 'g01p01', 'g01p02', 'ses-01', 'therapy'): pd.DataFrame({
                 'epoch_id': [0, 1, 2],
                 'icd': [45.0, 48.0, 46.0]
             }),
-            ('f01', 'f01p01', 'f01p03', 'ses-01', 'therapy'): pd.DataFrame({
+            ('g01', 'g01p01', 'g01p03', 'ses-01', 'therapy'): pd.DataFrame({
                 'epoch_id': [0, 1, 2],
                 'icd': [55.0, 58.0, 56.0]
             })
@@ -576,7 +576,7 @@ class TestDPPAWriter(unittest.TestCase):
     def test_write_with_nan_handling(self):
         """Test CSV writing with NaN values."""
         data_with_nan = {
-            ('f01p01', 'ses-01', 'f01p02', 'ses-01'): pd.DataFrame({
+            ('g01p01', 'ses-01', 'g01p02', 'ses-01'): pd.DataFrame({
                 'epoch_id': [0, 1, 2],
                 'icd': [50.0, np.nan, 52.0]
             })

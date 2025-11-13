@@ -166,7 +166,7 @@ Returns:
 Load BVP data for a specific moment (task).
 
 Args:
-    subject_id: Subject identifier (e.g., 'sub-f01p01')
+    subject_id: Subject identifier (e.g., 'sub-g01p01')
     session_id: Session identifier (e.g., 'ses-01')
     moment: Moment name (e.g., 'restingstate', 'therapy')
     
@@ -182,7 +182,7 @@ Raises:
 Load all BVP data for a subject and session across specified moments.
 
 Args:
-    subject_id: Subject identifier (e.g., 'sub-f01p01')
+    subject_id: Subject identifier (e.g., 'sub-g01p01')
     session_id: Session identifier (e.g., 'ses-01')
     moments: List of moment names to load. If None, loads all configured moments.
     
@@ -426,7 +426,7 @@ Returns:
 Save processed BVP data and metrics in BIDS format.
 
 Args:
-    subject_id: Subject identifier WITH prefix (e.g., 'sub-f01p01')
+    subject_id: Subject identifier WITH prefix (e.g., 'sub-g01p01')
     session_id: Session identifier WITH prefix (e.g., 'ses-01')
     processed_results: Dictionary mapping moment names to processed DataFrames
                      Expected columns: time, PPG_Raw, PPG_Clean, PPG_Quality, PPG_Peaks, PPG_Rate
@@ -444,7 +444,7 @@ Creates TSV file with RR intervals time-series and JSON sidecar with metadata.
 Files follow BIDS naming: `*_task-{moment}_desc-rrintervals_physio.{tsv,json}`
 
 Args:
-    subject_id: Subject identifier WITH prefix (e.g., 'sub-f01p01')
+    subject_id: Subject identifier WITH prefix (e.g., 'sub-g01p01')
     session_id: Session identifier WITH prefix (e.g., 'ses-01')
     moment: Moment/task name (e.g., 'restingstate', 'therapy')
     rr_intervals_df: DataFrame from BVPMetricsExtractor.extract_rr_intervals()
@@ -461,7 +461,7 @@ Notes:
 
 Example:
     >>> rr_df = extractor.extract_rr_intervals(peaks, 64.0, 'therapy')
-    >>> tsv_path, json_path = writer.save_rr_intervals('sub-f01p01', 'ses-01', 'therapy', rr_df)
+    >>> tsv_path, json_path = writer.save_rr_intervals('sub-g01p01', 'ses-01', 'therapy', rr_df)
     >>> print(f"Saved {len(rr_df)} intervals to {tsv_path}")
 
 
@@ -497,7 +497,7 @@ EDALoader(self, config_path: Union[str, pathlib.Path, NoneType] = None)
 Find all EDA TSV/JSON file pairs for a subject/session.
 
 Args:
-    subject: Subject ID (e.g., 'sub-f01p01')
+    subject: Subject ID (e.g., 'sub-g01p01')
     session: Session ID (e.g., 'ses-01')
 
 Returns:
@@ -508,7 +508,7 @@ Raises:
 
 Example:
     >>> loader = EDALoader()
-    >>> files = loader.find_eda_files('sub-f01p01', 'ses-01')
+    >>> files = loader.find_eda_files('sub-g01p01', 'ses-01')
     >>> print(f"Found {len(files)} EDA recordings")
 
 ##### `get_data_info(self, data: pandas.core.frame.DataFrame, metadata: dict) -> dict`
@@ -545,7 +545,7 @@ Example:
 Load EDA data for a specific subject/session, optionally filtered by moment.
 
 Args:
-    subject: Subject ID (e.g., 'sub-f01p01')
+    subject: Subject ID (e.g., 'sub-g01p01')
     session: Session ID (e.g., 'ses-01')
     moment: Optional moment/task name (e.g., 'restingstate', 'therapy').
            If None, loads and concatenates all moments.
@@ -561,7 +561,7 @@ Raises:
 
 Example:
     >>> loader = EDALoader()
-    >>> data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
+    >>> data, metadata = loader.load_subject_session('sub-g01p01', 'ses-01', moment='restingstate')
     >>> print(f"Loaded {len(data)} samples at {metadata['SamplingFrequency']} Hz")
 
 #### Class: `EDACleaner`
@@ -874,7 +874,7 @@ HRLoader(self, config: Optional[src.core.config_loader.ConfigLoader] = None)
 Find all HR TSV and JSON file pairs for a subject/session.
 
 Args:
-    subject: Subject ID (e.g., 'sub-f01p01')
+    subject: Subject ID (e.g., 'sub-g01p01')
     session: Session ID (e.g., 'ses-01')
 
 Returns:
@@ -911,7 +911,7 @@ Raises:
 Load HR data for a specific subject/session, optionally filtered by moment.
 
 Args:
-    subject: Subject ID (e.g., 'sub-f01p01')
+    subject: Subject ID (e.g., 'sub-g01p01')
     session: Session ID (e.g., 'ses-01')
     moment: Optional moment/task name (e.g., 'restingstate', 'therapy').
            If None, loads and concatenates all moments.
@@ -927,7 +927,7 @@ Raises:
 
 Example:
     >>> loader = HRLoader()
-    >>> data, metadata = loader.load_subject_session('sub-f01p01', 'ses-01', moment='restingstate')
+    >>> data, metadata = loader.load_subject_session('sub-g01p01', 'ses-01', moment='restingstate')
     >>> print(f"Loaded {len(data)} samples at {metadata['SamplingFrequency']} Hz")
 
 #### Class: `HRCleaner`
@@ -1079,7 +1079,7 @@ HRBIDSWriter(self, config_path: Union[str, pathlib.Path, NoneType] = None)
 Write complete HR processing results in BIDS format.
 
 Args:
-    subject_id: Subject identifier WITH prefix (e.g., 'sub-f01p01')
+    subject_id: Subject identifier WITH prefix (e.g., 'sub-g01p01')
     session_id: Session identifier WITH prefix (e.g., 'ses-01')
     processed_results: Dictionary mapping moment names to processed DataFrames
                      Expected columns: time, HR_Raw, HR_Clean, HR_Quality, 
@@ -1097,7 +1097,7 @@ Example:
     ...     'therapy': df_therapy
     ... }
     >>> file_paths = writer.save_processed_data(
-    ...     'sub-f01p01', 'ses-01', processed_results, metrics, metadata
+    ...     'sub-g01p01', 'ses-01', processed_results, metrics, metadata
     ... )
     >>> print(f"Physio files: {file_paths['physio']}")
 
@@ -1207,7 +1207,7 @@ EpochBIDSWriter(self, config: Dict[str, Any])
 Detect task type from BIDS filename.
 
 Args:
-    filename: BIDS-formatted filename (e.g., `sub-f01p01_ses-01_task-therapy_physio.tsv`).
+    filename: BIDS-formatted filename (e.g., `sub-g01p01_ses-01_task-therapy_physio.tsv`).
 
 Returns:
     Task name ('therapy', 'restingstate', or 'unknown').
@@ -1232,7 +1232,7 @@ Process a single file: load, assign epochs, write output.
 
 Args:
     input_path: Path to input TSV file.
-    subject: Subject ID (e.g., 'f01p01').
+    subject: Subject ID (e.g., 'g01p01').
     session: Session ID (e.g., '01').
     modality: Modality type ('bvp', 'eda', 'hr').
 
@@ -1344,7 +1344,7 @@ CentroidLoader(config_path: Union[str, Path, None] = None)
 Load centroid TSV file for a specific participant/session/task/method.
 
 **Args**:
-- `subject` (str): Participant ID (e.g., 'f01p01')
+- `subject` (str): Participant ID (e.g., 'g01p01')
 - `session` (str): Session ID (e.g., 'ses-01', auto-prefix if needed)
 - `task` (str): Task name ('therapy', 'restingstate')
 - `method` (str): Epoching method ('nsplit120', 'sliding_duration30s_step5s')
@@ -1365,7 +1365,7 @@ Load centroid TSV file for a specific participant/session/task/method.
 **Example**:
 ```python
 loader = CentroidLoader('config/config.yaml')
-df = loader.load_centroid('f01p01', 'ses-01', 'therapy', 'nsplit120')
+df = loader.load_centroid('g01p01', 'ses-01', 'therapy', 'nsplit120')
 # df.shape = (120, 7) for nsplit120 method
 ```
 
@@ -1467,7 +1467,7 @@ Get all inter-session dyad pairs.
 
 **Returns**:
 - List of pairs: `[((subj1, ses1), (subj2, ses2)), ...]`
-- Example: `[(('f01p01', 'ses-01'), ('f01p02', 'ses-01')), ...]`
+- Example: `[(('g01p01', 'ses-01'), ('g01p02', 'ses-01')), ...]`
 
 **Generation**:
 - All combinations of {participant, session} tuples
@@ -1477,7 +1477,7 @@ Get all inter-session dyad pairs.
 ```python
 loader = DyadConfigLoader('config/dppa_dyads.yaml')
 pairs = loader.get_inter_session_pairs(task='therapy')
-# pairs = [(('f01p01', 'ses-01'), ('f01p02', 'ses-01')), ...]
+# pairs = [(('g01p01', 'ses-01'), ('g01p02', 'ses-01')), ...]
 ```
 
 #### `get_intra_family_pairs(family: Optional[str] = None, session: Optional[str] = None, task: Optional[str] = None) -> List[Tuple[Tuple[str, str, str], Tuple[str, str, str]]]`
@@ -1485,13 +1485,13 @@ pairs = loader.get_inter_session_pairs(task='therapy')
 Get intra-family dyad pairs (same session, same family).
 
 **Args**:
-- `family` (str, optional): Filter by family ('f01', 'f02', ...)
+- `family` (str, optional): Filter by family ('g01', 'g02', ...)
 - `session` (str, optional): Filter by session ('ses-01', ...)
 - `task` (str, optional): Filter by task
 
 **Returns**:
 - List of pairs: `[((fam, subj1, ses), (fam, subj2, ses)), ...]`
-- Example: `[(('f01', 'f01p01', 'ses-01'), ('f01', 'f01p02', 'ses-01')), ...]`
+- Example: `[(('g01', 'g01p01', 'ses-01'), ('g01', 'g01p02', 'ses-01')), ...]`
 
 **Generation**:
 - C(n_participants, 2) combinations per family/session
@@ -1531,7 +1531,7 @@ Write inter-session ICDs to CSV.
   - Rows: Epochs (120 for nsplit120)
   - Columns: `epoch_id` + dyad columns
   - Dyad column names: `{subj1}_{ses1}___{subj2}_{ses2}` (triple underscore)
-  - Example: `f01p01_ses-01___f01p02_ses-01`
+  - Example: `g01p01_ses-01___g01p02_ses-01`
 
 **Example**:
 ```python
@@ -1555,7 +1555,7 @@ Write intra-family ICDs to CSV.
   - Rows: Epochs (variable, ~553 for therapy)
   - Columns: `epoch_id` + 81 dyad columns
   - Dyad column names: `{family}_{subj1}_{subj2}_{session}`
-  - Example: `f01_f01p01_f01p02_ses-01`
+  - Example: `g01_g01p01_g01p02_ses-01`
 
 ---
 
@@ -1570,14 +1570,14 @@ Write intra-family ICDs to CSV.
 **Usage**:
 ```bash
 # Single participant/session
-poetry run python scripts/physio/dppa/compute_poincare.py -s f01p01 -e 01
+poetry run python scripts/physio/dppa/compute_poincare.py -s g01p01 -e 01
 
 # Batch processing (all)
 poetry run python scripts/physio/dppa/compute_poincare.py --batch
 ```
 
 **Options**:
-- `-s, --subject`: Subject ID (e.g., 'f01p01')
+- `-s, --subject`: Subject ID (e.g., 'g01p01')
 - `-e, --session`: Session ID (auto-prefix 'ses-' if needed)
 - `--batch`: Process all subjects/sessions
 - `-c, --config`: Path to config file (default: 'config/config.yaml')
@@ -1634,7 +1634,7 @@ poetry run python scripts/physio/dppa/compute_dppa.py --mode both --task all --b
 ```bash
 # Single dyad visualization
 poetry run python scripts/physio/dppa/plot_dyad.py \
-  --dyad f01p01_ses-01_vs_f01p02_ses-01 \
+  --dyad g01p01_ses-01_vs_g01p02_ses-01 \
   --method nsplit120
 
 # Batch inter-session mode
@@ -1683,7 +1683,7 @@ poetry run python scripts/physio/dppa/plot_dyad.py \
 ```bash
 # Generate single dyad figure
 poetry run python scripts/physio/dppa/plot_dyad.py \
-  --dyad f01p01_ses-01_vs_f01p02_ses-01 \
+  --dyad g01p01_ses-01_vs_g01p02_ses-01 \
   --method nsplit120
 
 # Generate all 1176 inter-session figures
@@ -1717,11 +1717,11 @@ Parse dyad identifier string into components.
 
 **Args**:
 - `dyad_pair` (str): Dyad identifier (format: `{subj1}_{ses1}_vs_{subj2}_{ses2}`)
-  - Example: `'f01p01_ses-01_vs_f01p02_ses-01'`
+  - Example: `'g01p01_ses-01_vs_g01p02_ses-01'`
 
 **Returns**:
 - `Tuple[str, str, str, str]`: (subject1, session1, subject2, session2)
-  - Example: `('f01p01', 'ses-01', 'f01p02', 'ses-01')`
+  - Example: `('g01p01', 'ses-01', 'g01p02', 'ses-01')`
 
 **Raises**:
 - `ValueError`: If dyad_pair format is invalid
@@ -1729,8 +1729,8 @@ Parse dyad identifier string into components.
 **Example**:
 ```python
 loader = DyadICDLoader()
-sub1, ses1, sub2, ses2 = loader.parse_dyad_info('f01p01_ses-01_vs_f01p02_ses-01')
-# Returns: ('f01p01', 'ses-01', 'f01p02', 'ses-01')
+sub1, ses1, sub2, ses2 = loader.parse_dyad_info('g01p01_ses-01_vs_g01p02_ses-01')
+# Returns: ('g01p01', 'ses-01', 'g01p02', 'ses-01')
 ```
 
 ##### `load_icd(dyad_pair: str, method: str, task: str) -> Optional[pd.DataFrame]`
@@ -1759,7 +1759,7 @@ Load ICD data for a specific dyad, method, and task.
 **Example**:
 ```python
 loader = DyadICDLoader()
-icd_df = loader.load_icd('f01p01_ses-01_vs_f01p02_ses-01', 'nsplit120', 'therapy')
+icd_df = loader.load_icd('g01p01_ses-01_vs_g01p02_ses-01', 'nsplit120', 'therapy')
 # icd_df.shape = (120, 2) for nsplit120
 # icd_df.columns = ['epoch_id', 'icd_value']
 ```
@@ -1779,7 +1779,7 @@ Load ICD data for both therapy and resting tasks.
 **Example**:
 ```python
 loader = DyadICDLoader()
-therapy_df, resting_df = loader.load_both_tasks('f01p01_ses-01_vs_f01p02_ses-01', 'nsplit120')
+therapy_df, resting_df = loader.load_both_tasks('g01p01_ses-01_vs_g01p02_ses-01', 'nsplit120')
 ```
 
 ---
@@ -1805,7 +1805,7 @@ DyadCentroidLoader(config_path: Union[str, Path, None] = None)
 Load Poincaré centroid data for a single participant.
 
 **Args**:
-- `subject` (str): Participant ID (e.g., 'f01p01')
+- `subject` (str): Participant ID (e.g., 'g01p01')
 - `session` (str): Session ID (e.g., 'ses-01', auto-prefix if needed)
 - `method` (str): Epoching method ('nsplit120', 'sliding_duration30s_step5s')
 - `task` (str): Task name ('therapy', 'restingstate')
@@ -1826,7 +1826,7 @@ Load Poincaré centroid data for a single participant.
 **Example**:
 ```python
 loader = DyadCentroidLoader()
-df = loader.load_centroids('f01p01', 'ses-01', 'nsplit120', 'therapy')
+df = loader.load_centroids('g01p01', 'ses-01', 'nsplit120', 'therapy')
 # df.shape = (120, 7) for nsplit120
 ```
 
@@ -1850,9 +1850,9 @@ Validate that two centroid dataframes have matching epochs.
 **Example**:
 ```python
 loader = DyadCentroidLoader()
-df1 = loader.load_centroids('f01p01', 'ses-01', 'nsplit120', 'therapy')
-df2 = loader.load_centroids('f01p02', 'ses-01', 'nsplit120', 'therapy')
-is_aligned = loader.validate_epoch_alignment(df1, df2, 'f01p01', 'f01p02')
+df1 = loader.load_centroids('g01p01', 'ses-01', 'nsplit120', 'therapy')
+df2 = loader.load_centroids('g01p02', 'ses-01', 'nsplit120', 'therapy')
+is_aligned = loader.validate_epoch_alignment(df1, df2, 'g01p01', 'g01p02')
 ```
 
 ##### `load_both_tasks(dyad_info: Tuple[str, str, str, str], method: str) -> Dict[str, Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]]`
@@ -1875,7 +1875,7 @@ Load centroid data for both subjects and both tasks.
 **Example**:
 ```python
 loader = DyadCentroidLoader()
-dyad_info = ('f01p01', 'ses-01', 'f01p02', 'ses-01')
+dyad_info = ('g01p01', 'ses-01', 'g01p02', 'ses-01')
 data = loader.load_both_tasks(dyad_info, 'nsplit120')
 # data['therapy'] = (df_subject1, df_subject2)
 # data['restingstate'] = (df_subject1, df_subject2)
@@ -1908,7 +1908,7 @@ visualization:
       format: "png"
     colors:
       subject1: "#1f77b4"      # Blue
-      subject2: "#ff7f0e"      # Orange
+      subject2: "#ff7g0e"      # Orange
       therapy: "#d62728"       # Red
       resting: "#2ca02c"       # Green
       trendline: "#000000"     # Black
@@ -1979,8 +1979,8 @@ Generate complete 4-subplot dyad visualization.
 from pathlib import Path
 
 plotter = DyadPlotter()
-dyad_info = ('f01p01', 'ses-01', 'f01p02', 'ses-01')
-output_path = Path('data/derivatives/dppa/figures/nsplit120/f01p01_ses-01_vs_f01p02_ses-01.png')
+dyad_info = ('g01p01', 'ses-01', 'g01p02', 'ses-01')
+output_path = Path('data/derivatives/dppa/figures/nsplit120/g01p01_ses-01_vs_g01p02_ses-01.png')
 
 # ICD data from DyadICDLoader
 icd_data = {

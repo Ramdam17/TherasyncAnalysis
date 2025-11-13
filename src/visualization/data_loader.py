@@ -30,7 +30,7 @@ class VisualizationDataLoader:
     
     Examples:
         >>> loader = VisualizationDataLoader()
-        >>> data = loader.load_subject_session('f01p01', '01')
+        >>> data = loader.load_subject_session('g01p01', '01')
         >>> bvp_signals = data['bvp']['signals']
         >>> eda_metrics = data['eda']['metrics']
     """
@@ -72,7 +72,7 @@ class VisualizationDataLoader:
         Load all data for a subject/session.
         
         Args:
-            subject: Subject ID (e.g., 'f01p01')
+            subject: Subject ID (e.g., 'g01p01')
             session: Session ID (e.g., '01')
             modalities: List of modalities to load ['bvp', 'eda', 'hr']
                 Default: Load all available
@@ -83,7 +83,7 @@ class VisualizationDataLoader:
                 'bvp': {'signals': {...}, 'metrics': {...}, 'metadata': {...}},
                 'eda': {'signals': {...}, 'metrics': {...}, 'events': {...}, 'metadata': {...}},
                 'hr': {'signals': {...}, 'metrics': {...}, 'metadata': {...}},
-                'subject': 'f01p01',
+                'subject': 'g01p01',
                 'session': '01'
             }
         """

@@ -55,7 +55,7 @@ class EpochBIDSWriter:
         Extract task name from BIDS filename.
         
         Args:
-            filename: BIDS filename (e.g., 'sub-f01p01_ses-01_task-therapy_...')
+            filename: BIDS filename (e.g., 'sub-g01p01_ses-01_task-therapy_...')
         
         Returns:
             Task name ('restingstate' or 'therapy')
@@ -110,7 +110,7 @@ class EpochBIDSWriter:
         
         Args:
             input_path: Path to input TSV file
-            subject: Subject ID (e.g., 'f01p01')
+            subject: Subject ID (e.g., 'g01p01')
             session: Session ID (e.g., '01')
             modality: Modality ('bvp', 'eda', or 'hr')
         
@@ -206,7 +206,7 @@ class EpochBIDSWriter:
         Process all epochable files for a session.
         
         Args:
-            subject: Subject ID (e.g., 'f01p01')
+            subject: Subject ID (e.g., 'g01p01')
             session: Session ID (e.g., '01')
             modalities: List of modalities to process (default: ['bvp', 'eda', 'hr'])
         

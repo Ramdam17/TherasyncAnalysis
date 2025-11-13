@@ -57,8 +57,8 @@ class ICDCalculator:
         
         Example:
             >>> calc = ICDCalculator()
-            >>> df1 = loader.load_centroid('f01p01', 'ses-01', 'therapy', 'nsplit120')
-            >>> df2 = loader.load_centroid('f01p02', 'ses-01', 'therapy', 'nsplit120')
+            >>> df1 = loader.load_centroid('g01p01', 'ses-01', 'therapy', 'nsplit120')
+            >>> df2 = loader.load_centroid('g01p02', 'ses-01', 'therapy', 'nsplit120')
             >>> result = calc.compute_icd(df1, df2)
         """
         # Validate input
@@ -160,8 +160,8 @@ class ICDCalculator:
             Nested dict: {task: {method: DataFrame}}
         
         Example:
-            >>> centroids1 = loader.load_subject_session('f01p01', 'ses-01')
-            >>> centroids2 = loader.load_subject_session('f01p02', 'ses-01')
+            >>> centroids1 = loader.load_subject_session('g01p01', 'ses-01')
+            >>> centroids2 = loader.load_subject_session('g01p02', 'ses-01')
             >>> results = calc.compute_batch_icd(centroids1, centroids2)
         """
         results = {}

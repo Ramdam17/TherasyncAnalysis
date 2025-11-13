@@ -7,13 +7,13 @@ multiple subjects.
 
 Usage:
     # Single subject/session
-    python scripts/visualization/generate_visualizations.py --subject f01p01 --session 01
+    python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01
     
     # All available subjects
     python scripts/visualization/generate_visualizations.py --all
     
     # Specific visualizations only
-    python scripts/visualization/generate_visualizations.py --subject f01p01 --session 01 --plots 1 2 3
+    python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01 --plots 1 2 3
 
 Authors: Lena Adel, Remy Ramadour
 Date: November 2025
@@ -79,7 +79,7 @@ def generate_visualizations_for_subject(
     Generate all visualizations for a single subject/session.
     
     Args:
-        subject: Subject ID (e.g., 'f01p01')
+        subject: Subject ID (e.g., 'g01p01')
         session: Session ID (e.g., '01')
         plots: List of plot numbers to generate (None = all)
         output_base: Base output directory
@@ -195,16 +195,16 @@ def main():
         epilog="""
 Examples:
   # Generate all visualizations for one subject/session
-  python scripts/visualization/generate_visualizations.py --subject f01p01 --session 01
+  python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01
   
   # Generate specific visualizations only
-  python scripts/visualization/generate_visualizations.py --subject f01p01 --session 01 --plots 1 2 3
+  python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01 --plots 1 2 3
   
   # Process all available subjects
   python scripts/visualization/generate_visualizations.py --all
   
   # Custom output directory
-  python scripts/visualization/generate_visualizations.py --subject f01p01 --session 01 --output custom/path
+  python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01 --output custom/path
         """
     )
     
@@ -212,7 +212,7 @@ Examples:
     parser.add_argument(
         '--subject',
         type=str,
-        help='Subject ID (e.g., f01p01)'
+        help='Subject ID (e.g., g01p01)'
     )
     parser.add_argument(
         '--session',

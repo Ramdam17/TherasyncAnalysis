@@ -185,8 +185,8 @@ class TestEpochBIDSWriter:
         # TODO: Implement
         # writer = EpochBIDSWriter()
         # 
-        # assert writer._detect_task("sub-f01p01_ses-01_task-restingstate_desc-processed_recording-bvp.tsv") == "restingstate"
-        # assert writer._detect_task("sub-f01p01_ses-01_task-therapy_desc-rrintervals_physio.tsv") == "therapy"
+        # assert writer._detect_task("sub-g01p01_ses-01_task-restingstate_desc-processed_recording-bvp.tsv") == "restingstate"
+        # assert writer._detect_task("sub-g01p01_ses-01_task-therapy_desc-rrintervals_physio.tsv") == "therapy"
         pass
     
     def test_add_epoch_columns_restingstate(self):
@@ -208,8 +208,8 @@ class TestEpochBIDSWriter:
     def test_output_path_creation(self):
         """Test BIDS output path structure."""
         # TODO: Implement
-        # Input: derivatives/preprocessing/sub-f01p01/ses-01/bvp/file.tsv
-        # Output: derivatives/epoched/sub-f01p01/ses-01/bvp/file.tsv
+        # Input: derivatives/preprocessing/sub-g01p01/ses-01/bvp/file.tsv
+        # Output: derivatives/epoched/sub-g01p01/ses-01/bvp/file.tsv
         pass
 
 

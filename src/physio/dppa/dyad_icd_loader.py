@@ -48,7 +48,7 @@ class DyadICDLoader:
         Args:
             dyad_pair: Dyad identifier in format:
                       "sub1_ses-XX_vs_sub2_ses-YY"
-                      Example: "f01p01_ses-01_vs_f01p02_ses-01"
+                      Example: "g01p01_ses-01_vs_g01p02_ses-01"
 
         Returns:
             Dictionary with keys: 'sub1', 'ses1', 'sub2', 'ses2'
@@ -58,9 +58,9 @@ class DyadICDLoader:
 
         Example:
             >>> loader = DyadICDLoader()
-            >>> info = loader.parse_dyad_info("f01p01_ses-01_vs_f01p02_ses-01")
+            >>> info = loader.parse_dyad_info("g01p01_ses-01_vs_g01p02_ses-01")
             >>> print(info)
-            {'sub1': 'f01p01', 'ses1': '01', 'sub2': 'f01p02', 'ses2': '01'}
+            {'sub1': 'g01p01', 'ses1': '01', 'sub2': 'g01p02', 'ses2': '01'}
         """
         if not dyad_pair or "_vs_" not in dyad_pair:
             raise ValueError(
@@ -106,7 +106,7 @@ class DyadICDLoader:
         Load ICD time series for a specific dyad and task.
 
         Args:
-            dyad_pair: Dyad identifier (e.g., "f01p01_ses-01_vs_f01p02_ses-01")
+            dyad_pair: Dyad identifier (e.g., "g01p01_ses-01_vs_g01p02_ses-01")
             task: Task name ('restingstate' or 'therapy')
             method: Epoching method (e.g., 'nsplit120', 'sliding_duration30s_step5s')
 
@@ -121,7 +121,7 @@ class DyadICDLoader:
 
         Example:
             >>> loader = DyadICDLoader()
-            >>> df = loader.load_icd("f01p01_ses-01_vs_f01p02_ses-01", "therapy", "nsplit120")
+            >>> df = loader.load_icd("g01p01_ses-01_vs_g01p02_ses-01", "therapy", "nsplit120")
             >>> print(df.head())
                epoch_id  icd_value
             0         0      50.23
@@ -178,7 +178,7 @@ class DyadICDLoader:
         Load ICD data for both restingstate and therapy tasks.
 
         Args:
-            dyad_pair: Dyad identifier (e.g., "f01p01_ses-01_vs_f01p02_ses-01")
+            dyad_pair: Dyad identifier (e.g., "g01p01_ses-01_vs_g01p02_ses-01")
             method: Epoching method (e.g., 'nsplit120')
 
         Returns:
@@ -190,7 +190,7 @@ class DyadICDLoader:
 
         Example:
             >>> loader = DyadICDLoader()
-            >>> data = loader.load_both_tasks("f01p01_ses-01_vs_f01p02_ses-01", "nsplit120")
+            >>> data = loader.load_both_tasks("g01p01_ses-01_vs_g01p02_ses-01", "nsplit120")
             >>> print(f"Resting: {len(data['restingstate'])} epochs")
             >>> print(f"Therapy: {len(data['therapy'])} epochs")
             Resting: 1 epochs

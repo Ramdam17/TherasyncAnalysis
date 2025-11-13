@@ -110,7 +110,7 @@ poetry run python scripts/physio/preprocessing/preprocess_bvp.py --help
 2. **Scripts handle path setup internally** (no PYTHONPATH needed):
 ```bash
 # This should work directly
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject g01p01 --session 01
 ```
 
 3. **Check virtual environment**:
@@ -125,19 +125,19 @@ poetry install   # Reinstall if needed
 
 ### File Not Found Errors
 
-**Problem**: `FileNotFoundError: No BVP files found for sub-f01p01/ses-01`
+**Problem**: `FileNotFoundError: No BVP files found for sub-g01p01/ses-01`
 
 **Diagnosis**:
 ```bash
 # Check data structure
-tree data/sourcedata/sub-f01p01/ses-01/ -L 2
+tree data/sourcedata/sub-g01p01/ses-01/ -L 2
 
 # Expected structure:
-# data/sourcedata/sub-f01p01/ses-01/physio/
-#   ├── sub-f01p01_ses-01_task-restingstate_recording-bvp.tsv
-#   ├── sub-f01p01_ses-01_task-restingstate_recording-bvp.json
-#   ├── sub-f01p01_ses-01_task-therapy_recording-bvp.tsv
-#   └── sub-f01p01_ses-01_task-therapy_recording-bvp.json
+# data/sourcedata/sub-g01p01/ses-01/physio/
+#   ├── sub-g01p01_ses-01_task-restingstate_recording-bvp.tsv
+#   ├── sub-g01p01_ses-01_task-restingstate_recording-bvp.json
+#   ├── sub-g01p01_ses-01_task-therapy_recording-bvp.tsv
+#   └── sub-g01p01_ses-01_task-therapy_recording-bvp.json
 ```
 
 **Solutions**:
@@ -152,10 +152,10 @@ paths:
 2. **Use correct subject/session format in commands**:
 ```bash
 # Correct (no prefixes)
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject g01p01 --session 01
 
 # Incorrect (don't use prefixes)
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject sub-f01p01 --session ses-01
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject sub-g01p01 --session ses-01
 ```
 
 3. **Verify file naming**:
@@ -165,7 +165,7 @@ poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject sub-f
 
 3. **Check file permissions**:
 ```bash
-ls -la data/raw/sub-f01p01/ses-01/physio/
+ls -la data/raw/sub-g01p01/ses-01/physio/
 # Files should be readable (r-- in permissions)
 ```
 
@@ -192,7 +192,7 @@ Every TSV file must have a matching JSON sidecar with metadata:
 
 Check that both files exist:
 ```bash
-ls -1 data/raw/sub-f01p01/ses-01/physio/*task-restingstate*
+ls -1 data/raw/sub-g01p01/ses-01/physio/*task-restingstate*
 # Should show both .tsv and .json
 ```
 
@@ -297,8 +297,8 @@ plt.show()
 1. **Process moments separately**:
 ```bash
 # Instead of processing all at once
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --moment restingstate
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --moment therapy
+poetry run python scripts/preprocess_bvp.py --subject sub-g01p01 --session ses-01 --moment restingstate
+poetry run python scripts/preprocess_bvp.py --subject sub-g01p01 --session ses-01 --moment therapy
 ```
 
 2. **Increase system swap**:
@@ -437,7 +437,7 @@ physio:
 3. **Visualize detected SCRs**:
 ```python
 # Check processed output
-events = pd.read_csv('sub-f01p01_ses-01_task-restingstate_desc-scr_events.tsv', sep='\t')
+events = pd.read_csv('sub-g01p01_ses-01_task-restingstate_desc-scr_events.tsv', sep='\t')
 print(f"SCRs detected: {len(events)}")
 print(events[['onset', 'amplitude', 'rise_time']].head())
 ```
@@ -496,7 +496,7 @@ data['eda'] = data['eda'] - data['eda'].min() + 0.01
 3. **Verify data integrity**:
 ```bash
 # Check raw source data
-cat data/sourcedata/sub-f01p01/ses-01/physio/EDA.tsv | head -20
+cat data/sourcedata/sub-g01p01/ses-01/physio/EDA.tsv | head -20
 # Should show reasonable values (typically 0.5-20 μS)
 ```
 
@@ -646,10 +646,10 @@ sudo chown -R $USER:$USER data/derivatives/
 1. **Clean outputs before reprocessing**:
 ```bash
 # Clean specific subject/session (no prefixes needed)
-poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01
+poetry run python scripts/utils/clean_outputs.py --subject g01p01 --session 01
 
 # Clean specific modality
-poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01 --modality bvp
+poetry run python scripts/utils/clean_outputs.py --subject g01p01 --session 01 --modality bvp
 
 # Or clean all
 poetry run python scripts/utils/clean_outputs.py --all
@@ -657,9 +657,9 @@ poetry run python scripts/utils/clean_outputs.py --all
 
 2. **Manual cleanup**:
 ```bash
-rm -rf data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/
-rm -rf data/derivatives/preprocessing/sub-f01p01/ses-01/eda/
-rm -rf data/derivatives/preprocessing/sub-f01p01/ses-01/hr/
+rm -rf data/derivatives/preprocessing/sub-g01p01/ses-01/bvp/
+rm -rf data/derivatives/preprocessing/sub-g01p01/ses-01/eda/
+rm -rf data/derivatives/preprocessing/sub-g01p01/ses-01/hr/
 ```
 
 ---
@@ -671,9 +671,9 @@ rm -rf data/derivatives/preprocessing/sub-f01p01/ses-01/hr/
 **Diagnosis**:
 ```bash
 # Check what was created
-ls -1 data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/
-ls -1 data/derivatives/preprocessing/sub-f01p01/ses-01/eda/
-ls -1 data/derivatives/preprocessing/sub-f01p01/ses-01/hr/
+ls -1 data/derivatives/preprocessing/sub-g01p01/ses-01/bvp/
+ls -1 data/derivatives/preprocessing/sub-g01p01/ses-01/eda/
+ls -1 data/derivatives/preprocessing/sub-g01p01/ses-01/hr/
 
 # Expected files:
 # BVP: 9 files (processed signals, metrics, metadata for each moment)
@@ -704,8 +704,8 @@ print(summary['moments_processed'])     # Should list all moments
 3. **Re-run processing**:
 ```bash
 # Clean and reprocess
-poetry run python scripts/clean_outputs.py --subject sub-f01p01 --session ses-01 --force
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --verbose
+poetry run python scripts/clean_outputs.py --subject sub-g01p01 --session ses-01 --force
+poetry run python scripts/preprocess_bvp.py --subject sub-g01p01 --session ses-01 --verbose
 ```
 
 ---
@@ -723,15 +723,15 @@ poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-0
 - **Very Low**: <5 SCRs/min (very calm, meditation)
 
 **From Real Data Testing**:
-- Family f01p01: 22-27 SCRs/min rest, 12.81-17.08 SCRs/min therapy
-- Family f02p01: 11-21 SCRs/min rest, 2.24-7.42 SCRs/min therapy
+- Family g01p01: 22-27 SCRs/min rest, 12.81-17.08 SCRs/min therapy
+- Family g02p01: 11-21 SCRs/min rest, 2.24-7.42 SCRs/min therapy
 
 **Interpretation**:
 
 1. **High variability between subjects is NORMAL**:
    - Individual differences in autonomic reactivity
    - Different therapeutic contexts and engagement
-   - Family f02p01 showing lower arousal is within normal range
+   - Family g02p01 showing lower arousal is within normal range
 
 2. **When to investigate**:
    - ❌ Exactly 0 SCRs: Poor electrode contact
@@ -746,7 +746,7 @@ poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-0
 1. **Compare within-subject**:
 ```bash
 # Check consistency across sessions for same subject
-cat data/derivatives/therasync-eda/sub-f01p01/*/physio/*_desc-edametrics_physio.tsv
+cat data/derivatives/therasync-eda/sub-g01p01/*/physio/*_desc-edametrics_physio.tsv
 ```
 
 2. **Visualize SCR distribution**:
@@ -855,7 +855,7 @@ grep tonic_mean data/derivatives/therasync-eda/sub-*/ses-*/physio/*_desc-edametr
 
 1. **Enable verbose logging**:
 ```bash
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --verbose
+poetry run python scripts/preprocess_bvp.py --subject sub-g01p01 --session ses-01 --verbose
 # Check which step is slow
 ```
 
@@ -885,7 +885,7 @@ physio:
 2. **Process moments separately**:
 ```bash
 # Faster than all at once for very long recordings
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --moment restingstate
+poetry run python scripts/preprocess_bvp.py --subject sub-g01p01 --session ses-01 --moment restingstate
 ```
 
 3. **Check system resources**:
@@ -904,7 +904,7 @@ htop  # Monitor CPU/memory usage
 
 1. **Process one moment at a time**:
 ```bash
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --moment therapy
+poetry run python scripts/preprocess_bvp.py --subject sub-g01p01 --session ses-01 --moment therapy
 ```
 
 2. **Close other applications**
@@ -966,7 +966,7 @@ poetry update numpy scipy
 
 ```bash
 # Maximum verbosity
-poetry run python scripts/preprocess_bvp.py --subject sub-f01p01 --session ses-01 --verbose
+poetry run python scripts/preprocess_bvp.py --subject sub-g01p01 --session ses-01 --verbose
 
 # Check full log
 cat log/bvp_preprocessing.log
@@ -981,7 +981,7 @@ poetry --version
 poetry show  # List installed packages
 
 # Data structure
-tree data/raw/sub-f01p01/ -L 3
+tree data/raw/sub-g01p01/ -L 3
 
 # Config
 cat config/config.yaml
@@ -1019,21 +1019,21 @@ When reporting issues, include:
 | Low sampling rate warning | Expected for E4 (4 Hz), no action needed |
 | Memory error | Process moments separately |
 | Permission denied | `chmod -R u+w data/derivatives/` |
-| Existing outputs | `poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01` |
+| Existing outputs | `poetry run python scripts/utils/clean_outputs.py --subject g01p01 --session 01` |
 
 ### Useful Commands
 
 #### BVP Pipeline
 ```bash
 # Clean and reprocess BVP (no prefixes needed)
-poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01 --modality bvp
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01 --verbose
+poetry run python scripts/utils/clean_outputs.py --subject g01p01 --session 01 --modality bvp
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject g01p01 --session 01 --verbose
 
 # Check BVP outputs
-tree data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/
+tree data/derivatives/preprocessing/sub-g01p01/ses-01/bvp/
 
 # View BVP metrics
-column -t -s $'\t' data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/*_desc-bvp-metrics_physio.tsv
+column -t -s $'\t' data/derivatives/preprocessing/sub-g01p01/ses-01/bvp/*_desc-bvp-metrics_physio.tsv
 
 # Check BVP logs
 tail -f log/preprocessing_bvp_*.log
@@ -1042,11 +1042,11 @@ tail -f log/preprocessing_bvp_*.log
 #### EDA Pipeline
 ```bash
 # Clean and reprocess EDA (no prefixes needed)
-poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01 --modality eda
-poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01 --verbose
+poetry run python scripts/utils/clean_outputs.py --subject g01p01 --session 01 --modality eda
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject g01p01 --session 01 --verbose
 
 # Check EDA outputs
-tree data/derivatives/preprocessing/sub-f01p01/ses-01/eda/
+tree data/derivatives/preprocessing/sub-g01p01/ses-01/eda/
 find data/derivatives/preprocessing -name "*eda-metrics*" | sort
 
 # View EDA metrics (all subjects)
@@ -1056,26 +1056,26 @@ for file in data/derivatives/preprocessing/*/*/eda/*_desc-eda-metrics_physio.tsv
 done
 
 # Check single subject EDA metrics
-column -t -s $'\t' data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_desc-eda-metrics_physio.tsv
+column -t -s $'\t' data/derivatives/preprocessing/sub-g01p01/ses-01/eda/*_desc-eda-metrics_physio.tsv
 
 # View SCR events
-head -20 data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_desc-scr_events.tsv
+head -20 data/derivatives/preprocessing/sub-g01p01/ses-01/eda/*_desc-scr_events.tsv
 
 # Check processing summary
-cat data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_desc-summary_*.json | jq
+cat data/derivatives/preprocessing/sub-g01p01/ses-01/eda/*_desc-summary_*.json | jq
 ```
 
 #### HR Pipeline
 ```bash
 # Clean and reprocess HR (no prefixes needed)
-poetry run python scripts/utils/clean_outputs.py --subject f01p01 --session 01 --modality hr
-poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01 --verbose
+poetry run python scripts/utils/clean_outputs.py --subject g01p01 --session 01 --modality hr
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject g01p01 --session 01 --verbose
 
 # Check HR outputs
-tree data/derivatives/preprocessing/sub-f01p01/ses-01/hr/
+tree data/derivatives/preprocessing/sub-g01p01/ses-01/hr/
 
 # View HR metrics
-column -t -s $'\t' data/derivatives/preprocessing/sub-f01p01/ses-01/hr/*_desc-hr-metrics_physio.tsv
+column -t -s $'\t' data/derivatives/preprocessing/sub-g01p01/ses-01/hr/*_desc-hr-metrics_physio.tsv
 ```
 
 ---

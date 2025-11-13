@@ -10,7 +10,7 @@ This script orchestrates the full DPPA pipeline:
 
 Usage:
     # Single dyad (intra-family)
-    python scripts/physio/dppa/compute_dppa.py --mode intra --family f01 --session 01 --task therapy
+    python scripts/physio/dppa/compute_dppa.py --mode intra --family g01 --session 01 --task therapy
     
     # Batch inter-session
     python scripts/physio/dppa/compute_dppa.py --mode inter --task all --batch
@@ -210,7 +210,7 @@ def main():
         epilog="""
 Examples:
   # Single intra-family analysis
-  python scripts/physio/dppa/compute_dppa.py --mode intra --family f01 --session 01 --task therapy
+  python scripts/physio/dppa/compute_dppa.py --mode intra --family g01 --session 01 --task therapy
   
   # Batch inter-session (all pairs)
   python scripts/physio/dppa/compute_dppa.py --mode inter --task therapy --batch
@@ -227,7 +227,7 @@ Examples:
                         help='Analysis mode: inter-session, intra-family, or both')
     parser.add_argument('--task', type=str, default='all',
                         help='Task name (therapy, restingstate, all)')
-    parser.add_argument('--family', type=str, help='Family filter for intra-family mode (e.g., f01)')
+    parser.add_argument('--family', type=str, help='Family filter for intra-family mode (e.g., g01)')
     parser.add_argument('--session', type=str, help='Session filter for intra-family mode (e.g., 01)')
     parser.add_argument('--batch', action='store_true', help='Process all available dyads')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be processed')

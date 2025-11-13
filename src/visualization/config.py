@@ -38,7 +38,7 @@ COLORS = {
     # Neutral colors
     'gray': '#95a5a6',
     'dark_gray': '#34495e',
-    'light_gray': '#ecf0f1',
+    'light_gray': '#ecg0f1',
 }
 
 # Moment color palette (supports up to 8 distinct moments, with modulo fallback)

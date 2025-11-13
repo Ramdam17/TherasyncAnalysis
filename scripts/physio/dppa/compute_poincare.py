@@ -7,7 +7,7 @@ metrics (centroids, SD1, SD2) for each epoch. Results are saved in BIDS format.
 
 Usage:
     # Single session
-    python scripts/physio/dppa/compute_poincare.py --subject f01p01 --session 01
+    python scripts/physio/dppa/compute_poincare.py --subject g01p01 --session 01
     
     # Batch process all sessions
     python scripts/physio/dppa/compute_poincare.py --batch
@@ -170,7 +170,7 @@ def main():
         epilog="""
 Examples:
   # Process single session
-  python scripts/physio/dppa/compute_poincare.py --subject f01p01 --session ses-01
+  python scripts/physio/dppa/compute_poincare.py --subject g01p01 --session ses-01
   
   # Batch process all sessions
   python scripts/physio/dppa/compute_poincare.py --batch
@@ -179,11 +179,11 @@ Examples:
   python scripts/physio/dppa/compute_poincare.py --batch --dry-run
   
   # Process specific subjects only
-  python scripts/physio/dppa/compute_poincare.py --batch --subjects f01p01 f01p02
+  python scripts/physio/dppa/compute_poincare.py --batch --subjects g01p01 g01p02
         """
     )
     
-    parser.add_argument('--subject', type=str, help='Subject ID (e.g., f01p01)')
+    parser.add_argument('--subject', type=str, help='Subject ID (e.g., g01p01)')
     parser.add_argument('--session', type=str, help='Session ID (e.g., ses-01)')
     parser.add_argument('--batch', action='store_true', help='Process all subjects/sessions')
     parser.add_argument('--subjects', nargs='+', help='Process only these subjects')

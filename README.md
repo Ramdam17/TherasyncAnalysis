@@ -116,7 +116,7 @@ data/
 - **SD2 (Bottom Center)**: Long-term variability for both subjects (0-600 ms normalized)
 - **SD1/SD2 Ratio (Bottom Right)**: Autonomic balance metric (0-3.0 normalized)
 - **3 Visualization Modules**: DyadICDLoader, DyadCentroidLoader, DyadPlotter
-- **CLI Single**: `poetry run python scripts/physio/dppa/plot_dyad.py --dyad f01p01_ses-01_vs_f01p02_ses-01 --method nsplit120`
+- **CLI Single**: `poetry run python scripts/physio/dppa/plot_dyad.py --dyad g01p01_ses-01_vs_g01p02_ses-01 --method nsplit120`
 - **CLI Batch**: `poetry run python scripts/physio/dppa/plot_dyad.py --batch --mode inter --method nsplit120`
 - **Production Results**: 1176 inter-session figures (100% success, 309 MB, ~7 minutes)
 - **Output**: `data/derivatives/dppa/figures/nsplit120/` (PNG 12×8 inches, 150 DPI)
@@ -213,34 +213,34 @@ Edit `config/config.yaml` to customize processing parameters:
 #### BVP Preprocessing
 ```bash
 # Process single subject/session (subject ID without 'sub-' prefix)
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject g01p01 --session 01
 
 # Process with custom config
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01 --config config/config.yaml
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject g01p01 --session 01 --config config/config.yaml
 
 # Check outputs
-tree data/derivatives/preprocessing/sub-f01p01/ses-01/bvp/
+tree data/derivatives/preprocessing/sub-g01p01/ses-01/bvp/
 ```
 
 #### EDA Preprocessing
 ```bash
 # Process single subject/session  
-poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject g01p01 --session 01
 
 # View metrics
-cat data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_desc-eda-metrics_physio.tsv
+cat data/derivatives/preprocessing/sub-g01p01/ses-01/eda/*_desc-eda-metrics_physio.tsv
 
 # Check SCR events
-head data/derivatives/preprocessing/sub-f01p01/ses-01/eda/*_desc-scr_events.tsv
+head data/derivatives/preprocessing/sub-g01p01/ses-01/eda/*_desc-scr_events.tsv
 ```
 
 #### HR Preprocessing
 ```bash
 # Process single subject/session
-poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject g01p01 --session 01
 
 # View metrics
-cat data/derivatives/preprocessing/sub-f01p01/ses-01/hr/*_hr-metrics.tsv
+cat data/derivatives/preprocessing/sub-g01p01/ses-01/hr/*_hr-metrics.tsv
 ```
 
 #### Batch Processing
@@ -251,7 +251,7 @@ poetry run python scripts/batch/run_all_preprocessing.py
 # Options
 poetry run python scripts/batch/run_all_preprocessing.py --dry-run        # Preview without execution
 poetry run python scripts/batch/run_all_preprocessing.py --skip-existing  # Skip already processed
-poetry run python scripts/batch/run_all_preprocessing.py --subjects f01p01 f02p01  # Specific subjects
+poetry run python scripts/batch/run_all_preprocessing.py --subjects g01p01 g02p01  # Specific subjects
 
 # Visualization: Generate all plots for preprocessed data
 poetry run python scripts/batch/run_all_visualizations.py
@@ -259,7 +259,7 @@ poetry run python scripts/batch/run_all_visualizations.py
 # Options
 poetry run python scripts/batch/run_all_visualizations.py --dry-run      # Preview
 poetry run python scripts/batch/run_all_visualizations.py --plots 1 2 3  # Specific visualizations
-poetry run python scripts/batch/run_all_visualizations.py --subjects f01p01  # Specific subjects
+poetry run python scripts/batch/run_all_visualizations.py --subjects g01p01  # Specific subjects
 
 # Clean all outputs
 poetry run python scripts/utils/clean_outputs.py --derivatives --force
@@ -272,7 +272,7 @@ poetry run python scripts/batch/run_all_visualizations.py
 #### Single Subject Processing
 ```bash
 # Process complete pipeline for one subject/session
-subject=f01p01
+subject=g01p01
 session=01
 
 # 1. Preprocessing

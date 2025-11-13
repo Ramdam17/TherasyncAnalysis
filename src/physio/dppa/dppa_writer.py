@@ -79,8 +79,8 @@ class DPPAWriter:
         
         Example:
             >>> icd_data = {
-            ...     ('f01p01', 'ses-01', 'f01p02', 'ses-01'): icd_df1,
-            ...     ('f01p01', 'ses-01', 'f01p03', 'ses-01'): icd_df2,
+            ...     ('g01p01', 'ses-01', 'g01p02', 'ses-01'): icd_df1,
+            ...     ('g01p01', 'ses-01', 'g01p03', 'ses-01'): icd_df2,
             ... }
             >>> path = writer.write_inter_session(icd_data, 'therapy', 'nsplit120')
         """
@@ -166,8 +166,8 @@ class DPPAWriter:
         
         Example:
             >>> icd_data = {
-            ...     ('f01', 'f01p01', 'f01p02', 'ses-01', 'therapy'): icd_df1,
-            ...     ('f01', 'f01p01', 'f01p03', 'ses-01', 'therapy'): icd_df2,
+            ...     ('g01', 'g01p01', 'g01p02', 'ses-01', 'therapy'): icd_df1,
+            ...     ('g01', 'g01p01', 'g01p03', 'ses-01', 'therapy'): icd_df2,
             ... }
             >>> path = writer.write_intra_family(icd_data, 'therapy', 'sliding_duration30s_step5s')
         """

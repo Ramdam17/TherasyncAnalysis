@@ -49,7 +49,7 @@ class DyadCentroidLoader:
 
         Args:
             dyad_info: Dictionary with keys: 'sub1', 'ses1', 'sub2', 'ses2'
-                      Example: {"sub1": "f01p01", "ses1": "01", "sub2": "f01p02", "ses2": "01"}
+                      Example: {"sub1": "g01p01", "ses1": "01", "sub2": "g01p02", "ses2": "01"}
             task: Task name ('restingstate' or 'therapy')
             method: Epoching method (e.g., 'nsplit120', 'sliding_duration30s_step5s')
 
@@ -69,7 +69,7 @@ class DyadCentroidLoader:
 
         Example:
             >>> loader = DyadCentroidLoader()
-            >>> dyad_info = {"sub1": "f01p01", "ses1": "01", "sub2": "f01p02", "ses2": "01"}
+            >>> dyad_info = {"sub1": "g01p01", "ses1": "01", "sub2": "g01p02", "ses2": "01"}
             >>> df1, df2 = loader.load_centroids(dyad_info, "therapy", "nsplit120")
             >>> print(len(df1), len(df2))
             120 120
@@ -101,7 +101,7 @@ class DyadCentroidLoader:
         Construct path to centroid file for a subject/session/task.
 
         Args:
-            subject: Subject ID (e.g., 'f01p01')
+            subject: Subject ID (e.g., 'g01p01')
             session: Session ID (e.g., '01')
             task: Task name ('restingstate' or 'therapy')
             method: Epoching method
@@ -174,7 +174,7 @@ class DyadCentroidLoader:
 
         Example:
             >>> loader = DyadCentroidLoader()
-            >>> dyad_info = {"sub1": "f01p01", "ses1": "01", "sub2": "f01p02", "ses2": "01"}
+            >>> dyad_info = {"sub1": "g01p01", "ses1": "01", "sub2": "g01p02", "ses2": "01"}
             >>> df1, df2 = loader.load_centroids(dyad_info, "therapy", "nsplit120")
             >>> is_aligned = loader.validate_epoch_alignment(df1, df2)
             >>> print(is_aligned)
@@ -221,7 +221,7 @@ class DyadCentroidLoader:
 
         Example:
             >>> loader = DyadCentroidLoader()
-            >>> dyad_info = {"sub1": "f01p01", "ses1": "01", "sub2": "f01p02", "ses2": "01"}
+            >>> dyad_info = {"sub1": "g01p01", "ses1": "01", "sub2": "g01p02", "ses2": "01"}
             >>> data = loader.load_both_tasks(dyad_info, "nsplit120")
             >>> print(f"Resting: {len(data['restingstate'][0])} epochs")
             >>> print(f"Therapy: {len(data['therapy'][0])} epochs")

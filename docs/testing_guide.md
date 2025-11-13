@@ -130,46 +130,46 @@ data/sourcedata/
 ```bash
 # BVP preprocessing
 poetry run python scripts/physio/preprocessing/preprocess_bvp.py \
-  --subject f01p01 \
+  --subject g01p01 \
   --session 01 \
   --verbose
 
 # EDA preprocessing
 poetry run python scripts/physio/preprocessing/preprocess_eda.py \
-  --subject f01p01 \
+  --subject g01p01 \
   --session 01 \
   --verbose
 
 # HR preprocessing
 poetry run python scripts/physio/preprocessing/preprocess_hr.py \
-  --subject f01p01 \
+  --subject g01p01 \
   --session 01 \
   --verbose
 ```
 
-**Note:** Subject and session IDs are provided WITHOUT prefixes (e.g., `f01p01` not `sub-f01p01`, `01` not `ses-01`)
+**Note:** Subject and session IDs are provided WITHOUT prefixes (e.g., `g01p01` not `sub-g01p01`, `01` not `ses-01`)
 
 #### 2. Check the Outputs
 
 Outputs are organized by modality in the new structure:
 ```
 data/derivatives/preprocessing/
-└── sub-f01p01/
+└── sub-g01p01/
     └── ses-01/
         ├── bvp/                                           # 9 files
-        │   ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-processed_physio.tsv.gz
-        │   ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-processed_physio.json
-        │   ├── sub-f01p01_ses-01_task-restingstate_desc-bvp-metrics_physio.tsv
-        │   ├── sub-f01p01_ses-01_task-therapy_desc-bvp-processed_physio.tsv.gz
+        │   ├── sub-g01p01_ses-01_task-restingstate_desc-bvp-processed_physio.tsv.gz
+        │   ├── sub-g01p01_ses-01_task-restingstate_desc-bvp-processed_physio.json
+        │   ├── sub-g01p01_ses-01_task-restingstate_desc-bvp-metrics_physio.tsv
+        │   ├── sub-g01p01_ses-01_task-therapy_desc-bvp-processed_physio.tsv.gz
         │   └── ...
         ├── eda/                                           # 13 files
-        │   ├── sub-f01p01_ses-01_task-restingstate_desc-eda-processed_physio.tsv.gz
-        │   ├── sub-f01p01_ses-01_task-restingstate_desc-scr_events.tsv
-        │   ├── sub-f01p01_ses-01_task-restingstate_desc-eda-metrics_physio.tsv
+        │   ├── sub-g01p01_ses-01_task-restingstate_desc-eda-processed_physio.tsv.gz
+        │   ├── sub-g01p01_ses-01_task-restingstate_desc-scr_events.tsv
+        │   ├── sub-g01p01_ses-01_task-restingstate_desc-eda-metrics_physio.tsv
         │   └── ...
         └── hr/                                            # 7 files
-            ├── sub-f01p01_ses-01_task-restingstate_desc-hr-processed_physio.tsv.gz
-            ├── sub-f01p01_ses-01_task-restingstate_desc-hr-metrics_physio.tsv
+            ├── sub-g01p01_ses-01_task-restingstate_desc-hr-processed_physio.tsv.gz
+            ├── sub-g01p01_ses-01_task-restingstate_desc-hr-metrics_physio.tsv
             └── ...
 ```
 
@@ -187,12 +187,12 @@ log/
 ```bash
 # Clean specific subject/session outputs
 poetry run python scripts/utils/clean_outputs.py \
-  --subject f01p01 \
+  --subject g01p01 \
   --session 01
 
 # Clean specific modality
 poetry run python scripts/utils/clean_outputs.py \
-  --subject f01p01 \
+  --subject g01p01 \
   --session 01 \
   --modality bvp
 
@@ -222,7 +222,7 @@ poetry run python scripts/utils/clean_outputs.py --all --dry-run
 
 **Test Command:**
 ```bash
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p01 --session 01 --verbose
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject g01p01 --session 01 --verbose
 ```
 
 ### EDA Pipeline
@@ -240,7 +240,7 @@ poetry run python scripts/physio/preprocessing/preprocess_bvp.py --subject f01p0
 
 **Test Command:**
 ```bash
-poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p01 --session 01 --verbose
+poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject g01p01 --session 01 --verbose
 ```
 
 ### HR Pipeline
@@ -257,7 +257,7 @@ poetry run python scripts/physio/preprocessing/preprocess_eda.py --subject f01p0
 
 **Test Command:**
 ```bash
-poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01 --session 01 --verbose
+poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject g01p01 --session 01 --verbose
 ```
 
 ### DPPA Pipeline
@@ -270,7 +270,7 @@ poetry run python scripts/physio/preprocessing/preprocess_hr.py --subject f01p01
 
 ```bash
 # Test centroid computation (single participant)
-poetry run python scripts/physio/dppa/compute_poincare.py -s f01p01 -e 01 -v
+poetry run python scripts/physio/dppa/compute_poincare.py -s g01p01 -e 01 -v
 
 # Test ICD calculation (single family)
 poetry run python scripts/physio/dppa/compute_dppa.py --mode intra --task therapy --batch
@@ -313,7 +313,7 @@ poetry run pytest tests/test_dppa.py -v
 ```bash
 # Test single dyad visualization
 poetry run python scripts/physio/dppa/plot_dyad.py \
-  --dyad f01p01_ses-01_vs_f01p02_ses-01 \
+  --dyad g01p01_ses-01_vs_g01p02_ses-01 \
   --method nsplit120
 
 # Test batch visualization (inter-session)
@@ -343,7 +343,7 @@ poetry run pytest tests/test_dppa_viz.py -v
 **Test Coverage:**
 - Unit tests: 20 tests covering data loading, validation, plotting logic
 - Integration tests: 5 tests covering CLI script execution end-to-end
-- Real data: Uses actual DPPA outputs (f01p01_ses-01_vs_f01p02_ses-01, nsplit120)
+- Real data: Uses actual DPPA outputs (g01p01_ses-01_vs_g01p02_ses-01, nsplit120)
 - Error scenarios: Missing files, invalid dyad format, empty data
 
 **Production Validation:**
@@ -453,18 +453,18 @@ grep -i error log/preprocessing_*.log
 # Example workflow for testing changes
 
 # 1. Process all three modalities for one subject
-poetry run python scripts/physio/preprocessing/preprocess_bvp.py -s f01p01 -e 01 -v
-poetry run python scripts/physio/preprocessing/preprocess_eda.py -s f01p01 -e 01 -v
-poetry run python scripts/physio/preprocessing/preprocess_hr.py -s f01p01 -e 01 -v
+poetry run python scripts/physio/preprocessing/preprocess_bvp.py -s g01p01 -e 01 -v
+poetry run python scripts/physio/preprocessing/preprocess_eda.py -s g01p01 -e 01 -v
+poetry run python scripts/physio/preprocessing/preprocess_hr.py -s g01p01 -e 01 -v
 
 # 2. Check outputs
-ls -lh data/derivatives/preprocessing/sub-f01p01/ses-01/*/
+ls -lh data/derivatives/preprocessing/sub-g01p01/ses-01/*/
 
 # 3. Review logs for any issues
 tail -50 log/preprocessing_*.log | grep -i "error\|warning"
 
 # 4. Clean for next iteration (if needed)
-poetry run python scripts/utils/clean_outputs.py -s f01p01 -e 01
+poetry run python scripts/utils/clean_outputs.py -s g01p01 -e 01
 
 # 5. Run unit tests to verify nothing broke
 poetry run pytest tests/ -v
@@ -485,7 +485,7 @@ All three pipelines have been validated on real data:
 - ✅ Physiologically reasonable values confirmed
 
 **EDA Pipeline:**
-- ✅ Tested on 5+ subjects (families f01, f02)
+- ✅ Tested on 5+ subjects (families g01, g02)
 - ✅ Produces 13 BIDS-compliant files per session
 - ✅ All 23 EDA metrics calculated correctly
 - ✅ SCR rates validated across different arousal levels

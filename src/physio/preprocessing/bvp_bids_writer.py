@@ -56,7 +56,7 @@ class BVPBIDSWriter(PhysioBIDSWriter):
         Save processed BVP data and metrics in BIDS format.
         
         Args:
-            subject_id: Subject identifier WITH prefix (e.g., 'sub-f01p01')
+            subject_id: Subject identifier WITH prefix (e.g., 'sub-g01p01')
             session_id: Session identifier WITH prefix (e.g., 'ses-01')
             processed_results: Dictionary mapping moment names to processed DataFrames
                              Expected columns: time, PPG_Raw, PPG_Clean, PPG_Quality, PPG_Peaks, PPG_Rate
@@ -431,7 +431,7 @@ class BVPBIDSWriter(PhysioBIDSWriter):
         2. JSON sidecar with metadata and column descriptions
         
         Args:
-            subject_id: Subject identifier WITH prefix (e.g., 'sub-f01p01')
+            subject_id: Subject identifier WITH prefix (e.g., 'sub-g01p01')
             session_id: Session identifier WITH prefix (e.g., 'ses-01')
             moment: Moment/task name (e.g., 'restingstate', 'therapy')
             rr_intervals_df: DataFrame with columns:
@@ -446,7 +446,7 @@ class BVPBIDSWriter(PhysioBIDSWriter):
         Example:
             >>> writer = BVPBIDSWriter()
             >>> tsv_path, json_path = writer.save_rr_intervals(
-            ...     'sub-f01p01', 'ses-01', 'restingstate', rr_df
+            ...     'sub-g01p01', 'ses-01', 'restingstate', rr_df
             ... )
         """
         # Ensure prefixes

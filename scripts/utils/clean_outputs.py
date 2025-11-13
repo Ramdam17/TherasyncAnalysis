@@ -289,7 +289,7 @@ Examples:
   python scripts/clean_outputs.py --derivatives --modality hr
   
   # Clean specific subject/session
-  python scripts/clean_outputs.py --derivatives --subject f01p01 --session 01
+  python scripts/clean_outputs.py --derivatives --subject g01p01 --session 01
   
   # Force clean without confirmation
   python scripts/clean_outputs.py --all --force

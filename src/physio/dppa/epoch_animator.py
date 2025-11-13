@@ -52,7 +52,7 @@ class EpochAnimator:
         Load RR intervals from epoched BVP file.
         
         Args:
-            subject: Subject ID (e.g., 'f01p01')
+            subject: Subject ID (e.g., 'g01p01')
             session: Session ID (e.g., 'ses-01', auto-prefix if needed)
             task: Task name ('therapy', 'restingstate')
             method: Epoching method ('sliding_duration30s_step5s')
