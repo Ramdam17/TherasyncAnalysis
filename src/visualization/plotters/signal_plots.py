@@ -19,7 +19,8 @@ from pathlib import Path
 
 from ..config import (
     COLORS, ALPHA, FIGSIZE, FONTSIZE, LINEWIDTH, MARKERSIZE,
-    apply_plot_style, get_moment_color, format_duration
+    apply_plot_style, get_moment_color, get_moment_label, get_moment_order,
+    format_duration
 )
 
 
@@ -54,7 +55,12 @@ def plot_multisignal_dashboard(
     gs = GridSpec(4, 1, height_ratios=[1, 1, 1, 0.8], hspace=0.3)
     
     # Collect all moments for x-axis alignment
-    moments = ['restingstate', 'therapy']
+    # Discover moments from available data (any modality)
+    moments = []
+    for modality in ['bvp', 'eda', 'hr']:
+        if modality in data and 'signals' in data[modality]:
+            moments.extend(data[modality]['signals'].keys())
+    moments = sorted(list(set(moments)))  # Unique and sorted
     
     # Calculate moment boundaries for vertical separators
     moment_boundaries = {}
@@ -145,7 +151,7 @@ def add_moment_separators(ax: plt.Axes, moment_boundaries: Dict, label_position:
         # Label at top of panel
         if label_position == 'top':
             mid_time = (bounds['start'] + bounds['end']) / 2
-            ax.text(mid_time, 0.98, moment.capitalize(),
+            ax.text(mid_time, 0.98, get_moment_label(moment),
                    transform=ax.get_xaxis_transform(),
                    ha='center', va='top',
                    fontsize=FONTSIZE['annotation'],
@@ -174,7 +180,7 @@ def plot_bvp_signal(ax: plt.Axes, bvp_data: Dict, moments: list, moment_boundari
         if 'PPG_Clean' in signals.columns:
             ax.plot(time, signals['PPG_Clean'], 
                    color=color, linewidth=LINEWIDTH['normal'],
-                   label=moment.capitalize(), alpha=ALPHA['line'])
+                   label=get_moment_label(moment), alpha=ALPHA['line'])
         
         # Mark detected peaks
         if 'PPG_Peaks' in signals.columns:
@@ -217,7 +223,7 @@ def plot_hr_signal(ax: plt.Axes, hr_data: Dict, moments: list, moment_boundaries
             all_hr.extend(hr_values)
             ax.plot(time, hr_values, 
                    color=color, linewidth=LINEWIDTH['medium'],
-                   label=moment.capitalize(), alpha=ALPHA['line'])
+                   label=get_moment_label(moment), alpha=ALPHA['line'])
     
     # Add horizontal zones
     if all_hr:
@@ -262,13 +268,13 @@ def plot_eda_signal(ax: plt.Axes, eda_data: Dict, moments: list, moment_boundari
         if 'EDA_Tonic' in signals.columns:
             ax.plot(time, signals['EDA_Tonic'], 
                    color=color, linewidth=LINEWIDTH['thick'],
-                   label=f'{moment.capitalize()} - Tonic', alpha=ALPHA['line'])
+                   label=f'{get_moment_label(moment)} - Tonic', alpha=ALPHA['line'])
         
         # Plot phasic component (filled area) - lighter version of moment color
         if 'EDA_Phasic' in signals.columns:
             ax.fill_between(time, 0, signals['EDA_Phasic'],
                            color=color, alpha=ALPHA['fill'],
-                           label=f'{moment.capitalize()} - Phasic')
+                           label=f'{get_moment_label(moment)} - Phasic')
     
     ax.grid(True, alpha=ALPHA['fill'])
 
@@ -309,7 +315,7 @@ def plot_scr_events(ax: plt.Axes, eda_data: Dict, moments: list, moment_boundari
             )
             markerline.set_markersize(MARKERSIZE['medium'])
             markerline.set_color(color)
-            markerline.set_label(moment.capitalize())
+            markerline.set_label(get_moment_label(moment))
             stemlines.set_linewidth(LINEWIDTH['normal'])
             stemlines.set_alpha(ALPHA['overlay'])
     
@@ -466,7 +472,7 @@ def plot_hr_dynamics_timeline(
         
         # Plot HR line for this moment
         ax.plot(time, hr, color=color, linewidth=LINEWIDTH['thick'],
-               label=f'{moment.capitalize()} (μ={hr_mean:.1f} ±{hr_std:.1f} BPM)',
+               label=f'{get_moment_label(moment)} (μ={hr_mean:.1f} ±{hr_std:.1f} BPM)',
                alpha=ALPHA['line'])
         
         # Add moment separator (vertical line) - except for last moment
