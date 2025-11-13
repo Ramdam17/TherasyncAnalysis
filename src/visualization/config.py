@@ -224,6 +224,67 @@ def get_moment_color(moment) -> str:
         return COLORS['gray']
 
 
+def get_moment_label(moment: str, config: Dict = None) -> str:
+    """
+    Get display label for a moment.
+    
+    Priority order:
+    1. Label from config.yaml override (if provided)
+    2. Known moment labels from MOMENT_LABELS dict
+    3. Auto-generated: capitalize and replace underscores
+    
+    Args:
+        moment: Moment name (e.g., 'restingstate', 'baseline', 'intervention')
+        config: Optional config dict with custom labels
+    
+    Returns:
+        Formatted display label
+    
+    Examples:
+        get_moment_label('restingstate')        # 'Resting State'
+        get_moment_label('therapy')             # 'Therapy Session'
+        get_moment_label('baseline')            # 'Baseline'
+        get_moment_label('post_intervention')   # 'Post Intervention'
+    """
+    # Check config override
+    if config and 'visualization' in config:
+        moment_labels = config.get('visualization', {}).get('moment_labels', {})
+        if moment in moment_labels:
+            return moment_labels[moment]
+    
+    # Check known labels
+    if moment in MOMENT_LABELS:
+        return MOMENT_LABELS[moment]
+    
+    # Auto-generate: capitalize and replace underscores
+    return moment.replace('_', ' ').title()
+
+
+def get_moment_order(moment: str, moments_list: list) -> int:
+    """
+    Get the index/order of a moment in a list.
+    
+    This ensures consistent ordering across visualizations.
+    
+    Args:
+        moment: Moment name
+        moments_list: List of all available moments (sorted)
+    
+    Returns:
+        Index of the moment in the list (0-based)
+        Returns -1 if moment not found
+    
+    Examples:
+        moments = ['baseline', 'restingstate', 'therapy']
+        get_moment_order('restingstate', moments)  # 1
+        get_moment_order('therapy', moments)       # 2
+    """
+    try:
+        return moments_list.index(moment)
+    except ValueError:
+        return -1
+
+
 def get_modality_color(modality: str) -> str:
     """Get color for a specific modality."""
     return COLORS.get(modality, COLORS['gray'])
