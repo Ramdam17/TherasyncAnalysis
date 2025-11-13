@@ -197,6 +197,7 @@ def get_moment_color(moment) -> str:
     
     Supports both string names and integer indices.
     Uses modulo fallback for indices beyond the palette size.
+    For unknown string names, generates a stable color based on hash.
     
     Args:
         moment: Either a moment name (str) or index (int)
@@ -210,6 +211,7 @@ def get_moment_color(moment) -> str:
         get_moment_color(0)               # '#3498db' (blue)
         get_moment_color(5)               # '#1abc9c' (teal)
         get_moment_color(10)              # '#2ecc71' (green, wraps around)
+        get_moment_color('baseline')      # Stable color based on hash
     """
     if isinstance(moment, int):
         # Direct index access with modulo fallback
@@ -218,8 +220,10 @@ def get_moment_color(moment) -> str:
         # Try named moment first (backward compatibility)
         if moment in MOMENT_NAME_TO_INDEX:
             return MOMENT_COLORS[MOMENT_NAME_TO_INDEX[moment]]
-        # Fallback to COLORS dict for unknown names
-        return COLORS.get(moment, COLORS['gray'])
+        # For unknown names, use hash to get stable color index
+        moment_hash = hash(moment)
+        color_index = moment_hash % len(MOMENT_COLORS)
+        return MOMENT_COLORS[color_index]
     else:
         return COLORS['gray']
 
