@@ -128,38 +128,50 @@ epoch_id_sliding_duration30s_step5s : [0, 1, 2, ...]
 
 ### 3.1 Approche Progressive (6 Phases)
 
-#### Phase 1: Préparation (30 min)
+#### Phase 1: Préparation (30 min) ✅ TERMINÉE
 - [x] Analyser architecture existante
 - [x] Documenter dépendances
 - [x] Créer plan de migration
+- **Status**: Plan créé, architecture documentée
 
-#### Phase 2: Adapter `EpochAssigner` (1h)
-- [ ] Modifier pour accepter paramètres par moment
-- [ ] Supprimer logique hard-codée "restingstate → epoch_id=0"
-- [ ] Lire nouvelle structure config (methods.fixed.restingstate, etc.)
-- [ ] Tests: vérifier que les 3 méthodes fonctionnent avec les 2 moments
+#### Phase 2: Adapter `EpochAssigner` (1h) ✅ TERMINÉE  
+- [x] Modifier pour accepter paramètres par moment
+- [x] Supprimer logique hard-codée "restingstate → epoch_id=0"
+- [x] Lire nouvelle structure config (methods.fixed.restingstate, etc.)
+- [x] Tests: vérifier que les 3 méthodes fonctionnent avec les 2 moments
+- **Commit**: 2c7d8b8
+- **Fichiers**: src/physio/epoching/epoch_assigner.py
 
-#### Phase 3: Modifier Writers de Preprocessing (2h)
-- [ ] `base_bids_writer.py`: ajouter méthode `add_epoch_columns(df, time, task)`
-- [ ] `bvp_bids_writer.py`: modifier `save_rr_intervals()` pour ajouter epochs
-- [ ] Logique: si `epoching.enabled && mode=="preprocessing"` → ajouter colonnes
-- [ ] Tests: vérifier que fichiers ont colonnes epoch_id_*
+#### Phase 3: Modifier Writers de Preprocessing (2h) ✅ TERMINÉE
+- [x] `base_bids_writer.py`: ajouter méthode `_add_epoch_columns(df, task)`
+- [x] `bvp_bids_writer.py`: modifier `save_rr_intervals()` pour ajouter epochs
+- [x] `bvp_bids_writer.py`: modifier `_save_processed_signals()` pour ajouter epochs
+- [x] `eda_bids_writer.py`: modifier `_save_processed_signals()` pour ajouter epochs
+- [x] Logique: si `epoching.enabled && mode=="preprocessing"` → ajouter colonnes
+- [x] Tests: vérifier que fichiers ont colonnes epoch_id_*
+- **Commit**: 0dbb31a
+- **Fichiers**: base_bids_writer.py, bvp_bids_writer.py, eda_bids_writer.py
 
-#### Phase 4: Adapter Modules DPPA (1h)
-- [ ] `poincare_calculator.py`: chercher dans preprocessing/ au lieu de epoched/
-- [ ] `epoch_animator.py`: idem
-- [ ] `compute_poincare.py`: idem
-- [ ] Tests: vérifier que DPPA fonctionne avec nouveaux chemins
+#### Phase 4: Adapter Modules DPPA (1h) ✅ TERMINÉE
+- [x] `poincare_calculator.py`: chercher dans preprocessing/ au lieu de epoched/
+- [x] `epoch_animator.py`: idem
+- [x] `compute_poincare.py`: idem
+- [x] Tests: vérifier que DPPA fonctionne avec nouveaux chemins
+- **Commit**: ada78db
+- **Fichiers**: poincare_calculator.py, epoch_animator.py, compute_poincare.py
 
-#### Phase 5: Nettoyer Code Obsolète (30 min)
-- [ ] **Garder**: `epoch_assigner.py` (réutilisé dans preprocessing)
-- [ ] **Deprecate/Supprimer**: 
+#### Phase 5: Nettoyer Code Obsolète (30 min) ✅ TERMINÉE
+- [x] **Garder**: `epoch_assigner.py` (réutilisé dans preprocessing)
+- [x] **Deprecate**: 
   - `epoch_bids_writer.py` (mode "separate" legacy)
   - `epoch_all_signals.py` (script séparé obsolète)
-- [ ] Ajouter warnings de deprecation si on garde pour compatibilité
+- [x] Ajouter warnings de deprecation
+- **Commit**: 9ef3f6a
+- **Fichiers**: epoch_bids_writer.py, epoch_all_signals.py
 
-#### Phase 6: Tests & Documentation (1h)
-- [ ] Tests end-to-end: preprocessing → DPPA
+#### Phase 6: Tests & Documentation (1h) ⏳ EN COURS
+- [x] Config validée (structure correcte, params par moment)
+- [ ] Tests end-to-end: preprocessing → DPPA (nécessite données)
 - [ ] Vérifier génération correcte des colonnes epoch_id_*
 - [ ] Mettre à jour documentation (README, QUICKREF)
 - [ ] Commit final
