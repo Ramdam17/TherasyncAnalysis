@@ -318,7 +318,7 @@ def format_duration(seconds: float) -> str:
 
 # Visualization output configuration
 OUTPUT_CONFIG = {
-    'base_path': 'data/derivatives/visualization',
+    'base_path': 'data/derivatives/visualization/preprocessing',
     'figures_subdir': 'figures',
     'report_subdir': 'report',
     'summary_subdir': 'summary',
