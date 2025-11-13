@@ -9,6 +9,17 @@ Date: November 2025
 
 from typing import Dict
 import matplotlib.pyplot as plt
+from src.core.config_loader import ConfigLoader
+
+# Load configuration and build moment labels from config.yaml
+_config_loader = ConfigLoader()
+_config = _config_loader.config
+
+# Build MOMENT_LABELS dictionary from config.yaml moments
+MOMENT_LABELS = {
+    moment['name']: moment.get('displayname', moment['name'])
+    for moment in _config.get('moments', [])
+}
 
 # Color Schemes
 COLORS = {
@@ -129,12 +140,6 @@ DPI = {
 # Export formats
 EXPORT_FORMATS = ['png', 'pdf', 'svg']
 
-# Moment labels (for display)
-MOMENT_LABELS = {
-    'restingstate': 'Resting State',
-    'therapy': 'Therapy Session',
-}
-
 # Metric labels and units
 METRIC_LABELS = {
     # BVP/HRV metrics
@@ -197,6 +202,7 @@ def get_moment_color(moment) -> str:
     
     Supports both string names and integer indices.
     Uses modulo fallback for indices beyond the palette size.
+    For unknown string names, generates a stable color based on hash.
     
     Args:
         moment: Either a moment name (str) or index (int)
@@ -210,6 +216,7 @@ def get_moment_color(moment) -> str:
         get_moment_color(0)               # '#3498db' (blue)
         get_moment_color(5)               # '#1abc9c' (teal)
         get_moment_color(10)              # '#2ecc71' (green, wraps around)
+        get_moment_color('baseline')      # Stable color based on hash
     """
     if isinstance(moment, int):
         # Direct index access with modulo fallback
@@ -218,10 +225,59 @@ def get_moment_color(moment) -> str:
         # Try named moment first (backward compatibility)
         if moment in MOMENT_NAME_TO_INDEX:
             return MOMENT_COLORS[MOMENT_NAME_TO_INDEX[moment]]
-        # Fallback to COLORS dict for unknown names
-        return COLORS.get(moment, COLORS['gray'])
+        # For unknown names, use hash to get stable color index
+        moment_hash = hash(moment)
+        color_index = moment_hash % len(MOMENT_COLORS)
+        return MOMENT_COLORS[color_index]
     else:
         return COLORS['gray']
+
+
+def get_moment_label(moment: str, config: dict | None = None) -> str:
+    """
+    Get display label for a moment.
+    
+    Reads from MOMENT_LABELS dict built from config.yaml at module initialization.
+    Falls back to moment name if not found.
+    
+    Args:
+        moment: Moment name (e.g., 'restingstate', 'baseline', 'intervention')
+        config: Unused (kept for backward compatibility)
+    
+    Returns:
+        Display label from config's displayname field, or moment name if not found
+    
+    Examples:
+        get_moment_label('restingstate')  # 'Resting State' (from config.yaml)
+        get_moment_label('therapy')       # 'Therapy Session' (from config.yaml)
+        get_moment_label('unknown')       # 'unknown' (fallback to name)
+    """
+    return MOMENT_LABELS.get(moment, moment)
+
+
+def get_moment_order(moment: str, moments_list: list) -> int:
+    """
+    Get the index/order of a moment in a list.
+    
+    This ensures consistent ordering across visualizations.
+    
+    Args:
+        moment: Moment name
+        moments_list: List of all available moments (sorted)
+    
+    Returns:
+        Index of the moment in the list (0-based)
+        Returns -1 if moment not found
+    
+    Examples:
+        moments = ['baseline', 'restingstate', 'therapy']
+        get_moment_order('restingstate', moments)  # 1
+        get_moment_order('therapy', moments)       # 2
+    """
+    try:
+        return moments_list.index(moment)
+    except ValueError:
+        return -1
 
 
 def get_modality_color(modality: str) -> str:
@@ -253,7 +309,7 @@ def format_duration(seconds: float) -> str:
 
 # Visualization output configuration
 OUTPUT_CONFIG = {
-    'base_path': 'data/derivatives/visualization',
+    'base_path': 'data/derivatives/visualization/preprocessing',
     'figures_subdir': 'figures',
     'report_subdir': 'report',
     'summary_subdir': 'summary',

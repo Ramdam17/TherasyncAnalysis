@@ -18,7 +18,8 @@ from pathlib import Path
 
 from ..config import (
     COLORS, ALPHA, FIGSIZE, FONTSIZE, LINEWIDTH, MARKERSIZE,
-    apply_plot_style, get_moment_color, METRIC_LABELS
+    apply_plot_style, get_moment_color, get_moment_label, get_moment_order,
+    METRIC_LABELS
 )
 
 
@@ -51,7 +52,11 @@ def plot_poincare_hrv(
                 transform=ax.transAxes, fontsize=FONTSIZE['label'])
         return fig
     
-    moments = ['restingstate', 'therapy']
+    moments = []
+    for modality in ['bvp', 'eda', 'hr']:
+        if modality in data and 'signals' in data[modality]:
+            moments.extend(data[modality]['signals'].keys())
+    moments = sorted(list(set(moments)))  # Unique and sorted
     available_moments = [m for m in moments if m in bvp_data.get('signals', {})]
     
     if not available_moments:
@@ -158,7 +163,7 @@ def plot_poincare_hrv(
             ax.set_ylabel('RR(n+1) [ms]', fontsize=FONTSIZE['label'])
         
         # Title with SD1/SD2
-        ax.set_title(f'{moment.capitalize()}\nSD1={data_m["sd1"]:.1f}ms, SD2={data_m["sd2"]:.1f}ms',
+        ax.set_title(f'{get_moment_label(moment)}\nSD1={data_m["sd1"]:.1f}ms, SD2={data_m["sd2"]:.1f}ms',
                     fontsize=FONTSIZE['subtitle'], color=color, fontweight='bold')
         
         # Grid
@@ -288,7 +293,7 @@ def plot_autonomic_balance(
     ax.set_xlabel('Moment', fontsize=FONTSIZE['label'], fontweight='bold')
     ax.set_ylabel('Time (ms)', fontsize=FONTSIZE['label'], fontweight='bold')
     ax.set_xticks(x)
-    ax.set_xticklabels([m.capitalize() for m in moments], 
+    ax.set_xticklabels([get_moment_label(m) for m in moments], 
                         fontsize=FONTSIZE['tick'], fontweight='bold')
     ax.grid(True, alpha=ALPHA['fill'], axis='y', linestyle='--')
     

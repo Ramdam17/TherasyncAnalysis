@@ -15,7 +15,8 @@ import pandas as pd
 
 from ..config import (
     COLORS, FIGSIZE, FONTSIZE, LINEWIDTH, ALPHA,
-    apply_plot_style, get_moment_color, format_duration
+    apply_plot_style, get_moment_color, get_moment_label, get_moment_order,
+    format_duration
 )
 
 
@@ -88,7 +89,7 @@ def plot_eda_arousal_profile(data: Dict, output_path: str, show: bool = False) -
         # Clip tonic values to 0 (physiological minimum)
         tonic_clipped = df['EDA_Tonic'].clip(lower=0)
         tonic_data.append(tonic_clipped.values)
-        moment_labels.append(moment.capitalize())
+        moment_labels.append(get_moment_label(moment))
         moment_colors.append(get_moment_color(moment))
     
     # Create boxplot
@@ -132,7 +133,7 @@ def plot_eda_arousal_profile(data: Dict, output_path: str, show: bool = False) -
     ax2.set_xlabel('Moment', fontsize=FONTSIZE['label'], fontweight='bold')
     ax2.set_ylabel('EDA Phasic Std Dev (µS)', fontsize=FONTSIZE['label'], fontweight='bold')
     ax2.set_xticks(x)
-    ax2.set_xticklabels([m.capitalize() for m in stats.keys()], 
+    ax2.set_xticklabels([get_moment_label(m) for m in stats.keys()], 
                         fontsize=FONTSIZE['tick'], fontweight='bold')
     ax2.grid(True, alpha=ALPHA['fill'], axis='y', linestyle='--')
     ax2.set_title('Emotional Reactivity\n(Phasic Variability)', 
@@ -263,7 +264,7 @@ def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> N
                     color=moment_color, edgecolor='black', linewidth=1.2)
         ax_hist.set_ylabel('Fréquence', fontsize=FONTSIZE['label'], fontweight='bold')
         ax_hist.set_xlabel('Amplitude (µS)', fontsize=FONTSIZE['label'], fontweight='bold')
-        ax_hist.set_title(f'{moment.capitalize()} - Distribution (n={len(amplitudes)})', 
+        ax_hist.set_title(f'{get_moment_label(moment)} - Distribution (n={len(amplitudes)})', 
                          fontsize=FONTSIZE['subtitle'], fontweight='bold')
         ax_hist.set_xlim(amp_min, amp_max)
         ax_hist.set_ylim(0, max_freq)
@@ -288,7 +289,7 @@ def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> N
         bp['boxes'][0].set_alpha(0.7)
         
         ax_box.set_ylabel('Amplitude (µS)', fontsize=FONTSIZE['label'], fontweight='bold')
-        ax_box.set_title(f'{moment.capitalize()} - Statistiques', 
+        ax_box.set_title(f'{get_moment_label(moment)} - Statistiques', 
                         fontsize=FONTSIZE['subtitle'], fontweight='bold')
         ax_box.set_ylim(amp_min, amp_max)
         ax_box.set_xticklabels([''])  # No x-axis labels needed

@@ -10,6 +10,7 @@ Date: November 2025
 
 import json
 import gzip
+import re
 from pathlib import Path
 from typing import Dict, Optional, Tuple, List
 import pandas as pd
@@ -19,6 +20,58 @@ import logging
 from src.core.config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
+
+
+def discover_moments(subject: str, session: str, derivatives_path: Path) -> List[str]:
+    """
+    Automatically discover available moments/tasks for a subject/session.
+    
+    Scans the preprocessing directory and extracts moment names from BIDS
+    filename patterns (task-{moment}_).
+    
+    Args:
+        subject: Subject ID (e.g., 'g01p01')
+        session: Session ID (e.g., '01')
+        derivatives_path: Path to derivatives/preprocessing directory
+    
+    Returns:
+        Sorted list of moment names found (e.g., ['restingstate', 'therapy'])
+        Returns empty list if no moments found
+    
+    Examples:
+        >>> moments = discover_moments('g01p01', '01', Path('data/derivatives/preprocessing'))
+        >>> print(moments)  # ['restingstate', 'therapy']
+    """
+    subject_id = f"sub-{subject}" if not subject.startswith('sub-') else subject
+    session_id = f"ses-{session}" if not session.startswith('ses-') else session
+    
+    subject_session_path = derivatives_path / subject_id / session_id
+    
+    if not subject_session_path.exists():
+        logger.warning(f"Subject/session directory not found: {subject_session_path}")
+        return []
+    
+    moments = set()
+    
+    # Scan all modality directories
+    for modality in ['bvp', 'eda', 'hr']:
+        modality_path = subject_session_path / modality
+        
+        if not modality_path.exists():
+            continue
+        
+        # Extract task-{moment} from all TSV files
+        for file in modality_path.glob("*task-*.tsv"):
+            match = re.search(r'task-(\w+)_', file.name)
+            if match:
+                moment = match.group(1)
+                moments.add(moment)
+                logger.debug(f"Found moment '{moment}' in {file.name}")
+    
+    result = sorted(moments)
+    logger.info(f"Discovered {len(result)} moments for {subject_id}/{session_id}: {result}")
+    
+    return result
 
 
 class VisualizationDataLoader:
@@ -107,7 +160,8 @@ class VisualizationDataLoader:
             'subject': subject,
             'session': session,
             'subject_id': subject_id,
-            'session_id': session_id
+            'session_id': session_id,
+            'config': self.config  # Include config for plotters
         }
         
         # Load each modality
@@ -129,6 +183,27 @@ class VisualizationDataLoader:
         
         return data
     
+    def _discover_moments_in_modality(self, modality_path: Path, modality: str) -> List[str]:
+        """
+        Discover moments available in a specific modality directory.
+        
+        Args:
+            modality_path: Path to modality directory (e.g., .../bvp/)
+            modality: Modality name ('bvp', 'eda', 'hr')
+        
+        Returns:
+            Sorted list of moment names found
+        """
+        moments = set()
+        
+        # Look for files with task-{moment} pattern
+        for file in modality_path.glob(f"*task-*_*.tsv"):
+            match = re.search(r'task-(\w+)_', file.name)
+            if match:
+                moments.add(match.group(1))
+        
+        return sorted(moments)
+    
     def _load_bvp_data(self, modality_path: Path, subject_id: str, session_id: str) -> Dict:
         """Load BVP processed signals and metrics."""
         bvp_data = {
@@ -137,8 +212,11 @@ class VisualizationDataLoader:
             'metadata': {}
         }
         
+        # Discover available moments from files
+        moments = self._discover_moments_in_modality(modality_path, 'bvp')
+        
         # Load processed signals for each moment
-        for moment in ['restingstate', 'therapy']:
+        for moment in moments:
             signal_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-bvp.tsv"
             metadata_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-bvp.json"
             
@@ -146,6 +224,8 @@ class VisualizationDataLoader:
                 # Load TSV (not compressed)
                 bvp_data['signals'][moment] = pd.read_csv(signal_file, sep='\t')
                 logger.info(f"  Loaded BVP signals for {moment}: {len(bvp_data['signals'][moment])} samples")
+            else:
+                logger.warning(f"  BVP signal file not found for moment '{moment}': {signal_file}")
             
             if metadata_file.exists():
                 with open(metadata_file, 'r') as f:
@@ -168,13 +248,18 @@ class VisualizationDataLoader:
             'metadata': {}
         }
         
+        # Discover available moments from files
+        moments = self._discover_moments_in_modality(modality_path, 'eda')
+        
         # Load processed signals and events for each moment
-        for moment in ['restingstate', 'therapy']:
+        for moment in moments:
             # Signals
             signal_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-eda.tsv"
             if signal_file.exists():
                 eda_data['signals'][moment] = pd.read_csv(signal_file, sep='\t')
                 logger.info(f"  Loaded EDA signals for {moment}: {len(eda_data['signals'][moment])} samples")
+            else:
+                logger.warning(f"  EDA signal file not found for moment '{moment}': {signal_file}")
             
             # SCR Events
             events_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-scr_events.tsv"
@@ -204,8 +289,8 @@ class VisualizationDataLoader:
             'metadata': {}
         }
         
-        # HR now uses separate per-moment files (new format)
-        moments = ['restingstate', 'therapy']
+        # Discover available moments from files
+        moments = self._discover_moments_in_modality(modality_path, 'hr')
         
         for moment in moments:
             signal_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-hr.tsv"
@@ -214,6 +299,8 @@ class VisualizationDataLoader:
             if signal_file.exists():
                 hr_data['signals'][moment] = pd.read_csv(signal_file, sep='\t')
                 logger.info(f"  Loaded HR signals for {moment}: {len(hr_data['signals'][moment])} samples")
+            else:
+                logger.warning(f"  HR signal file not found for moment '{moment}': {signal_file}")
             
             if metadata_file.exists():
                 with open(metadata_file, 'r') as f:
