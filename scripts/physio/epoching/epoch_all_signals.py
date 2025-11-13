@@ -2,10 +2,22 @@
 """
 Epoch all physiological signals for batch processing.
 
-This script processes preprocessed physiological signals and adds epoch columns
-for time-windowed analysis. Supports batch processing of multiple subjects/sessions.
+⚠️ DEPRECATED: This script is deprecated as of 2025-11-12.
+    Epoching is now integrated directly into preprocessing (mode='preprocessing').
+    Epoch columns are automatically added during preprocessing by the writers.
+    
+    This script is kept for backward compatibility with mode='separate' only.
+    It will be removed in a future version.
 
-Usage:
+Legacy behavior:
+- Reads from: derivatives/preprocessing/
+- Writes to: derivatives/epoched/ (creates duplicate files)
+- Adds epoch columns to signal files
+
+Recommended: Use preprocessing pipeline with mode='preprocessing' instead.
+    The epoch columns will be added automatically during preprocessing.
+
+Usage (DEPRECATED):
     # Single session
     python scripts/physio/epoching/epoch_all_signals.py --subject g01p01 --session 01
     
@@ -20,11 +32,21 @@ Date: November 2025
 """
 
 import sys
+import warnings
 import argparse
 import logging
 from pathlib import Path
 from typing import List, Tuple
 from datetime import datetime
+
+# Issue deprecation warning
+warnings.warn(
+    "epoch_all_signals.py is deprecated. Use preprocessing pipeline with mode='preprocessing' instead. "
+    "Epoch columns are now added automatically during preprocessing. "
+    "This script will be removed in a future version.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))

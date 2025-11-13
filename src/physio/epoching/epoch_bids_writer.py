@@ -1,13 +1,25 @@
 """
 BIDS writer for epoched physiological signals.
 
-This module handles reading preprocessed BIDS files, adding epoch columns,
-and writing to the epoched derivatives directory.
+⚠️ DEPRECATED: This module is deprecated as of 2025-11-12.
+    Epoching is now integrated directly into preprocessing (mode='preprocessing').
+    Epoch columns are added during preprocessing by base_bids_writer._add_epoch_columns().
+    
+    This file is kept for backward compatibility with mode='separate' only.
+    It will be removed in a future version.
+
+Legacy behavior:
+- Reads from: derivatives/preprocessing/
+- Writes to: derivatives/epoched/
+- Creates duplicate files with epoch columns added
+
+Recommended: Use mode='preprocessing' in config.yaml instead.
 
 Authors: Lena Adel, Remy Ramadour
 Date: November 2025
 """
 
+import warnings
 import fnmatch
 import logging
 import json
@@ -20,6 +32,15 @@ from src.core.config_loader import ConfigLoader
 from src.physio.epoching.epoch_assigner import EpochAssigner
 
 logger = logging.getLogger(__name__)
+
+# Issue deprecation warning on import
+warnings.warn(
+    "EpochBIDSWriter is deprecated. Use mode='preprocessing' in config.yaml instead. "
+    "Epoching is now integrated into preprocessing writers (base_bids_writer._add_epoch_columns). "
+    "This module will be removed in a future version.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 
 class EpochBIDSWriter:
