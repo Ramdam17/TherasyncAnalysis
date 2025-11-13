@@ -226,24 +226,6 @@ epoching:
         duration: 30        # seconds - epoch duration
         step: 5             # seconds - step between consecutive epochs
         min_duration_ratio: 0.0  # Keep all partial epochs
-  
-  # Files to epoch (glob patterns)
-  include:
-    - "*_desc-processed_recording-*.tsv"  # All processed signal files
-    - "*_desc-rrintervals_physio.tsv"     # RR intervals files
-  
-  # Files to exclude (glob patterns)
-  exclude:
-    - "*_desc-*-metrics_*.tsv"            # Metrics files (not epochable)
-    - "*_desc-*-summary_*.json"           # Summary files
-    - "*_events.tsv"                      # Event files
-  
-  # Output configuration
-  output:
-    base_dir: "epoched"  # derivatives/epoched/
-    # Structure: derivatives/epoched/sub-xxx/ses-yyy/{modality}/
-    # Note: task-restingstate files always get epoch_id=0 for all methods
-    #       task-therapy files get proper epoch assignments based on methods
 
 # Visualization Configuration
 visualization:
