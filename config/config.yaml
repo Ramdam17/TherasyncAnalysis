@@ -26,6 +26,7 @@ output:
   alliance_dir: "alliance"  # derivatives/alliance/
   alliance_subdirs:
     annotations: "annotations"  # derivatives/alliance/sub-gXXshared/ses-YY/annotations/
+    figures: "figures"  # derivatives/alliance/sub-gXXshared/ses-YY/figures/
   
 # Moment/Task definitions - flexible for different study designs
 moments:

@@ -11,9 +11,11 @@ Date: November 2025
 from .moi_loader import MOILoader
 from .moi_epocher import MOIEpocher
 from .moi_writer import MOIWriter
+from .moi_visualizer import MOIVisualizer
 
 __all__ = [
     'MOILoader',
     'MOIEpocher',
     'MOIWriter',
+    'MOIVisualizer',
 ]
