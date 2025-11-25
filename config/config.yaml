@@ -22,6 +22,12 @@ output:
     eda: "eda"     # derivatives/preprocessing/sub-xxx/ses-yyy/eda/
     hr: "hr"       # derivatives/preprocessing/sub-xxx/ses-yyy/hr/
   
+  # Alliance/MOI annotations output structure
+  alliance_dir: "alliance"  # derivatives/alliance/
+  alliance_subdirs:
+    annotations: "annotations"  # derivatives/alliance/sub-gXXshared/ses-YY/annotations/
+    figures: "figures"  # derivatives/alliance/sub-gXXshared/ses-YY/figures/
+  
 # Moment/Task definitions - flexible for different study designs
 moments:
   # Current study has 2 moments
