@@ -60,8 +60,12 @@ def parse_dyad_info(dyad_pair: str) -> tuple:
     """
     Parse dyad identifier into components.
     
+    Supports two formats:
+        - Format A: 'sub1_ses1_vs_sub2_ses2' (session per subject)
+        - Format B: 'sub1_vs_sub2_ses' (shared session at end)
+    
     Args:
-        dyad_pair: Format 'sub1_ses1_vs_sub2_ses2'
+        dyad_pair: Dyad identifier string in either format
     
     Returns:
         Tuple (subject1, session1, subject2, session2)
@@ -73,13 +77,19 @@ def parse_dyad_info(dyad_pair: str) -> tuple:
     left_parts = parts[0].split('_')
     right_parts = parts[1].split('_')
     
-    if len(left_parts) != 2 or len(right_parts) != 2:
-        raise ValueError(f"Invalid dyad format: {dyad_pair}")
+    # Format A: sub1_ses1_vs_sub2_ses2 (2 parts each side)
+    if len(left_parts) == 2 and len(right_parts) == 2:
+        subject1, session1 = left_parts
+        subject2, session2 = right_parts
+        return subject1, session1, subject2, session2
     
-    subject1, session1 = left_parts
-    subject2, session2 = right_parts
+    # Format B: sub1_vs_sub2_ses (1 part left, 2 parts right with shared session)
+    if len(left_parts) == 1 and len(right_parts) == 2:
+        subject1 = left_parts[0]
+        subject2, session = right_parts
+        return subject1, session, subject2, session
     
-    return subject1, session1, subject2, session2
+    raise ValueError(f"Invalid dyad format: {dyad_pair}")
 
 
 def create_frame(

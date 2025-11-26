@@ -15,6 +15,7 @@ Modules:
 - dyad_plotter: Generate dyad visualizations
 - epoch_animator: Prepare epoch-by-epoch data for animations
 - poincare_plotter: Generate Poincaré plot visualizations
+- icd_stats_plotter: Statistical visualizations for real vs pseudo dyads
 
 Authors: Lena Adel, Remy Ramadour
 Date: November 2025
@@ -30,6 +31,7 @@ from .dyad_centroid_loader import DyadCentroidLoader
 from .dyad_plotter import DyadPlotter
 from .epoch_animator import EpochAnimator
 from .poincare_plotter import PoincarePlotter
+from .icd_stats_plotter import ICDStatsPlotter
 
 __all__ = [
     'PoincareCalculator',
@@ -42,4 +44,5 @@ __all__ = [
     'DyadPlotter',
     'EpochAnimator',
     'PoincarePlotter',
+    'ICDStatsPlotter',
 ]
