@@ -143,8 +143,17 @@ class TEMPBIDSWriter(PhysioBIDSWriter):
                 all_file_paths['physio_json'].append(physio_json)
                 
                 # Extract moment-specific metrics if session_metrics provided
-                if session_metrics is not None and moment in session_metrics.index:
-                    moment_metrics = session_metrics.loc[moment].to_dict()
+                if session_metrics is not None:
+                    # Handle both DataFrame and dict formats
+                    if hasattr(session_metrics, 'index') and moment in session_metrics.index:
+                        # DataFrame format
+                        moment_metrics = session_metrics.loc[moment].to_dict()
+                    elif isinstance(session_metrics, dict) and moment in session_metrics:
+                        # Dict format from extract_session_metrics()
+                        moment_metrics = session_metrics[moment]
+                    else:
+                        # Fallback: extract basic metrics from data
+                        moment_metrics = self._extract_basic_metrics(moment_data, moment)
                 else:
                     # Fallback: extract basic metrics from data
                     moment_metrics = self._extract_basic_metrics(moment_data, moment)
@@ -554,9 +563,9 @@ class TEMPBIDSWriter(PhysioBIDSWriter):
             "KeyResults": {
                 "MeanTemp": metrics.get('descriptive', {}).get('temp_mean') if 'descriptive' in metrics else metrics.get('temp_mean'),
                 "TempRange": metrics.get('descriptive', {}).get('temp_range') if 'descriptive' in metrics else metrics.get('temp_range'),
-                "TempChange": metrics.get('trend', {}).get('temp_change') if 'trend' in metrics else None,
-                "TempSlopePerMinute": metrics.get('trend', {}).get('temp_slope_per_minute') if 'trend' in metrics else None,
-                "Duration": metrics.get('contextual', {}).get('temp_duration') if 'contextual' in metrics else None
+                "TempChange": metrics.get('trend', {}).get('temp_change') if 'trend' in metrics else metrics.get('temp_change'),
+                "TempSlopePerMinute": metrics.get('trend', {}).get('temp_slope_per_minute') if 'trend' in metrics else metrics.get('temp_slope_per_minute'),
+                "Duration": metrics.get('contextual', {}).get('temp_duration') if 'contextual' in metrics else metrics.get('temp_duration')
             },
             "OutputFiles": {
                 "ProcessedSignals": str(file_paths.get('physio', '')),

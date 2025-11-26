@@ -206,6 +206,8 @@ class TEMPPreprocessor:
             logger.info(
                 f"Step 3: Extracting temperature metrics for {len(processed_results)} moment(s)..."
             )
+            session_metrics = self.temp_metrics.extract_session_metrics(processed_results)
+            logger.info(f"Extracted metrics for {len(session_metrics)} moments")
             
             # Step 4: Write BIDS output
             logger.info(
@@ -215,7 +217,7 @@ class TEMPPreprocessor:
                 subject_id=f"sub-{subject}",  # Ensure prefix
                 session_id=f"ses-{session}",   # Ensure prefix
                 processed_results=processed_results,
-                session_metrics=None,  # Will use basic metrics extraction
+                session_metrics=session_metrics,  # Pass extracted metrics
                 processing_metadata=all_moments_metadata
             )
             
