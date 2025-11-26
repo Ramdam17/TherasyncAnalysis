@@ -157,6 +157,12 @@ class BVPMetricsExtractor:
         """
         Extract HRV metrics from peaks using NeuroKit2.
         
+        This method filters out physiologically invalid RR intervals (outside 300-2000ms)
+        and passes the VALID RR intervals directly to NeuroKit2 for HRV computation.
+        
+        IMPORTANT: We pass RR intervals directly (not peaks) to avoid the bug where
+        removing a peak creates a new invalid interval between its neighbors.
+        
         Args:
             peaks: Array of peak indices
             sampling_rate: Sampling rate in Hz
@@ -168,38 +174,52 @@ class BVPMetricsExtractor:
         metrics = {}
         peaks_array = np.array(peaks)
         
+        # Get RR interval configuration
+        rr_config = self.bvp_config.get('rr_intervals', {})
+        min_valid_ms = rr_config.get('min_valid_ms', 300)
+        max_valid_ms = rr_config.get('max_valid_ms', 2000)
+        
         try:
             # Calculate RR intervals in milliseconds
-            rr_intervals = np.diff(peaks_array) / sampling_rate * 1000
+            rr_intervals_ms = np.diff(peaks_array) / sampling_rate * 1000
             
-            # Remove aberrant RR intervals (outliers from missed/extra beats)
-            # Physiologically valid RR intervals: 300ms (200 BPM) to 2000ms (30 BPM)
-            # More extreme outliers indicate artifacts (motion, signal loss)
-            valid_mask = (rr_intervals >= 300) & (rr_intervals <= 2000)
-            n_outliers = (~valid_mask).sum()
+            # Filter to keep only physiologically valid RR intervals
+            # Valid range: 300ms (200 BPM) to 2000ms (30 BPM)
+            valid_mask = (rr_intervals_ms >= min_valid_ms) & (rr_intervals_ms <= max_valid_ms)
+            valid_rr_ms = rr_intervals_ms[valid_mask]
+            
+            n_total = len(rr_intervals_ms)
+            n_valid = len(valid_rr_ms)
+            n_outliers = n_total - n_valid
             
             if n_outliers > 0:
-                # Filter outlier peaks by reconstructing valid peak indices
-                valid_peaks = [peaks_array[0]]  # Keep first peak
-                for i, is_valid in enumerate(valid_mask):
-                    if is_valid:
-                        valid_peaks.append(peaks_array[i + 1])
-                
-                peaks_corrected = np.array(valid_peaks)
-                
                 logger.info(
-                    f"Peak correction for {moment}: "
-                    f"removed {n_outliers}/{len(peaks_array)-1} aberrant RR intervals "
-                    f"({100*n_outliers/(len(peaks_array)-1):.1f}%) "
-                    f"outside 300-2000ms range"
+                    f"RR interval filtering for {moment}: "
+                    f"kept {n_valid}/{n_total} valid intervals "
+                    f"({100*n_valid/n_total:.1f}%), "
+                    f"removed {n_outliers} outside [{min_valid_ms}-{max_valid_ms}ms] range"
                 )
             else:
-                peaks_corrected = peaks_array
-                logger.debug(f"No aberrant peaks detected for {moment}")
+                logger.debug(f"All {n_total} RR intervals valid for {moment}")
+            
+            # Check minimum requirements for HRV analysis
+            if n_valid < 10:
+                logger.warning(
+                    f"Insufficient valid RR intervals for HRV analysis in {moment}: "
+                    f"{n_valid} < 10 required"
+                )
+                return self._get_empty_hrv_metrics_dict()
+            
+            # Convert valid RR intervals to peaks for NeuroKit2
+            # NeuroKit expects peak indices, so we reconstruct them from cumulative RR
+            # Starting at 0, each peak is at cumsum of RR intervals (converted to samples)
+            valid_rr_samples = valid_rr_ms / 1000 * sampling_rate
+            cumulative_samples = np.concatenate([[0], np.cumsum(valid_rr_samples)])
+            synthetic_peaks = cumulative_samples.astype(int)
             
             # Extract time-domain metrics
             if self.time_domain_metrics:
-                time_metrics = nk.hrv_time(peaks_corrected, sampling_rate=sampling_rate)
+                time_metrics = nk.hrv_time(synthetic_peaks, sampling_rate=sampling_rate)
                 for metric in self.time_domain_metrics:
                     if metric in time_metrics.columns:
                         metrics[metric] = float(time_metrics[metric].iloc[0])
@@ -210,7 +230,7 @@ class BVPMetricsExtractor:
             # Extract frequency-domain metrics
             if self.frequency_domain_metrics:
                 try:
-                    freq_metrics = nk.hrv_frequency(peaks_corrected, sampling_rate=sampling_rate)
+                    freq_metrics = nk.hrv_frequency(synthetic_peaks, sampling_rate=sampling_rate)
                     for metric in self.frequency_domain_metrics:
                         if metric in freq_metrics.columns:
                             metrics[metric] = float(freq_metrics[metric].iloc[0])
@@ -225,7 +245,7 @@ class BVPMetricsExtractor:
             # Extract nonlinear metrics
             if self.nonlinear_metrics:
                 try:
-                    nonlinear_metrics = nk.hrv_nonlinear(peaks_corrected, sampling_rate=sampling_rate)
+                    nonlinear_metrics = nk.hrv_nonlinear(synthetic_peaks, sampling_rate=sampling_rate)
                     for metric in self.nonlinear_metrics:
                         if metric in nonlinear_metrics.columns:
                             metrics[metric] = float(nonlinear_metrics[metric].iloc[0])
@@ -236,6 +256,14 @@ class BVPMetricsExtractor:
                     logger.warning(f"Nonlinear analysis failed for {moment}: {e}")
                     for metric in self.nonlinear_metrics:
                         metrics[metric] = np.nan
+            
+            # Log summary of computed metrics
+            logger.info(
+                f"HRV metrics for {moment}: "
+                f"MeanNN={metrics.get('HRV_MeanNN', np.nan):.1f}ms, "
+                f"SDNN={metrics.get('HRV_SDNN', np.nan):.1f}ms, "
+                f"RMSSD={metrics.get('HRV_RMSSD', np.nan):.1f}ms"
+            )
             
             return metrics
             
