@@ -141,7 +141,7 @@ def main():
     hr_cleaner_doc = document_class('src.physio.preprocessing.hr_cleaner', 'HRCleaner')
     print(f"  ✓ HRCleaner")
     
-    hr_metrics_doc = document_class('src.physio.preprocessing.hr_metrics_extractor', 'HRMetricsExtractor')
+    hr_metrics_doc = document_class('src.physio.preprocessing.hr_metrics', 'HRMetricsExtractor')
     print(f"  ✓ HRMetricsExtractor")
     
     hr_writer_doc = document_class('src.physio.preprocessing.hr_bids_writer', 'HRBIDSWriter')

@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import yaml
+import numpy as np
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
@@ -36,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from src.core.config_loader import ConfigLoader
 from src.physio.preprocessing.hr_loader import HRLoader
 from src.physio.preprocessing.hr_cleaner import HRCleaner
-from src.physio.preprocessing.hr_metrics_extractor import HRMetricsExtractor
+from src.physio.preprocessing.hr_metrics import HRMetricsExtractor
 from src.physio.preprocessing.hr_bids_writer import HRBIDSWriter
 
 
@@ -177,7 +178,7 @@ class HRPreprocessor:
                 processed_results[current_moment] = cleaned_data
                 all_moments_metadata[current_moment] = cleaning_metadata
                 
-                logger.info(f"✓ Successfully processed moment: {current_moment} ({len(renamed_data)} samples)")
+                logger.info(f"✓ Successfully processed moment: {current_moment} ({len(cleaned_data)} samples)")
             
             # Check if we have any processed data
             if not processed_results:
@@ -187,10 +188,11 @@ class HRPreprocessor:
             # Step 4: Extract metrics for all moments
             logger.info(f"Step 4: Extracting HR metrics for {len(processed_results)} moment(s)...")
             
-            # For now, extract metrics per moment (will be aggregated by writer)
-            # Note: HRMetricsExtractor expects old column names, so we need to handle this
-            # For simplicity, we'll pass the metrics extraction for now and let the writer handle it
-            # The writer will use _extract_basic_metrics() as fallback
+            session_metrics = self.hr_metrics.extract_session_metrics(processed_results)
+            
+            for moment_name, metrics in session_metrics.items():
+                valid_count = sum(1 for v in metrics.values() if not (isinstance(v, float) and np.isnan(v)))
+                logger.info(f"Extracted {valid_count} metrics for {moment_name}")
             
             # Step 5: Write BIDS output
             logger.info(f"Step 5: Writing BIDS output for {len(processed_results)} moment(s)...")
@@ -198,7 +200,7 @@ class HRPreprocessor:
                 subject_id=f"sub-{subject}",  # Ensure prefix
                 session_id=f"ses-{session}",   # Ensure prefix
                 processed_results=processed_results,
-                session_metrics=None,  # Will use basic metrics extraction
+                session_metrics=session_metrics,
                 processing_metadata=all_moments_metadata
             )
             

@@ -25,7 +25,7 @@ import numpy as np
 from src.core.config_loader import ConfigLoader
 from src.physio.preprocessing.temp_loader import TEMPLoader
 from src.physio.preprocessing.temp_cleaner import TEMPCleaner
-from src.physio.preprocessing.temp_metrics_extractor import TEMPMetricsExtractor
+from src.physio.preprocessing.temp_metrics import TEMPMetricsExtractor
 from src.physio.preprocessing.temp_bids_writer import TEMPBIDSWriter
 
 
@@ -371,7 +371,7 @@ class TestTEMPMetricsExtractor(unittest.TestCase):
         
         return signals
     
-    @patch('src.physio.preprocessing.temp_metrics_extractor.ConfigLoader')
+    @patch('src.physio.preprocessing.temp_metrics.ConfigLoader')
     def test_extractor_initialization(self, mock_config):
         """Test metrics extractor initialization."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -381,7 +381,7 @@ class TestTEMPMetricsExtractor(unittest.TestCase):
         extractor = TEMPMetricsExtractor()
         self.assertIsInstance(extractor, TEMPMetricsExtractor)
     
-    @patch('src.physio.preprocessing.temp_metrics_extractor.ConfigLoader')
+    @patch('src.physio.preprocessing.temp_metrics.ConfigLoader')
     def test_extract_metrics_success(self, mock_config):
         """Test successful metrics extraction."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -419,7 +419,7 @@ class TestTEMPMetricsExtractor(unittest.TestCase):
         self.assertIn('temp_stability', metrics['stability'])
         self.assertIn('temp_cv', metrics['stability'])
     
-    @patch('src.physio.preprocessing.temp_metrics_extractor.ConfigLoader')
+    @patch('src.physio.preprocessing.temp_metrics.ConfigLoader')
     def test_trend_detection(self, mock_config):
         """Test temperature trend detection."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -445,7 +445,7 @@ class TestTEMPMetricsExtractor(unittest.TestCase):
         self.assertGreater(metrics['trend']['temp_change'], 0)
         self.assertGreater(metrics['trend']['temp_final'], metrics['trend']['temp_initial'])
     
-    @patch('src.physio.preprocessing.temp_metrics_extractor.ConfigLoader')
+    @patch('src.physio.preprocessing.temp_metrics.ConfigLoader')
     def test_stability_metrics(self, mock_config):
         """Test stability metrics calculation."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -470,7 +470,7 @@ class TestTEMPMetricsExtractor(unittest.TestCase):
         self.assertGreater(metrics['stability']['temp_stability'], 0.95)
         self.assertLess(metrics['stability']['temp_cv'], 0.01)
     
-    @patch('src.physio.preprocessing.temp_metrics_extractor.ConfigLoader')
+    @patch('src.physio.preprocessing.temp_metrics.ConfigLoader')
     def test_session_metrics_extraction(self, mock_config):
         """Test session metrics extraction for multiple moments."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -494,7 +494,7 @@ class TestTEMPMetricsExtractor(unittest.TestCase):
         self.assertIn('temp_mean', session_metrics['restingstate'])
         self.assertIn('temp_slope', session_metrics['restingstate'])
     
-    @patch('src.physio.preprocessing.temp_metrics_extractor.ConfigLoader')
+    @patch('src.physio.preprocessing.temp_metrics.ConfigLoader')
     def test_metrics_dataframe_extraction(self, mock_config):
         """Test metrics extraction as DataFrame."""
         mock_config.return_value.get.side_effect = lambda key, default=None: {
@@ -714,7 +714,7 @@ class TestTEMPPipelineIntegration(unittest.TestCase):
     
     @patch('src.physio.preprocessing.temp_loader.ConfigLoader')
     @patch('src.physio.preprocessing.temp_cleaner.ConfigLoader')
-    @patch('src.physio.preprocessing.temp_metrics_extractor.ConfigLoader')
+    @patch('src.physio.preprocessing.temp_metrics.ConfigLoader')
     @patch('src.physio.preprocessing.base_bids_writer.ConfigLoader')
     def test_full_pipeline_execution(self, mock_writer_config, mock_metrics_config,
                                      mock_cleaner_config, mock_loader_config):

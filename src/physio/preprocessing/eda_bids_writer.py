@@ -8,8 +8,9 @@ in BIDS-compliant format under data/derivatives/.
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 import numpy as np
@@ -31,12 +32,12 @@ class EDABIDSWriter(PhysioBIDSWriter):
     Inherits from PhysioBIDSWriter to ensure consistent API across modalities.
     """
     
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: Optional[Union[str, Path]] = None):
         """
         Initialize the EDA BIDS writer with configuration.
         
         Args:
-            config_path: Path to configuration file
+            config_path: Path to configuration file. If None, uses default config.
         """
         super().__init__(config_path)
         self.bids_utils = BIDSUtils()

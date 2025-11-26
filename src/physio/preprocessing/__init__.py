@@ -20,8 +20,14 @@ from .eda_bids_writer import EDABIDSWriter
 # HR preprocessing
 from .hr_loader import HRLoader
 from .hr_cleaner import HRCleaner
-from .hr_metrics_extractor import HRMetricsExtractor
+from .hr_metrics import HRMetricsExtractor
 from .hr_bids_writer import HRBIDSWriter
+
+# TEMP preprocessing
+from .temp_loader import TEMPLoader
+from .temp_cleaner import TEMPCleaner
+from .temp_metrics import TEMPMetricsExtractor
+from .temp_bids_writer import TEMPBIDSWriter
 
 __all__ = [
     # BVP
@@ -39,4 +45,9 @@ __all__ = [
     'HRCleaner',
     'HRMetricsExtractor',
     'HRBIDSWriter',
+    # TEMP
+    'TEMPLoader',
+    'TEMPCleaner',
+    'TEMPMetricsExtractor',
+    'TEMPBIDSWriter',
 ]

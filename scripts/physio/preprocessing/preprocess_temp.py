@@ -36,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from src.core.config_loader import ConfigLoader
 from src.physio.preprocessing.temp_loader import TEMPLoader
 from src.physio.preprocessing.temp_cleaner import TEMPCleaner
-from src.physio.preprocessing.temp_metrics_extractor import TEMPMetricsExtractor
+from src.physio.preprocessing.temp_metrics import TEMPMetricsExtractor
 from src.physio.preprocessing.temp_bids_writer import TEMPBIDSWriter
 
 

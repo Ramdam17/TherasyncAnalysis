@@ -452,7 +452,7 @@ class TEMPBIDSWriter(PhysioBIDSWriter):
         
         # Try to import TEMPMetricsExtractor to get full descriptions
         try:
-            from src.physio.preprocessing.temp_metrics_extractor import TEMPMetricsExtractor
+            from src.physio.preprocessing.temp_metrics import TEMPMetricsExtractor
             extractor = TEMPMetricsExtractor()
             descriptions = extractor.get_metrics_description()
         except ImportError:

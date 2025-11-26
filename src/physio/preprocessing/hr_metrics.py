@@ -79,17 +79,20 @@ class HRMetricsExtractor:
         if len(data) == 0:
             return self._empty_metrics(moment)
         
-        # Get valid HR data
-        valid_mask = ~data['hr_clean'].isna()
+        # Get valid HR data - handle both column name conventions
+        hr_col = 'HR_Clean' if 'HR_Clean' in data.columns else 'hr_clean'
+        quality_col = 'HR_Quality' if 'HR_Quality' in data.columns else 'hr_quality'
+        
+        valid_mask = ~data[hr_col].isna()
         valid_data = data[valid_mask].copy()
         
         if len(valid_data) == 0:
             logger.warning(f"No valid HR data for moment '{moment}'")
             return self._empty_metrics(moment)
         
-        hr_values = valid_data['hr_clean'].values
+        hr_values = valid_data[hr_col].values
         time_values = valid_data['time'].values
-        quality_values = valid_data['hr_quality'].values
+        quality_values = valid_data[quality_col].values if quality_col in valid_data.columns else np.ones(len(valid_data))
         
         # Extract metrics by category
         metrics = {

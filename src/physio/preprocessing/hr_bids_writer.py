@@ -259,6 +259,9 @@ class HRBIDSWriter(PhysioBIDSWriter):
         
         output_data = data[output_columns].copy()
         
+        # Add epoch columns if epoching is enabled in preprocessing mode
+        output_data = self._add_epoch_columns(output_data, moment, time_column='time')
+        
         # Convert boolean/flag columns to int
         if 'HR_Outliers' in output_data.columns:
             output_data['HR_Outliers'] = output_data['HR_Outliers'].astype(int)
@@ -544,7 +547,7 @@ class HRBIDSWriter(PhysioBIDSWriter):
         
         # Try to import HRMetricsExtractor to get full descriptions
         try:
-            from src.physio.preprocessing.hr_metrics_extractor import HRMetricsExtractor
+            from src.physio.preprocessing.hr_metrics import HRMetricsExtractor
             extractor = HRMetricsExtractor()
             descriptions = extractor.get_metrics_description()
         except ImportError:
