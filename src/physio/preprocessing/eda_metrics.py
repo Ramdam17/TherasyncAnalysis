@@ -336,6 +336,58 @@ class EDAMetricsExtractor:
         
         return combined_metrics
     
+    def extract_session_metrics(
+        self,
+        moment_data: Dict[str, pd.DataFrame]
+    ) -> Dict[str, Dict[str, float]]:
+        """
+        Extract EDA metrics for multiple moments, returning Dict format.
+        
+        This method provides the same output format as BVPMetricsExtractor.extract_session_metrics()
+        for consistency across modalities.
+        
+        Args:
+            moment_data: Dictionary mapping moment names to processed signals
+                Example: {'restingstate': processed_rest, 'therapy': processed_therapy}
+        
+        Returns:
+            Dictionary with extracted metrics for each moment.
+            Format: {moment: {metric_name: value}}
+        
+        Example:
+            >>> moments = {
+            ...     'restingstate': processed_rest,
+            ...     'therapy': processed_therapy
+            ... }
+            >>> all_metrics = extractor.extract_session_metrics(moments)
+            >>> print(all_metrics['restingstate']['SCR_Peaks_N'])
+        """
+        logger.info(f"Extracting EDA metrics for {len(moment_data)} moments (dict format)")
+        
+        session_metrics = {}
+        
+        for moment_name, processed_signals in moment_data.items():
+            try:
+                # Get DataFrame with one row
+                metrics_df = self.extract_eda_metrics(processed_signals, moment=moment_name)
+                
+                # Convert to dict (excluding 'moment' column)
+                if len(metrics_df) > 0:
+                    metrics_dict = metrics_df.iloc[0].to_dict()
+                    # Remove 'moment' key if present (redundant with dict key)
+                    metrics_dict.pop('moment', None)
+                    session_metrics[moment_name] = metrics_dict
+                else:
+                    session_metrics[moment_name] = {}
+                    
+            except Exception as e:
+                logger.error(f"Error extracting metrics for moment '{moment_name}': {str(e)}")
+                session_metrics[moment_name] = {}
+        
+        logger.info(f"Successfully extracted metrics for {len(session_metrics)} moments")
+        
+        return session_metrics
+    
     def get_metric_descriptions(self) -> Dict[str, dict]:
         """
         Get detailed descriptions of all EDA metrics.

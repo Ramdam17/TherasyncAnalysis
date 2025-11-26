@@ -8,7 +8,8 @@ Authors: Lena Adel, Remy Ramadour
 """
 
 import logging
-from typing import Dict, Tuple, Optional
+from pathlib import Path
+from typing import Dict, Tuple, Optional, Union
 
 import pandas as pd
 import numpy as np
@@ -36,14 +37,14 @@ class HRCleaner:
     - Expected range: 40-180 BPM for most populations
     """
     
-    def __init__(self, config: Optional[ConfigLoader] = None):
+    def __init__(self, config_path: Optional[Union[str, Path]] = None):
         """
         Initialize the HR cleaner with configuration.
         
         Args:
-            config: ConfigLoader instance. If None, creates new instance with default config.
+            config_path: Path to configuration file. If None, uses default config.
         """
-        self.config = config if config is not None else ConfigLoader()
+        self.config = ConfigLoader(config_path)
         
         # Get HR cleaning configuration
         hr_config = self.config.get('physio.hr.processing', {})
@@ -74,8 +75,8 @@ class HRCleaner:
         
         Returns:
             Tuple of:
-                - Cleaned DataFrame with additional columns:
-                  ['time', 'hr', 'hr_clean', 'hr_outliers', 'hr_interpolated', 'hr_quality']
+                - Cleaned DataFrame with standardized columns:
+                  ['time', 'HR_Raw', 'HR_Clean', 'HR_Outliers', 'HR_Interpolated', 'HR_Quality']
                 - Processing metadata dictionary
         
         Example:
@@ -88,10 +89,10 @@ class HRCleaner:
         if len(data) == 0:
             raise ValueError("Empty HR data provided")
         
-        # Create working copy
+        # Create working copy with internal column names (for processing)
         result = data.copy()
         
-        # Initialize processing columns
+        # Initialize processing columns with internal names
         result['hr_clean'] = result['hr'].copy()
         result['hr_outliers'] = False
         result['hr_interpolated'] = False
@@ -116,6 +117,16 @@ class HRCleaner:
         
         # Step 4: Calculate overall metrics
         metadata = self._calculate_cleaning_metadata(result, moment)
+        
+        # Step 5: Rename columns to standardized convention (BIDS-compliant)
+        # From internal names to final output names
+        result = result.rename(columns={
+            'hr': 'HR_Raw',
+            'hr_clean': 'HR_Clean',
+            'hr_outliers': 'HR_Outliers',
+            'hr_interpolated': 'HR_Interpolated',
+            'hr_quality': 'HR_Quality'
+        })
         
         logger.info(
             f"HR cleaning complete for '{moment}': "

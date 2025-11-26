@@ -443,3 +443,67 @@ class EDACleaner:
             })
         
         return pd.DataFrame(features)
+    
+    def calculate_quality(self, processed_signals: pd.DataFrame) -> pd.DataFrame:
+        """
+        Calculate EDA signal quality score based on signal stability and physiological plausibility.
+        
+        Quality is calculated using a sliding window approach combining:
+        - Tonic stability (coefficient of variation in window)
+        - Phasic activity reasonableness (z-score based penalty for extreme values)
+        
+        The quality score ranges from 0 to 1, where higher values indicate better quality.
+        
+        Args:
+            processed_signals: DataFrame with EDA_Tonic and EDA_Phasic columns
+                             (output from clean_signal())
+        
+        Returns:
+            DataFrame with added EDA_Quality column (0-1, higher is better)
+        
+        Example:
+            >>> cleaner = EDACleaner()
+            >>> processed = cleaner.clean_signal(raw_data)
+            >>> processed_with_quality = cleaner.calculate_quality(processed)
+            >>> print(f"Mean quality: {processed_with_quality['EDA_Quality'].mean():.3f}")
+        """
+        # Validate input
+        required_cols = ['EDA_Tonic', 'EDA_Phasic']
+        missing_cols = [col for col in required_cols if col not in processed_signals.columns]
+        if missing_cols:
+            raise ValueError(f"Missing required columns: {missing_cols}")
+        
+        # Create a copy to avoid modifying the original
+        result = processed_signals.copy()
+        
+        quality_scores = []
+        window_size = self.sampling_rate * 4  # 4 seconds window
+        
+        for i in range(len(result)):
+            # Get window around current sample
+            start_idx = max(0, i - window_size // 2)
+            end_idx = min(len(result), i + window_size // 2)
+            window = result.iloc[start_idx:end_idx]
+            
+            # Factor 1: Tonic stability (low CV = more stable = better)
+            tonic_values = window['EDA_Tonic']
+            tonic_mean = tonic_values.mean()
+            tonic_cv = tonic_values.std() / (abs(tonic_mean) + 1e-10)
+            tonic_quality = 1.0 / (1.0 + tonic_cv)  # 0-1, higher is better
+            
+            # Factor 2: Phasic reasonableness (not too extreme)
+            phasic_value = result.iloc[i]['EDA_Phasic']
+            phasic_std = window['EDA_Phasic'].std()
+            phasic_z = abs(phasic_value) / (phasic_std + 1e-10)
+            phasic_quality = 1.0 / (1.0 + phasic_z / 3.0)  # Penalize extreme values
+            
+            # Combined quality (weighted average: tonic stability more important)
+            quality = 0.6 * tonic_quality + 0.4 * phasic_quality
+            quality_scores.append(quality)
+        
+        result['EDA_Quality'] = quality_scores
+        
+        logger.debug(f"EDA quality calculated: mean={np.mean(quality_scores):.3f}, "
+                    f"min={np.min(quality_scores):.3f}, max={np.max(quality_scores):.3f}")
+        
+        return result

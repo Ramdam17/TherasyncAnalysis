@@ -21,6 +21,7 @@ output:
     bvp: "bvp"     # derivatives/preprocessing/sub-xxx/ses-yyy/bvp/
     eda: "eda"     # derivatives/preprocessing/sub-xxx/ses-yyy/eda/
     hr: "hr"       # derivatives/preprocessing/sub-xxx/ses-yyy/hr/
+    temp: "temp"   # derivatives/preprocessing/sub-xxx/ses-yyy/temp/
   
   # Alliance/MOI annotations output structure
   alliance_dir: "alliance"  # derivatives/alliance/
@@ -147,6 +148,42 @@ physio:
       # Metrics list will be populated after decision phase
       extract_all: false
       selected_metrics: []
+  
+  # TEMP (Peripheral Skin Temperature) processing
+  temp:
+    sampling_rate: 4  # Hz, from Empatica E4
+    processing:
+      # Outlier thresholds (physiological limits for peripheral skin temperature)
+      outlier_threshold: [25, 40]  # °C - values outside this range are marked as outliers
+      # Artifact detection (sudden jumps indicate sensor issues)
+      jump_threshold: 2.0  # °C - max expected change between consecutive samples (0.25s apart)
+      # Interpolation settings
+      interpolation_max_gap: 10  # seconds - max gap to interpolate
+      # Quality settings
+      quality_min_samples: 30  # minimum samples for valid processing
+    metrics:
+      extract_all: false
+      selected_metrics:
+        # Descriptive statistics
+        descriptive:
+          - "temp_mean"     # Mean temperature
+          - "temp_std"      # Standard deviation
+          - "temp_min"      # Minimum temperature
+          - "temp_max"      # Maximum temperature
+          - "temp_range"    # Range (max - min)
+          - "temp_median"   # Median temperature
+          - "temp_iqr"      # Interquartile range
+        # Trend analysis (temperature changes reflect autonomic activity)
+        trend:
+          - "temp_slope"            # Linear trend slope (°C/s)
+          - "temp_slope_per_minute" # Linear trend (°C/min) - more interpretable
+          - "temp_initial"          # Initial temperature
+          - "temp_final"            # Final temperature
+          - "temp_change"           # Overall change (final - initial)
+        # Stability metrics
+        stability:
+          - "temp_stability"  # Stability index (0-1)
+          - "temp_cv"         # Coefficient of variation
 
 # BIDS output configuration
 bids:
@@ -174,6 +211,21 @@ processing:
   # Output options
   save_intermediate: false  # Save intermediate processing steps
   save_plots: true         # Save diagnostic plots
+
+# Batch processing configuration
+batch:
+  # Timeout for each preprocessing script (seconds)
+  timeout: 600  # 10 minutes per modality
+  
+  # Continue processing if one subject/session fails
+  continue_on_error: true
+  
+  # Skip subjects that already have output files
+  skip_existing: false
+  
+  # Validate duration consistency between modalities after preprocessing
+  validate_durations: true
+  duration_tolerance: 5.0  # seconds - max difference allowed between modalities
   
 # Logging configuration
 logging:

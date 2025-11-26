@@ -111,6 +111,43 @@ class BVPMetricsExtractor:
         
         return session_metrics
     
+    def extract_metrics_dataframe(
+        self, 
+        processed_results: Dict[str, Tuple[pd.DataFrame, Dict]]
+    ) -> pd.DataFrame:
+        """
+        Extract HRV metrics and return as DataFrame.
+        
+        This method provides the same output format as EDAMetricsExtractor.extract_multiple_moments()
+        for consistency across modalities.
+        
+        Args:
+            processed_results: Output from BVPCleaner.process_moment_signals()
+                              Format: {moment: (processed_signals, processing_info)}
+            
+        Returns:
+            DataFrame with one row per moment containing all metrics
+        
+        Example:
+            >>> metrics_df = extractor.extract_metrics_dataframe(processed_results)
+            >>> print(metrics_df[['moment', 'HRV_MeanNN', 'HRV_RMSSD']])
+        """
+        # Get metrics as dict
+        session_metrics = self.extract_session_metrics(processed_results)
+        
+        # Convert to DataFrame
+        rows = []
+        for moment, metrics in session_metrics.items():
+            row = {'moment': moment}
+            row.update(metrics)
+            rows.append(row)
+        
+        df = pd.DataFrame(rows)
+        
+        logger.info(f"Extracted metrics DataFrame with {len(df)} rows, {len(df.columns)} columns")
+        
+        return df
+    
     def _extract_hrv_metrics(
         self, 
         peaks: Union[List, np.ndarray], 

@@ -1,23 +1,23 @@
 #!/usr/bin/env python
 """
-HR Preprocessing CLI Script for TherasyncPipeline.
+Temperature Preprocessing CLI Script for TherasyncPipeline.
 
-This script provides command-line interface for processing Heart Rate (HR) data
-from Empatica devices. It integrates all HR pipeline components:
-HR Loader → HR Cleaner → HR Metrics Extractor → HR BIDS Writer
+This script provides command-line interface for processing peripheral skin
+temperature data from Empatica devices. It integrates all TEMP pipeline components:
+TEMP Loader → TEMP Cleaner → TEMP Metrics Extractor → TEMP BIDS Writer
 
 Usage:
     # Process single subject/session
-    python scripts/preprocess_hr.py --subject g01p01 --session 01
+    python scripts/physio/preprocessing/preprocess_temp.py --subject g01p01 --session 01
     
     # Process with specific moment
-    python scripts/preprocess_hr.py --subject g01p01 --session 01 --moment therapy
+    python scripts/physio/preprocessing/preprocess_temp.py --subject g01p01 --session 01 --moment therapy
     
     # Batch process multiple subjects
-    python scripts/preprocess_hr.py --batch --config-file config/hr_batch.yaml
+    python scripts/physio/preprocessing/preprocess_temp.py --batch --config-file config/temp_batch.yaml
     
     # Process with custom config
-    python scripts/preprocess_hr.py --subject g01p01 --session 01 --config config/custom_hr.yaml
+    python scripts/physio/preprocessing/preprocess_temp.py --subject g01p01 --session 01 --config config/custom.yaml
 
 Authors: Lena Adel, Remy Ramadour
 """
@@ -34,10 +34,10 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from src.core.config_loader import ConfigLoader
-from src.physio.preprocessing.hr_loader import HRLoader
-from src.physio.preprocessing.hr_cleaner import HRCleaner
-from src.physio.preprocessing.hr_metrics_extractor import HRMetricsExtractor
-from src.physio.preprocessing.hr_bids_writer import HRBIDSWriter
+from src.physio.preprocessing.temp_loader import TEMPLoader
+from src.physio.preprocessing.temp_cleaner import TEMPCleaner
+from src.physio.preprocessing.temp_metrics_extractor import TEMPMetricsExtractor
+from src.physio.preprocessing.temp_bids_writer import TEMPBIDSWriter
 
 
 def setup_logging(config_path: Optional[Path] = None) -> None:
@@ -59,7 +59,7 @@ def setup_logging(config_path: Optional[Path] = None) -> None:
         level=getattr(logging, log_level.upper()),
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler(log_dir / 'hr_preprocessing.log'),
+            logging.FileHandler(log_dir / 'temp_preprocessing.log'),
             logging.StreamHandler(sys.stdout)
         ]
     )
@@ -68,20 +68,20 @@ def setup_logging(config_path: Optional[Path] = None) -> None:
 logger = logging.getLogger(__name__)
 
 
-class HRPreprocessor:
+class TEMPPreprocessor:
     """
-    Complete HR preprocessing pipeline.
+    Complete temperature preprocessing pipeline.
     
-    This class orchestrates the entire HR processing workflow:
-    1. Load HR data from Empatica files
-    2. Clean signals (outlier removal, interpolation)
-    3. Extract comprehensive HR metrics (25 metrics)
-    4. Write BIDS-compliant output (7 files)
+    This class orchestrates the entire temperature processing workflow:
+    1. Load temperature data from Empatica files
+    2. Clean signals (outlier removal, artifact detection, interpolation)
+    3. Extract comprehensive temperature metrics (14 metrics)
+    4. Write BIDS-compliant output (5 files per moment)
     """
     
     def __init__(self, config_path: Optional[str] = None):
         """
-        Initialize HR preprocessing pipeline.
+        Initialize temperature preprocessing pipeline.
         
         Args:
             config_path: Optional path to custom configuration file
@@ -90,12 +90,12 @@ class HRPreprocessor:
         self.config = ConfigLoader(config_path)
         
         # Initialize pipeline components with config_path (uniform pattern)
-        self.hr_loader = HRLoader(config_path)
-        self.hr_cleaner = HRCleaner(config_path)
-        self.hr_metrics = HRMetricsExtractor(config_path)
-        self.hr_writer = HRBIDSWriter(config_path)
+        self.temp_loader = TEMPLoader(config_path)
+        self.temp_cleaner = TEMPCleaner(config_path)
+        self.temp_metrics = TEMPMetricsExtractor(config_path)
+        self.temp_writer = TEMPBIDSWriter(config_path)
         
-        logger.info("HR Preprocessor initialized")
+        logger.info("Temperature Preprocessor initialized")
     
     def process_subject_session(
         self,
@@ -104,7 +104,7 @@ class HRPreprocessor:
         moment: Optional[str] = None
     ) -> bool:
         """
-        Process HR data for a single subject/session.
+        Process temperature data for a single subject/session.
         
         Args:
             subject: Subject identifier (e.g., 'g01p01')
@@ -114,7 +114,7 @@ class HRPreprocessor:
         Returns:
             True if processing successful, False otherwise
         """
-        logger.info(f"Processing HR data for sub-{subject} ses-{session}")
+        logger.info(f"Processing temperature data for sub-{subject} ses-{session}")
         
         try:
             # Determine which moments to process
@@ -132,42 +132,57 @@ class HRPreprocessor:
             for current_moment in moments_to_process:
                 logger.info(f"Processing moment: {current_moment}")
                 
-                # Step 1: Load HR data for this moment
-                logger.debug(f"Step 1: Loading HR data for {current_moment}...")
-                load_result = self.hr_loader.load_subject_session(subject, session, current_moment)
+                # Step 1: Load temperature data for this moment
+                logger.debug(f"Step 1: Loading temperature data for {current_moment}...")
+                try:
+                    load_result = self.temp_loader.load_subject_session(
+                        subject, session, current_moment
+                    )
+                except FileNotFoundError as e:
+                    logger.warning(f"No temperature data found for {current_moment}: {e}")
+                    continue
                 
                 if load_result is None:
-                    logger.warning(f"No HR data found for {current_moment}, skipping...")
+                    logger.warning(f"No temperature data found for {current_moment}, skipping...")
                     continue
                 
                 # Handle both tuple return (data, metadata) and DataFrame return
                 if isinstance(load_result, tuple):
-                    hr_data, load_metadata = load_result
+                    temp_data, load_metadata = load_result
                 else:
-                    hr_data = load_result
+                    temp_data = load_result
                     load_metadata = {}
                 
-                if hr_data is None or len(hr_data) == 0:
-                    logger.warning(f"Empty HR data for {current_moment}, skipping...")
+                if temp_data is None or len(temp_data) == 0:
+                    logger.warning(f"Empty temperature data for {current_moment}, skipping...")
                     continue
                 
-                logger.debug(f"Loaded {len(hr_data)} HR samples for {current_moment}")
+                logger.debug(f"Loaded {len(temp_data)} temperature samples for {current_moment}")
                 
-                # Step 2: Clean HR signals
-                logger.debug(f"Step 2: Cleaning HR signals for {current_moment}...")
-                cleaned_data, cleaning_metadata = self.hr_cleaner.clean_signal(
-                    hr_data, current_moment
+                # Step 2: Clean temperature signals
+                logger.debug(f"Step 2: Cleaning temperature signals for {current_moment}...")
+                cleaned_data, cleaning_metadata = self.temp_cleaner.clean_signal(
+                    temp_data, current_moment
                 )
                 
                 # Validate cleaning quality
-                is_valid, quality_message = self.hr_cleaner.validate_cleaning_quality(cleaning_metadata)
+                is_valid, quality_message = self.temp_cleaner.validate_cleaning_quality(
+                    cleaning_metadata
+                )
                 if not is_valid:
-                    logger.warning(f"HR cleaning quality issues for {current_moment}: {quality_message}")
+                    logger.warning(
+                        f"Temperature cleaning quality issues for {current_moment}: {quality_message}"
+                    )
                 else:
-                    logger.debug(f"HR cleaning successful for {current_moment}: {quality_message}")
+                    logger.debug(
+                        f"Temperature cleaning successful for {current_moment}: {quality_message}"
+                    )
                 
-                # Verify all expected columns are present (now standardized in HRCleaner)
-                expected_columns = ['time', 'HR_Raw', 'HR_Clean', 'HR_Quality', 'HR_Outliers', 'HR_Interpolated']
+                # Verify all expected columns are present (now standardized in TEMPCleaner)
+                expected_columns = [
+                    'time', 'TEMP_Raw', 'TEMP_Clean', 'TEMP_Quality',
+                    'TEMP_Outliers', 'TEMP_Interpolated'
+                ]
                 missing_columns = [col for col in expected_columns if col not in cleaned_data.columns]
                 if missing_columns:
                     logger.error(f"Missing expected columns: {missing_columns}")
@@ -177,24 +192,26 @@ class HRPreprocessor:
                 processed_results[current_moment] = cleaned_data
                 all_moments_metadata[current_moment] = cleaning_metadata
                 
-                logger.info(f"✓ Successfully processed moment: {current_moment} ({len(renamed_data)} samples)")
+                logger.info(
+                    f"✓ Successfully processed moment: {current_moment} "
+                    f"({len(cleaned_data)} samples)"
+                )
             
             # Check if we have any processed data
             if not processed_results:
                 logger.error(f"No moments could be processed for sub-{subject} ses-{session}")
                 return False
             
-            # Step 4: Extract metrics for all moments
-            logger.info(f"Step 4: Extracting HR metrics for {len(processed_results)} moment(s)...")
+            # Step 3: Extract metrics for all moments
+            logger.info(
+                f"Step 3: Extracting temperature metrics for {len(processed_results)} moment(s)..."
+            )
             
-            # For now, extract metrics per moment (will be aggregated by writer)
-            # Note: HRMetricsExtractor expects old column names, so we need to handle this
-            # For simplicity, we'll pass the metrics extraction for now and let the writer handle it
-            # The writer will use _extract_basic_metrics() as fallback
-            
-            # Step 5: Write BIDS output
-            logger.info(f"Step 5: Writing BIDS output for {len(processed_results)} moment(s)...")
-            output_files = self.hr_writer.save_processed_data(
+            # Step 4: Write BIDS output
+            logger.info(
+                f"Step 4: Writing BIDS output for {len(processed_results)} moment(s)..."
+            )
+            output_files = self.temp_writer.save_processed_data(
                 subject_id=f"sub-{subject}",  # Ensure prefix
                 session_id=f"ses-{session}",   # Ensure prefix
                 processed_results=processed_results,
@@ -203,7 +220,7 @@ class HRPreprocessor:
             )
             
             # Log output files
-            logger.info(f"HR processing complete! Files written:")
+            logger.info("Temperature processing complete! Files written:")
             for file_type, file_paths in output_files.items():
                 if file_paths:
                     logger.info(f"  {file_type}: {len(file_paths)} file(s)")
@@ -213,7 +230,7 @@ class HRPreprocessor:
             return True
             
         except Exception as e:
-            logger.error(f"HR processing failed for sub-{subject} ses-{session}: {str(e)}")
+            logger.error(f"Temperature processing failed for sub-{subject} ses-{session}: {str(e)}")
             import traceback
             logger.debug(traceback.format_exc())
             return False
@@ -228,7 +245,7 @@ class HRPreprocessor:
         Returns:
             Dictionary with processing results
         """
-        logger.info(f"Starting batch HR processing ({len(subjects_sessions)} subjects/sessions)")
+        logger.info(f"Starting batch temperature processing ({len(subjects_sessions)} subjects/sessions)")
         
         results = {
             'successful': [],
@@ -251,7 +268,7 @@ class HRPreprocessor:
         # Log batch summary
         success_rate = len(results['successful']) / results['total'] * 100
         logger.info(
-            f"Batch HR processing complete: "
+            f"Batch temperature processing complete: "
             f"{len(results['successful'])}/{results['total']} successful "
             f"({success_rate:.1f}% success rate)"
         )
@@ -295,33 +312,33 @@ def discover_subjects_sessions(data_dir: Path) -> List[tuple]:
             # Check if physio directory exists
             physio_dir = session_dir / 'physio'
             if physio_dir.exists():
-                # Check if HR files exist
-                hr_files = list(physio_dir.glob('*recording-hr.tsv'))
-                if hr_files:
+                # Check if temperature files exist
+                temp_files = list(physio_dir.glob('*recording-temp.tsv'))
+                if temp_files:
                     subjects_sessions.append((subject, session))
     
-    logger.info(f"Discovered {len(subjects_sessions)} subjects/sessions with HR data")
+    logger.info(f"Discovered {len(subjects_sessions)} subjects/sessions with temperature data")
     return subjects_sessions
 
 
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="HR Preprocessing Pipeline for TherasyncPipeline",
+        description="Temperature Preprocessing Pipeline for TherasyncPipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Process single subject/session
-  python scripts/preprocess_hr.py --subject g01p01 --session 01
+  python scripts/physio/preprocessing/preprocess_temp.py --subject g01p01 --session 01
   
   # Process specific moment
-  python scripts/preprocess_hr.py --subject g01p01 --session 01 --moment therapy
+  python scripts/physio/preprocessing/preprocess_temp.py --subject g01p01 --session 01 --moment therapy
   
   # Auto-discover and process all subjects
-  python scripts/preprocess_hr.py --batch
+  python scripts/physio/preprocessing/preprocess_temp.py --batch
   
   # Use custom configuration
-  python scripts/preprocess_hr.py --subject g01p01 --session 01 --config config/custom.yaml
+  python scripts/physio/preprocessing/preprocess_temp.py --subject g01p01 --session 01 --config config/custom.yaml
         """
     )
     
@@ -391,9 +408,9 @@ Examples:
     
     # Initialize preprocessor
     try:
-        preprocessor = HRPreprocessor(args.config)
+        preprocessor = TEMPPreprocessor(args.config)
     except Exception as e:
-        logger.error(f"Failed to initialize HR preprocessor: {str(e)}")
+        logger.error(f"Failed to initialize temperature preprocessor: {str(e)}")
         sys.exit(1)
     
     # Determine processing mode
@@ -440,7 +457,7 @@ Examples:
         parser.print_help()
         sys.exit(1)
     
-    logger.info("HR preprocessing completed successfully!")
+    logger.info("Temperature preprocessing completed successfully!")
 
 
 if __name__ == '__main__':

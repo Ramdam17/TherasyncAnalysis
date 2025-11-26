@@ -8,7 +8,8 @@ Authors: Lena Adel, Remy Ramadour
 """
 
 import logging
-from typing import Dict, Any, Optional, List
+from pathlib import Path
+from typing import Dict, Any, Optional, List, Union
 
 import pandas as pd
 import numpy as np
@@ -35,14 +36,14 @@ class HRMetricsExtractor:
     HR metrics focus on beat-to-beat heart rate patterns, not inter-beat intervals.
     """
     
-    def __init__(self, config: Optional[ConfigLoader] = None):
+    def __init__(self, config_path: Optional[Union[str, Path]] = None):
         """
         Initialize the HR metrics extractor.
         
         Args:
-            config: ConfigLoader instance. If None, creates new instance.
+            config_path: Path to configuration file. If None, uses default config.
         """
-        self.config = config if config is not None else ConfigLoader()
+        self.config = ConfigLoader(config_path)
         
         # Get HR metrics configuration
         hr_config = self.config.get('physio.hr.metrics', {})
@@ -381,6 +382,113 @@ class HRMetricsExtractor:
                 'contextual_count': 0
             }
         }
+    
+    def extract_session_metrics(
+        self,
+        processed_results: Dict[str, pd.DataFrame]
+    ) -> Dict[str, Dict[str, float]]:
+        """
+        Extract HR metrics for multiple moments, returning flat Dict format.
+        
+        This method provides the same output format as BVPMetricsExtractor.extract_session_metrics()
+        for consistency across modalities.
+        
+        Args:
+            processed_results: Dictionary mapping moment names to cleaned DataFrames
+                             (output from HRCleaner with HR_Clean column)
+        
+        Returns:
+            Dictionary with flattened metrics for each moment.
+            Format: {moment: {metric_name: value}}
+        
+        Example:
+            >>> results = {'restingstate': cleaned_rest, 'therapy': cleaned_therapy}
+            >>> all_metrics = extractor.extract_session_metrics(results)
+            >>> print(all_metrics['restingstate']['hr_mean'])
+        """
+        logger.info(f"Extracting HR metrics for {len(processed_results)} moments (dict format)")
+        
+        session_metrics = {}
+        
+        for moment_name, cleaned_data in processed_results.items():
+            try:
+                # Get nested metrics structure
+                nested_metrics = self.extract_metrics(cleaned_data, moment=moment_name)
+                
+                # Flatten to single-level dict
+                flat_metrics = self._flatten_metrics(nested_metrics)
+                session_metrics[moment_name] = flat_metrics
+                
+            except Exception as e:
+                logger.error(f"Error extracting metrics for moment '{moment_name}': {str(e)}")
+                session_metrics[moment_name] = {}
+        
+        logger.info(f"Successfully extracted metrics for {len(session_metrics)} moments")
+        
+        return session_metrics
+    
+    def extract_metrics_dataframe(
+        self,
+        processed_results: Dict[str, pd.DataFrame]
+    ) -> pd.DataFrame:
+        """
+        Extract HR metrics and return as DataFrame.
+        
+        This method provides the same output format as EDAMetricsExtractor.extract_multiple_moments()
+        for consistency across modalities.
+        
+        Args:
+            processed_results: Dictionary mapping moment names to cleaned DataFrames
+        
+        Returns:
+            DataFrame with one row per moment containing all metrics
+        
+        Example:
+            >>> metrics_df = extractor.extract_metrics_dataframe(results)
+            >>> print(metrics_df[['moment', 'hr_mean', 'hr_stability']])
+        """
+        # Get metrics as dict
+        session_metrics = self.extract_session_metrics(processed_results)
+        
+        # Convert to DataFrame
+        rows = []
+        for moment, metrics in session_metrics.items():
+            row = {'moment': moment}
+            row.update(metrics)
+            rows.append(row)
+        
+        df = pd.DataFrame(rows)
+        
+        logger.info(f"Extracted metrics DataFrame with {len(df)} rows, {len(df.columns)} columns")
+        
+        return df
+    
+    def _flatten_metrics(self, nested_metrics: Dict[str, Any]) -> Dict[str, float]:
+        """
+        Flatten nested metrics structure to single-level dictionary.
+        
+        Args:
+            nested_metrics: Nested dictionary with category keys
+        
+        Returns:
+            Flat dictionary with all metrics
+        """
+        flat = {}
+        
+        for key, value in nested_metrics.items():
+            if key in ['moment', 'summary']:
+                # Skip moment (redundant) and summary (metadata)
+                continue
+            
+            if isinstance(value, dict):
+                # Flatten nested category
+                for metric_name, metric_value in value.items():
+                    if isinstance(metric_value, (int, float)):
+                        flat[metric_name] = float(metric_value)
+            elif isinstance(value, (int, float)):
+                flat[key] = float(value)
+        
+        return flat
     
     def get_metrics_description(self) -> Dict[str, Dict[str, str]]:
         """

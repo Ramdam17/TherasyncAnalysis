@@ -24,6 +24,7 @@ Date: November 2025
 
 import sys
 import argparse
+import json
 import logging
 import subprocess
 from pathlib import Path
@@ -57,6 +58,12 @@ class BatchPreprocessor:
         self.derivatives_path = Path(self.config['paths']['derivatives'])
         self.preprocessing_path = self.derivatives_path / self.config['output']['preprocessing_dir']
         
+        # Batch processing settings from config
+        batch_config = self.config.get('batch', {})
+        self.timeout = batch_config.get('timeout', 600)  # Default 10 minutes
+        self.validate_durations = batch_config.get('validate_durations', True)
+        self.duration_tolerance = batch_config.get('duration_tolerance', 5.0)  # seconds
+        
         # Statistics
         self.stats = {
             'total_subjects': 0,
@@ -64,6 +71,7 @@ class BatchPreprocessor:
             'successful': 0,
             'failed': 0,
             'skipped': 0,
+            'duration_warnings': [],
             'errors': []
         }
     
@@ -113,7 +121,8 @@ class BatchPreprocessor:
         status = {
             'bvp': False,
             'eda': False,
-            'hr': False
+            'hr': False,
+            'temp': False
         }
         
         if not subject_session_path.exists():
@@ -123,12 +132,87 @@ class BatchPreprocessor:
         bvp_path = subject_session_path / 'bvp'
         eda_path = subject_session_path / 'eda'
         hr_path = subject_session_path / 'hr'
+        temp_path = subject_session_path / 'temp'
         
         status['bvp'] = (bvp_path / 'metrics.tsv').exists()
         status['eda'] = (eda_path / 'metrics.tsv').exists()
         status['hr'] = (hr_path / 'metrics.tsv').exists()
+        status['temp'] = len(list(temp_path.glob('*_desc-temp-metrics.tsv'))) > 0 if temp_path.exists() else False
         
         return status
+    
+    def validate_modality_durations(self, subject_id: str, session_id: str) -> Tuple[bool, str]:
+        """
+        Validate that all processed modalities have consistent durations.
+        
+        This checks that BVP, EDA, and HR signals have similar durations,
+        which indicates proper temporal alignment of the recordings.
+        
+        Args:
+            subject_id: Subject ID (e.g., 'g01p01')
+            session_id: Session ID (e.g., '01')
+        
+        Returns:
+            Tuple of (is_valid, message)
+        """
+        import json
+        
+        subject_session_path = self.preprocessing_path / f"sub-{subject_id}" / f"ses-{session_id}"
+        
+        durations = {}
+        
+        # Check each modality for duration information
+        for modality in ['bvp', 'eda', 'hr', 'temp']:
+            modality_path = subject_session_path / modality
+            if not modality_path.exists():
+                continue
+            
+            # Look for summary JSON files to get duration
+            summary_files = list(modality_path.glob('*_desc-*-summary.json'))
+            if not summary_files:
+                # Try alternative patterns
+                summary_files = list(modality_path.glob('*_summary.json'))
+            
+            for summary_file in summary_files:
+                try:
+                    with open(summary_file, 'r') as f:
+                        summary = json.load(f)
+                    
+                    # Extract duration from various possible locations
+                    duration = None
+                    if 'DataQuality' in summary:
+                        duration = summary['DataQuality'].get('Duration')
+                    elif 'KeyResults' in summary:
+                        duration = summary['KeyResults'].get('Duration')
+                    elif 'ProcessingMetadata' in summary:
+                        duration = summary['ProcessingMetadata'].get('Duration')
+                    
+                    if duration is not None:
+                        if modality not in durations:
+                            durations[modality] = []
+                        durations[modality].append(float(duration))
+                        
+                except Exception as e:
+                    logger.debug(f"Could not read duration from {summary_file}: {e}")
+        
+        # If we don't have durations for at least 2 modalities, skip validation
+        if len(durations) < 2:
+            return True, "Insufficient modalities for duration validation"
+        
+        # Calculate average duration per modality
+        avg_durations = {mod: sum(durs) / len(durs) for mod, durs in durations.items()}
+        
+        # Check for significant differences
+        all_durations = list(avg_durations.values())
+        max_diff = max(all_durations) - min(all_durations)
+        
+        if max_diff > self.duration_tolerance:
+            # Build detailed message
+            details = ", ".join([f"{mod}={dur:.1f}s" for mod, dur in avg_durations.items()])
+            message = f"Duration mismatch (diff={max_diff:.1f}s): {details}"
+            return False, message
+        
+        return True, f"Durations consistent (diff={max_diff:.1f}s)"
     
     def run_preprocessing_script(self, script_name: str, subject_id: str, session_id: str) -> bool:
         """
@@ -166,7 +250,7 @@ class BatchPreprocessor:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=600,  # 10 minute timeout
+                timeout=self.timeout,  # Use configurable timeout
                 cwd=Path.cwd()
             )
             
@@ -202,7 +286,7 @@ class BatchPreprocessor:
                 
         except subprocess.TimeoutExpired as e:
             elapsed = (datetime.now() - start_time).total_seconds()
-            logger.error(f"  ✗ {script_name} timed out after {elapsed:.1f}s (limit: 600s)")
+            logger.error(f"  ✗ {script_name} timed out after {elapsed:.1f}s (limit: {self.timeout}s)")
             logger.error(f"  Command: {cmd_str}")
             
             # Log partial output if available
@@ -244,7 +328,7 @@ class BatchPreprocessor:
         
         # Check what's already processed
         processed = self.check_already_processed(subject_id, session_id)
-        logger.debug(f"  Already processed: BVP={processed['bvp']}, EDA={processed['eda']}, HR={processed['hr']}")
+        logger.debug(f"  Already processed: BVP={processed['bvp']}, EDA={processed['eda']}, HR={processed['hr']}, TEMP={processed['temp']}")
         
         if skip_existing and all(processed.values()):
             logger.info(f"  Skipping: Already fully processed")
@@ -292,8 +376,27 @@ class BatchPreprocessor:
         else:
             logger.warning("  HR: Skipped due to previous failures")
         
+        # Step 4: TEMP preprocessing (independent of other modalities, can always run)
+        if skip_existing and processed['temp']:
+            logger.info("  TEMP: Already processed, skipping")
+        else:
+            logger.info("  TEMP: Starting preprocessing...")
+            if not self.run_preprocessing_script('preprocess_temp.py', subject_id, session_id):
+                # TEMP failure is not critical - log warning but don't fail the session
+                logger.warning(f"  ⚠ TEMP preprocessing failed for sub-{subject_id}/ses-{session_id}")
+                self.stats['errors'].append(f"sub-{subject_id}/ses-{session_id}: TEMP preprocessing failed (non-critical)")
+        
         if success:
             logger.info(f"  ✓ All preprocessing steps completed for sub-{subject_id}/ses-{session_id}")
+            
+            # Validate duration consistency between modalities
+            if self.validate_durations and not self.dry_run:
+                is_valid, message = self.validate_modality_durations(subject_id, session_id)
+                if not is_valid:
+                    logger.warning(f"  ⚠ Duration validation warning: {message}")
+                    self.stats['duration_warnings'].append(f"sub-{subject_id}/ses-{session_id}: {message}")
+                else:
+                    logger.debug(f"  Duration validation: {message}")
         else:
             logger.error(f"  ✗ Some preprocessing steps failed for sub-{subject_id}/ses-{session_id}")
         
@@ -378,6 +481,12 @@ class BatchPreprocessor:
         logger.info(f"Successful:      {self.stats['successful']}")
         logger.info(f"Failed:          {self.stats['failed']}")
         logger.info(f"Skipped:         {self.stats['skipped']}")
+        
+        if self.stats['duration_warnings']:
+            logger.info("")
+            logger.info(f"DURATION WARNINGS ({len(self.stats['duration_warnings'])}):")
+            for warning in self.stats['duration_warnings']:
+                logger.warning(f"  - {warning}")
         
         if self.stats['errors']:
             logger.info("")
