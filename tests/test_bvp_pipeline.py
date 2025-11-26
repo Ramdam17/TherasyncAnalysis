@@ -351,7 +351,9 @@ class TestBVPMetricsExtractor(unittest.TestCase):
         })
         
         extractor = BVPMetricsExtractor()
-        peaks = np.array([64, 128, 192, 256, 320])
+        # Need at least 11 peaks to get 10 RR intervals (minimum for HRV analysis)
+        # At 64 Hz, peaks every 64 samples = 1 second intervals (60 BPM)
+        peaks = np.array([64 * i for i in range(1, 13)])  # 12 peaks = 11 RR intervals
         
         metrics = extractor._extract_hrv_metrics(peaks, 64, "test")
         
