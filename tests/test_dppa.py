@@ -126,7 +126,8 @@ class TestCentroidLoader(unittest.TestCase):
             },
             'paths': {
                 'rawdata': str(self.temp_path / "raw"),
-                'derivatives': str(self.temp_path / "derivatives")
+                'derivatives': str(self.temp_path / "derivatives"),
+                'dppa': str(self.temp_path / "derivatives" / "dppa")
             },
             'moments': [
                 {'name': 'therapy'}
@@ -184,7 +185,7 @@ class TestCentroidLoader(unittest.TestCase):
         df = self.loader.load_centroid('g01p01', 'ses-01', 'therapy', 'nsplit120')
         
         self.assertIsNotNone(df)
-        self.assertEqual(len(df), 120)  # nsplit120 method creates 120 epochs
+        self.assertEqual(len(df), 5)  # Test data has 5 epochs
         self.assertIn('epoch_id', df.columns)
         self.assertIn('centroid_x', df.columns)
         self.assertIn('centroid_y', df.columns)
@@ -226,33 +227,69 @@ class TestDyadConfigLoader(unittest.TestCase):
     """Test dyad configuration loading and pair generation."""
     
     def setUp(self):
-        """Set up test environment with mock configuration."""
+        """Set up test environment with mock configuration (new format)."""
         self.temp_dir = tempfile.mkdtemp()
         self.temp_path = Path(self.temp_dir)
         
-        # Create test dyad config
+        # Create test dyad config (NEW FORMAT with real_dyads)
         self.config_data = {
-            'inter_session': {
-                'method': 'nsplit120',
-                'tasks': ['therapy', 'restingstate']
+            'description': 'Test DPPA Dyad Configuration',
+            'epoching': {
+                'intra_session': {
+                    'method': 'sliding_duration30s_step5s',
+                    'tasks': ['therapy', 'restingstate']
+                },
+                'inter_session': {
+                    'method': 'nsplit120',
+                    'tasks': ['therapy', 'restingstate']
+                }
             },
-            'intra_family': {
-                'method': 'sliding_duration30s_step5s',
-                'tasks': ['therapy', 'restingstate'],
-                'families': {
-                    'g01': {
-                        'ses-01': ['g01p01', 'g01p02', 'g01p03'],
-                        'ses-02': ['g01p01', 'g01p02']
-                    },
-                    'g02': {
-                        'ses-01': ['g02p01', 'g02p02', 'g02p03', 'g02p04']
+            'families': {
+                'g01': {
+                    'therapist': 'sub-g01p01',
+                    'patients': {'mother': 'sub-g01p02', 'father': 'sub-g01p03'},
+                    'sessions': {
+                        'ses-01': ['sub-g01p01', 'sub-g01p02', 'sub-g01p03'],
+                        'ses-02': ['sub-g01p01', 'sub-g01p02']
+                    }
+                },
+                'g02': {
+                    'therapist': 'sub-g02p01',
+                    'patients': {'mother': 'sub-g02p02', 'father': 'sub-g02p03', 'child1': 'sub-g02p04'},
+                    'sessions': {
+                        'ses-01': ['sub-g02p01', 'sub-g02p02', 'sub-g02p03', 'sub-g02p04']
                     }
                 }
-            }
+            },
+            'real_dyads': [
+                # g01/ses-01: 3 dyads
+                {'dyad_id': 'g01_p01_p02_ses-01', 'family': 'g01', 'subject1': 'sub-g01p01', 'role1': 'therapist',
+                 'subject2': 'sub-g01p02', 'role2': 'mother', 'session': 'ses-01', 'dyad_type': 'therapist-patient'},
+                {'dyad_id': 'g01_p01_p03_ses-01', 'family': 'g01', 'subject1': 'sub-g01p01', 'role1': 'therapist',
+                 'subject2': 'sub-g01p03', 'role2': 'father', 'session': 'ses-01', 'dyad_type': 'therapist-patient'},
+                {'dyad_id': 'g01_p02_p03_ses-01', 'family': 'g01', 'subject1': 'sub-g01p02', 'role1': 'mother',
+                 'subject2': 'sub-g01p03', 'role2': 'father', 'session': 'ses-01', 'dyad_type': 'patient-patient'},
+                # g01/ses-02: 1 dyad
+                {'dyad_id': 'g01_p01_p02_ses-02', 'family': 'g01', 'subject1': 'sub-g01p01', 'role1': 'therapist',
+                 'subject2': 'sub-g01p02', 'role2': 'mother', 'session': 'ses-02', 'dyad_type': 'therapist-patient'},
+                # g02/ses-01: 6 dyads
+                {'dyad_id': 'g02_p01_p02_ses-01', 'family': 'g02', 'subject1': 'sub-g02p01', 'role1': 'therapist',
+                 'subject2': 'sub-g02p02', 'role2': 'mother', 'session': 'ses-01', 'dyad_type': 'therapist-patient'},
+                {'dyad_id': 'g02_p01_p03_ses-01', 'family': 'g02', 'subject1': 'sub-g02p01', 'role1': 'therapist',
+                 'subject2': 'sub-g02p03', 'role2': 'father', 'session': 'ses-01', 'dyad_type': 'therapist-patient'},
+                {'dyad_id': 'g02_p01_p04_ses-01', 'family': 'g02', 'subject1': 'sub-g02p01', 'role1': 'therapist',
+                 'subject2': 'sub-g02p04', 'role2': 'child1', 'session': 'ses-01', 'dyad_type': 'therapist-patient'},
+                {'dyad_id': 'g02_p02_p03_ses-01', 'family': 'g02', 'subject1': 'sub-g02p02', 'role1': 'mother',
+                 'subject2': 'sub-g02p03', 'role2': 'father', 'session': 'ses-01', 'dyad_type': 'patient-patient'},
+                {'dyad_id': 'g02_p02_p04_ses-01', 'family': 'g02', 'subject1': 'sub-g02p02', 'role1': 'mother',
+                 'subject2': 'sub-g02p04', 'role2': 'child1', 'session': 'ses-01', 'dyad_type': 'patient-patient'},
+                {'dyad_id': 'g02_p03_p04_ses-01', 'family': 'g02', 'subject1': 'sub-g02p03', 'role1': 'father',
+                 'subject2': 'sub-g02p04', 'role2': 'child1', 'session': 'ses-01', 'dyad_type': 'patient-patient'},
+            ]
         }
         
         # Write config to file
-        self.config_file = self.temp_path / "dppa_dyads.yaml"
+        self.config_file = self.temp_path / "dppa_dyads_real.yaml"
         with open(self.config_file, 'w') as f:
             yaml.dump(self.config_data, f)
         
@@ -277,14 +314,64 @@ class TestDyadConfigLoader(unittest.TestCase):
         self.assertEqual(len(pair[0]), 2)  # (subject, session)
         self.assertEqual(len(pair[1]), 2)
     
-    def test_get_intra_family_pairs(self):
-        """Test intra-family pair generation."""
+    def test_get_real_dyads(self):
+        """Test real dyads retrieval."""
+        dyads = self.loader.get_real_dyads()
+        
+        # Total: 3 + 1 + 6 = 10 real dyads
+        self.assertEqual(len(dyads), 10)
+        
+        # Check dyad structure
+        dyad = dyads[0]
+        self.assertIn('dyad_id', dyad)
+        self.assertIn('subject1', dyad)
+        self.assertIn('subject2', dyad)
+        self.assertIn('dyad_type', dyad)
+        self.assertIn('role1', dyad)
+        self.assertIn('role2', dyad)
+    
+    def test_get_real_dyads_with_filter(self):
+        """Test real dyads retrieval with family filter."""
+        dyads = self.loader.get_real_dyads(family='g01')
+        
+        # g01: 3 + 1 = 4 dyads
+        self.assertEqual(len(dyads), 4)
+        
+        # All dyads should be from g01
+        for dyad in dyads:
+            self.assertEqual(dyad['family'], 'g01')
+    
+    def test_get_real_dyads_by_type(self):
+        """Test filtering dyads by type."""
+        therapist_dyads = self.loader.get_real_dyads(dyad_type='therapist-patient')
+        patient_dyads = self.loader.get_real_dyads(dyad_type='patient-patient')
+        
+        # Check all have correct type
+        for dyad in therapist_dyads:
+            self.assertEqual(dyad['dyad_type'], 'therapist-patient')
+        for dyad in patient_dyads:
+            self.assertEqual(dyad['dyad_type'], 'patient-patient')
+        
+        # Total should match
+        self.assertEqual(len(therapist_dyads) + len(patient_dyads), 10)
+    
+    def test_is_real_dyad(self):
+        """Test real dyad checking."""
+        # Real dyad
+        self.assertTrue(self.loader.is_real_dyad('g01p01', 'g01p02', 'ses-01'))
+        self.assertTrue(self.loader.is_real_dyad('sub-g01p01', 'sub-g01p02', 'ses-01'))
+        
+        # Pseudo dyad (different families)
+        self.assertFalse(self.loader.is_real_dyad('g01p01', 'g02p01', 'ses-01'))
+        
+        # Pseudo dyad (wrong session)
+        self.assertFalse(self.loader.is_real_dyad('g01p01', 'g01p03', 'ses-02'))  # p03 not in ses-02
+    
+    def test_get_intra_family_pairs_backward_compat(self):
+        """Test backward-compatible intra-family pair generation."""
         pairs = self.loader.get_intra_family_pairs()
         
-        # g01/ses-01: 3 participants → C(3,2) = 3 pairs
-        # g01/ses-02: 2 participants → C(2,2) = 1 pair
-        # g02/ses-01: 4 participants → C(4,2) = 6 pairs
-        # Total: 3 + 1 + 6 = 10 pairs
+        # Should return 10 pairs (same as real dyads)
         self.assertEqual(len(pairs), 10)
         
         # Check pair structure: ((family, subj1, session), (family, subj2, session))
@@ -293,33 +380,15 @@ class TestDyadConfigLoader(unittest.TestCase):
         self.assertEqual(len(pair[0]), 3)  # (family, subject, session)
         self.assertEqual(len(pair[1]), 3)
     
-    def test_get_intra_family_pairs_with_filter(self):
-        """Test intra-family pair generation with family filter."""
-        pairs = self.loader.get_intra_family_pairs(family='g01')
+    def test_get_statistics(self):
+        """Test statistics retrieval."""
+        stats = self.loader.get_statistics()
         
-        # g01/ses-01: 3 pairs + g01/ses-02: 1 pair = 4 pairs
-        self.assertEqual(len(pairs), 4)
-        
-        # All pairs should be from g01
-        for pair in pairs:
-            self.assertEqual(pair[0][0], 'g01')  # First tuple, family field
-            self.assertEqual(pair[1][0], 'g01')  # Second tuple, family field
-    
-    def test_get_intra_family_pairs_single_participant(self):
-        """Test handling of session with single participant (no pairs)."""
-        # Modify config to have single-participant session
-        self.config_data['intra_family']['families']['g03'] = {
-            'ses-01': ['g03p01']  # Only 1 participant
-        }
-        
-        with open(self.config_file, 'w') as f:
-            yaml.dump(self.config_data, f)
-        
-        loader = DyadConfigLoader(str(self.config_file))
-        pairs = loader.get_intra_family_pairs(family='g03')
-        
-        # Should return 0 pairs (can't make dyad from 1 participant)
-        self.assertEqual(len(pairs), 0)
+        self.assertEqual(stats['n_families'], 2)
+        self.assertEqual(stats['n_real_dyads'], 10)
+        self.assertIn('n_therapist_patient', stats)
+        self.assertIn('n_patient_patient', stats)
+        self.assertIn('dyads_per_family', stats)
 
 
 class TestICDCalculator(unittest.TestCase):
