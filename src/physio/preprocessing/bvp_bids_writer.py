@@ -424,7 +424,8 @@ class BVPBIDSWriter(PhysioBIDSWriter):
         subject_id: str,
         session_id: str,
         moment: str,
-        rr_intervals_df: pd.DataFrame
+        rr_intervals_df: pd.DataFrame,
+        expected_peaks: Optional[int] = None
     ) -> Tuple[Path, Path]:
         """
         Save RR intervals data in BIDS format.
@@ -442,19 +443,56 @@ class BVPBIDSWriter(PhysioBIDSWriter):
                 - time_peak_end: End peak timestamp (seconds)
                 - rr_interval_ms: RR interval duration (milliseconds)
                 - is_valid: 1 if valid, 0 if invalid
+            expected_peaks: Number of peaks detected during preprocessing (for validation)
                 
         Returns:
             Tuple of (tsv_file_path, json_file_path)
             
+        Raises:
+            ValueError: If RR interval count is severely inconsistent with expected peaks
+            
         Example:
             >>> writer = BVPBIDSWriter()
             >>> tsv_path, json_path = writer.save_rr_intervals(
-            ...     'sub-g01p01', 'ses-01', 'restingstate', rr_df
+            ...     'sub-g01p01', 'ses-01', 'restingstate', rr_df, expected_peaks=1000
             ... )
         """
         # Ensure prefixes
         subject_id = self._ensure_prefix(subject_id, 'sub')
         session_id = self._ensure_prefix(session_id, 'ses')
+        
+        # === DATA QUALITY VALIDATION ===
+        # Validate that RR interval count is consistent with expected peaks
+        n_intervals = len(rr_intervals_df)
+        
+        if expected_peaks is not None:
+            # RR intervals should be (peaks - 1), allow some tolerance
+            expected_intervals = expected_peaks - 1
+            
+            if n_intervals < expected_intervals * 0.9:  # More than 10% difference
+                logger.warning(
+                    f"⚠️ RR interval count mismatch for {subject_id}/{session_id}/{moment}: "
+                    f"got {n_intervals} intervals but expected ~{expected_intervals} "
+                    f"(from {expected_peaks} peaks). This may indicate a data processing issue."
+                )
+            
+            # Severe mismatch (less than 1% of expected) - this is likely an error
+            if n_intervals < expected_intervals * 0.01 and expected_intervals > 100:
+                error_msg = (
+                    f"❌ CRITICAL: RR intervals severely truncated for {subject_id}/{session_id}/{moment}: "
+                    f"only {n_intervals} intervals vs {expected_intervals} expected. "
+                    f"Data may be corrupted - please re-run preprocessing."
+                )
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+        
+        # Additional validation: minimum intervals for meaningful analysis
+        MIN_INTERVALS_WARNING = 30  # ~30 heartbeats minimum for any analysis
+        if n_intervals < MIN_INTERVALS_WARNING:
+            logger.warning(
+                f"⚠️ Very few RR intervals for {subject_id}/{session_id}/{moment}: "
+                f"only {n_intervals} intervals. HRV analysis may be unreliable."
+            )
         
         # Get subject/session/modality directory
         subject_dir = self._get_subject_session_dir(subject_id, session_id)

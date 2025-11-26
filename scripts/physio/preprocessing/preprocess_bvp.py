@@ -187,10 +187,21 @@ def process_single_subject(
                 rr_files_created = []
                 for moment, rr_df in rr_intervals_data.items():
                     try:
+                        # Get expected number of peaks for validation
+                        expected_peaks = None
+                        if moment in processed_results:
+                            _, processing_info = processed_results[moment]
+                            expected_peaks = len(processing_info.get('PPG_Peaks', []))
+                        
                         tsv_path, json_path = bids_writer.save_rr_intervals(
-                            subject_id, session_id, moment, rr_df
+                            subject_id, session_id, moment, rr_df,
+                            expected_peaks=expected_peaks
                         )
                         rr_files_created.extend([tsv_path, json_path])
+                    except ValueError as e:
+                        # Critical data quality issue - fail the process
+                        logger.error(f"Data quality check failed for {moment}: {e}")
+                        return False
                     except Exception as e:
                         logger.warning(f"Failed to save RR intervals for {moment}: {e}")
                 

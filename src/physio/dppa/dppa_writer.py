@@ -127,6 +127,8 @@ class DPPAWriter:
         wide_data = {}
         dyad_info = {}  # Track is_real_dyad for each column
         
+        # First pass: collect all data and find max epochs
+        max_epochs = 0
         for (subj1, ses1, subj2, ses2), icd_df in icd_results.items():
             # Create column name
             col_name = f"{subj1}_{ses1}_vs_{subj2}_{ses2}"
@@ -134,6 +136,7 @@ class DPPAWriter:
             # Extract ICD values (ensure sorted by epoch_id)
             icd_df_sorted = icd_df.sort_values('epoch_id')
             wide_data[col_name] = icd_df_sorted['icd'].values
+            max_epochs = max(max_epochs, len(icd_df_sorted))
             
             # Check if this is a real dyad (same session comparison)
             is_real = self._is_real_dyad(subj1, subj2, ses1) if ses1 == ses2 else False
@@ -144,6 +147,14 @@ class DPPAWriter:
                 "session2": ses2,
                 "is_real_dyad": is_real
             }
+        
+        # Second pass: pad all arrays to max_epochs with NaN
+        import numpy as np
+        for col_name, values in wide_data.items():
+            if len(values) < max_epochs:
+                padded = np.full(max_epochs, np.nan)
+                padded[:len(values)] = values
+                wide_data[col_name] = padded
         
         # Create DataFrame
         df_wide = pd.DataFrame(wide_data)
