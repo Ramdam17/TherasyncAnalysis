@@ -27,6 +27,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import pandas as pd
 import yaml
 
+from src.core.config_loader import ConfigLoader
+
 logger = logging.getLogger(__name__)
 
 
@@ -88,7 +90,8 @@ def build_dyads_config(
     participants: pd.DataFrame,
     sessions_per_subject: dict,
     intra_session_method: str = 'sliding_duration30s_step5s',
-    inter_session_method: str = 'nsplit120'
+    inter_session_methods: dict = None,
+    tasks: list = None
 ) -> dict:
     """
     Build the complete dyads configuration.
@@ -97,11 +100,17 @@ def build_dyads_config(
         participants: DataFrame with participant info
         sessions_per_subject: Dict mapping subject -> sessions
         intra_session_method: Epoching method for intra-session
-        inter_session_method: Epoching method for inter-session
+        inter_session_methods: Dict mapping task -> method (e.g., {'restingstate': 'nsplit1', 'therapy': 'nsplit120'})
+        tasks: List of task names to include
         
     Returns:
         Complete configuration dictionary
     """
+    if inter_session_methods is None:
+        inter_session_methods = {'restingstate': 'nsplit1', 'therapy': 'nsplit120'}
+    if tasks is None:
+        tasks = list(inter_session_methods.keys())
+    
     config = {
         'description': 'DPPA Dyad Configuration - Auto-generated from participants.tsv',
         'generated_from': 'data/raw/participants.tsv',
@@ -117,17 +126,17 @@ def build_dyads_config(
             'child3': 'Third child',
         },
         
-        # Epoching methods
+        # Epoching methods - now per-task for inter_session
         'epoching': {
             'intra_session': {
                 'method': intra_session_method,
                 'description': 'Sliding window for comparing dyads within same session (same epoch count)',
-                'tasks': ['restingstate', 'therapy']
+                'tasks': tasks
             },
             'inter_session': {
-                'method': inter_session_method,
-                'description': 'Fixed 120 epochs for comparing across all sessions',
-                'tasks': ['restingstate', 'therapy']
+                'methods': inter_session_methods,
+                'description': 'Per-task epoching for comparing across all sessions',
+                'tasks': tasks
             }
         },
         
@@ -224,7 +233,9 @@ def print_statistics(config: dict):
     
     print("\nEpoching methods:")
     print(f"  Intra-session: {config['epoching']['intra_session']['method']}")
-    print(f"  Inter-session: {config['epoching']['inter_session']['method']}")
+    print(f"  Inter-session (per task):")
+    for task, method in config['epoching']['inter_session']['methods'].items():
+        print(f"    - {task}: {method}")
     print("=" * 60)
 
 
@@ -263,8 +274,8 @@ Examples:
         help='Epoching method for intra-session comparison'
     )
     parser.add_argument(
-        '--inter-method', type=str, default='nsplit120',
-        help='Epoching method for inter-session comparison'
+        '--config', type=str, default='config/config.yaml',
+        help='Path to main config.yaml to read epoching parameters'
     )
     parser.add_argument(
         '--verbose', '-v', action='store_true',
@@ -274,6 +285,28 @@ Examples:
     args = parser.parse_args()
     
     setup_logging(args.verbose)
+    
+    # Load main config to get epoching parameters per task
+    config_loader = ConfigLoader(args.config)
+    nsplit_config = config_loader.get('epoching.methods.nsplit', {})
+    
+    # Build per-task inter-session methods from config.yaml
+    inter_session_methods = {}
+    tasks = []
+    
+    for task_name, task_params in nsplit_config.items():
+        if task_name == 'enabled':
+            continue
+        if isinstance(task_params, dict) and 'n_epochs' in task_params:
+            n_epochs = task_params['n_epochs']
+            inter_session_methods[task_name] = f'nsplit{n_epochs}'
+            tasks.append(task_name)
+            logger.info(f"Task '{task_name}': n_epochs={n_epochs} -> method=nsplit{n_epochs}")
+    
+    if not inter_session_methods:
+        logger.warning("No nsplit config found in config.yaml, using defaults")
+        inter_session_methods = {'restingstate': 'nsplit1', 'therapy': 'nsplit120'}
+        tasks = ['restingstate', 'therapy']
     
     # Load data
     participants_file = Path(args.participants)
@@ -291,7 +324,8 @@ Examples:
         participants,
         sessions_per_subject,
         intra_session_method=args.intra_method,
-        inter_session_method=args.inter_method
+        inter_session_methods=inter_session_methods,
+        tasks=tasks
     )
     
     # Save configuration

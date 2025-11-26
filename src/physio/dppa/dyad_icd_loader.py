@@ -7,7 +7,7 @@ supporting both resting state and therapy tasks.
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, Union
 
 import pandas as pd
 
@@ -192,13 +192,16 @@ class DyadICDLoader:
 
         return result
 
-    def load_both_tasks(self, dyad_pair: str, method: str) -> Dict[str, pd.DataFrame]:
+    def load_both_tasks(
+        self, dyad_pair: str, methods: Union[str, Dict[str, str]]
+    ) -> Dict[str, pd.DataFrame]:
         """
         Load ICD data for both restingstate and therapy tasks.
 
         Args:
             dyad_pair: Dyad identifier (e.g., "g01p01_ses-01_vs_g01p02_ses-01")
-            method: Epoching method (e.g., 'nsplit120')
+            methods: Either a single method string (applied to all tasks) or
+                    a dict mapping task -> method (e.g., {'restingstate': 'nsplit1', 'therapy': 'nsplit120'})
 
         Returns:
             Dictionary with keys 'restingstate' and 'therapy',
@@ -209,22 +212,35 @@ class DyadICDLoader:
 
         Example:
             >>> loader = DyadICDLoader()
+            >>> # Old style (single method)
             >>> data = loader.load_both_tasks("g01p01_ses-01_vs_g01p02_ses-01", "nsplit120")
-            >>> print(f"Resting: {len(data['restingstate'])} epochs")
-            >>> print(f"Therapy: {len(data['therapy'])} epochs")
-            Resting: 1 epochs
-            Therapy: 120 epochs
+            >>> # New style (per-task methods)
+            >>> methods = {'restingstate': 'nsplit1', 'therapy': 'nsplit120'}
+            >>> data = loader.load_both_tasks("g01p01_ses-01_vs_g01p02_ses-01", methods)
         """
-        logger.info(f"Loading both tasks for dyad: {dyad_pair}, method: {method}")
+        # Normalize methods to dict format
+        if isinstance(methods, str):
+            methods_dict = {'restingstate': methods, 'therapy': methods}
+        else:
+            methods_dict = methods
+        
+        logger.info(f"Loading both tasks for dyad: {dyad_pair}")
+        for task, method in methods_dict.items():
+            logger.debug(f"  {task}: {method}")
 
         result = {}
         for task in ["restingstate", "therapy"]:
-            result[task] = self.load_icd(dyad_pair, task, method)
+            method = methods_dict.get(task)
+            if method:
+                try:
+                    result[task] = self.load_icd(dyad_pair, task, method)
+                except FileNotFoundError as e:
+                    logger.warning(f"Could not load {task}: {e}")
+                    raise
 
         logger.info(
-            f"Successfully loaded both tasks: "
-            f"restingstate={len(result['restingstate'])} epochs, "
-            f"therapy={len(result['therapy'])} epochs"
+            f"Successfully loaded tasks: " +
+            ", ".join(f"{t}={len(df)} epochs" for t, df in result.items())
         )
 
         return result

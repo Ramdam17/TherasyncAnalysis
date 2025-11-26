@@ -85,11 +85,18 @@ class DyadConfigLoader:
         if 'inter_session' not in epoching:
             raise ValueError("Missing 'inter_session' in epoching config")
         
-        for mode in ['intra_session', 'inter_session']:
-            if 'method' not in epoching[mode]:
-                raise ValueError(f"Missing 'method' in epoching.{mode}")
-            if 'tasks' not in epoching[mode]:
-                raise ValueError(f"Missing 'tasks' in epoching.{mode}")
+        # Validate intra_session (requires single 'method')
+        if 'method' not in epoching['intra_session']:
+            raise ValueError("Missing 'method' in epoching.intra_session")
+        if 'tasks' not in epoching['intra_session']:
+            raise ValueError("Missing 'tasks' in epoching.intra_session")
+        
+        # Validate inter_session (accepts either 'method' or 'methods')
+        inter_config = epoching['inter_session']
+        if 'method' not in inter_config and 'methods' not in inter_config:
+            raise ValueError("Missing 'method' or 'methods' in epoching.inter_session")
+        if 'tasks' not in inter_config:
+            raise ValueError("Missing 'tasks' in epoching.inter_session")
         
         logger.debug("Configuration validation passed")
     
@@ -368,9 +375,49 @@ class DyadConfigLoader:
         """Get the epoching method for intra-session comparison."""
         return self.config['epoching']['intra_session']['method']
     
-    def get_inter_session_method(self) -> str:
-        """Get the epoching method for inter-session comparison."""
-        return self.config['epoching']['inter_session']['method']
+    def get_inter_session_method(self, task: Optional[str] = None) -> Union[str, Dict[str, str]]:
+        """
+        Get the epoching method for inter-session comparison.
+        
+        Args:
+            task: Optional task name. If provided, returns method for that task.
+                  If None, returns dict of all task->method mappings (new format)
+                  or single method string (old format).
+        
+        Returns:
+            If task is provided: method string for that task
+            If task is None: dict {task: method} or single method string
+        """
+        inter_config = self.config['epoching']['inter_session']
+        
+        # New format: 'methods' dict per task
+        if 'methods' in inter_config:
+            if task:
+                return inter_config['methods'].get(task, 'nsplit1')
+            return inter_config['methods']
+        
+        # Old format: single 'method' string (backward compatibility)
+        if task:
+            return inter_config.get('method', 'nsplit120')
+        return inter_config.get('method', 'nsplit120')
+    
+    def get_inter_session_methods(self) -> Dict[str, str]:
+        """
+        Get all inter-session methods as a dict {task: method}.
+        
+        Returns:
+            Dict mapping task name to epoching method
+        """
+        inter_config = self.config['epoching']['inter_session']
+        
+        # New format
+        if 'methods' in inter_config:
+            return inter_config['methods']
+        
+        # Old format: apply same method to all tasks
+        method = inter_config.get('method', 'nsplit120')
+        tasks = inter_config.get('tasks', [])
+        return {task: method for task in tasks}
     
     def get_intra_session_tasks(self) -> List[str]:
         """Get list of tasks for intra-session comparison."""

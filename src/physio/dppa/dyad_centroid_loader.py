@@ -203,14 +203,15 @@ class DyadCentroidLoader:
         return True
 
     def load_both_tasks(
-        self, dyad_info: Dict[str, str], method: str
+        self, dyad_info: Dict[str, str], methods: Union[str, Dict[str, str]]
     ) -> Dict[str, Tuple[pd.DataFrame, pd.DataFrame]]:
         """
         Load centroid data for both restingstate and therapy tasks.
 
         Args:
             dyad_info: Dictionary with keys: 'sub1', 'ses1', 'sub2', 'ses2'
-            method: Epoching method (e.g., 'nsplit120')
+            methods: Either a single method string (applied to all tasks) or
+                    a dict mapping task -> method (e.g., {'restingstate': 'nsplit1', 'therapy': 'nsplit120'})
 
         Returns:
             Dictionary with keys 'restingstate' and 'therapy',
@@ -222,25 +223,38 @@ class DyadCentroidLoader:
         Example:
             >>> loader = DyadCentroidLoader()
             >>> dyad_info = {"sub1": "g01p01", "ses1": "01", "sub2": "g01p02", "ses2": "01"}
+            >>> # Old style (single method)
             >>> data = loader.load_both_tasks(dyad_info, "nsplit120")
-            >>> print(f"Resting: {len(data['restingstate'][0])} epochs")
-            >>> print(f"Therapy: {len(data['therapy'][0])} epochs")
-            Resting: 1 epochs
-            Therapy: 120 epochs
+            >>> # New style (per-task methods)
+            >>> methods = {'restingstate': 'nsplit1', 'therapy': 'nsplit120'}
+            >>> data = loader.load_both_tasks(dyad_info, methods)
         """
+        # Normalize methods to dict format
+        if isinstance(methods, str):
+            methods_dict = {'restingstate': methods, 'therapy': methods}
+        else:
+            methods_dict = methods
+        
         logger.info(
             f"Loading both tasks for dyad: {dyad_info['sub1']}_ses-{dyad_info['ses1']} "
-            f"vs {dyad_info['sub2']}_ses-{dyad_info['ses2']}, method: {method}"
+            f"vs {dyad_info['sub2']}_ses-{dyad_info['ses2']}"
         )
+        for task, method in methods_dict.items():
+            logger.debug(f"  {task}: {method}")
 
         result = {}
         for task in ["restingstate", "therapy"]:
-            result[task] = self.load_centroids(dyad_info, task, method)
+            method = methods_dict.get(task)
+            if method:
+                try:
+                    result[task] = self.load_centroids(dyad_info, task, method)
+                except FileNotFoundError as e:
+                    logger.warning(f"Could not load {task}: {e}")
+                    raise
 
         logger.info(
-            f"Successfully loaded both tasks: "
-            f"restingstate=({len(result['restingstate'][0])}, {len(result['restingstate'][1])}) epochs, "
-            f"therapy=({len(result['therapy'][0])}, {len(result['therapy'][1])}) epochs"
+            f"Successfully loaded tasks: " +
+            ", ".join(f"{t}=({len(dfs[0])}, {len(dfs[1])}) epochs" for t, dfs in result.items())
         )
 
         return result
