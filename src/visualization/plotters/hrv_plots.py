@@ -3,7 +3,7 @@ HRV Plots Module.
 
 Implements HRV-specific visualizations:
 - Visualization #2: Poincaré Plot
-- Visualization #3: Autonomic Balance (Frequency Domain)
+- Visualization #3: Autonomic Balance (Time-Domain Comparison)
 
 Authors: Lena Adel, Remy Ramadour
 Date: November 2025
@@ -12,7 +12,7 @@ Date: November 2025
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse
+from matplotlib.patches import Ellipse, Patch
 from typing import Dict, Optional
 from pathlib import Path
 
@@ -186,28 +186,6 @@ def plot_poincare_hrv(
         plt.close(fig)
     
     return fig
-    ax.plot(lims, lims, 'k--', alpha=0.3, linewidth=LINEWIDTH['thin'], 
-           label='Identity Line', zorder=0)
-    
-    ax.set_xlabel('RR(n) - Current Interval (ms)', fontsize=FONTSIZE['label'])
-    ax.set_ylabel('RR(n+1) - Next Interval (ms)', fontsize=FONTSIZE['label'])
-    ax.set_title(f'Poincaré Plot - HRV Analysis\nSubject {data.get("subject", "Unknown")}, Session {data.get("session", "Unknown")}',
-                fontsize=FONTSIZE['title'], fontweight='bold')
-    ax.legend(loc='lower right', fontsize=FONTSIZE['legend'])
-    ax.grid(True, alpha=ALPHA['fill'])
-    ax.set_aspect('equal', adjustable='box')
-    
-    plt.tight_layout()
-    
-    if output_path:
-        fig.savefig(str(output_path), dpi=300, bbox_inches='tight')
-    
-    if show:
-        plt.show()
-    else:
-        plt.close(fig)
-    
-    return fig
 
 
 def plot_autonomic_balance(
@@ -298,13 +276,11 @@ def plot_autonomic_balance(
     ax.grid(True, alpha=ALPHA['fill'], axis='y', linestyle='--')
     
     # Legend below the plot
-    from matplotlib.patches import Patch
-    
     legend_elements = [
-        Patch(facecolor='gray', alpha=0.8, edgecolor='white', linewidth=2,
+        Patch(facecolor=COLORS['gray'], alpha=0.8, edgecolor='white', linewidth=2,
               label='SDNN (overall HRV)'),
-        Patch(facecolor='gray', alpha=0.5, hatch='///', edgecolor='white', linewidth=2,
-              label='RMSSD (parasympathetic)')
+        Patch(facecolor=COLORS['gray'], alpha=0.5, hatch='///', edgecolor='white', 
+              linewidth=2, label='RMSSD (parasympathetic)')
     ]
     
     ax.legend(handles=legend_elements, loc='upper center', 

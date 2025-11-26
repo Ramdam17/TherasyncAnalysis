@@ -326,9 +326,9 @@ def plot_scr_events(ax: plt.Axes, eda_data: Dict, moments: list, moment_boundari
 
 def plot_hr_dynamics_timeline(
     data: Dict,
-    output_path: str,
+    output_path: Optional[Path] = None,
     show: bool = False
-) -> None:
+) -> plt.Figure:
     """
     Visualization #6: HR Dynamics Timeline.
     
@@ -337,8 +337,11 @@ def plot_hr_dynamics_timeline(
     
     Args:
         data: Dictionary containing 'hr' data with 'signals' sub-dict
-        output_path: Where to save the figure (string path)
+        output_path: Where to save the figure (optional)
         show: Whether to display the figure
+    
+    Returns:
+        Figure object
     """
     apply_plot_style()
     
@@ -355,7 +358,7 @@ def plot_hr_dynamics_timeline(
             plt.show()
         else:
             plt.close(fig)
-        return
+        return fig
     
     # HR data is now split by moments (restingstate, therapy)
     # Each moment has its own DataFrame with HR_Clean column
@@ -370,7 +373,7 @@ def plot_hr_dynamics_timeline(
             plt.show()
         else:
             plt.close(fig)
-        return
+        return fig
     
     # Get moment boundaries from BVP data to align timeline
     moment_boundaries = {}
@@ -434,7 +437,7 @@ def plot_hr_dynamics_timeline(
             plt.show()
         else:
             plt.close(fig)
-        return
+        return fig
     
     # Calculate global y-axis limits
     all_hr = np.concatenate([m['hr'] for m in moment_data])
@@ -504,3 +507,5 @@ def plot_hr_dynamics_timeline(
         plt.show()
     else:
         plt.close(fig)
+    
+    return fig

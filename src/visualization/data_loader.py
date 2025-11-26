@@ -54,7 +54,7 @@ def discover_moments(subject: str, session: str, derivatives_path: Path) -> List
     moments = set()
     
     # Scan all modality directories
-    for modality in ['bvp', 'eda', 'hr']:
+    for modality in ['bvp', 'eda', 'hr', 'temp']:
         modality_path = subject_session_path / modality
         
         if not modality_path.exists():
@@ -141,7 +141,7 @@ class VisualizationDataLoader:
             }
         """
         if modalities is None:
-            modalities = ['bvp', 'eda', 'hr']
+            modalities = ['bvp', 'eda', 'hr', 'temp']
         
         # Build paths
         subject_id = f"sub-{subject}" if not subject.startswith('sub-') else subject
@@ -180,6 +180,8 @@ class VisualizationDataLoader:
                 data['eda'] = self._load_eda_data(modality_path, subject_id, session_id)
             elif modality == 'hr':
                 data['hr'] = self._load_hr_data(modality_path, subject_id, session_id)
+            elif modality == 'temp':
+                data['temp'] = self._load_temp_data(modality_path, subject_id, session_id)
         
         return data
     
@@ -317,6 +319,39 @@ class VisualizationDataLoader:
         
         return hr_data
     
+    def _load_temp_data(self, modality_path: Path, subject_id: str, session_id: str) -> Dict:
+        """Load TEMP processed signals and metrics."""
+        temp_data = {
+            'signals': {},
+            'metrics': None,
+            'metadata': {}
+        }
+        
+        # Discover available moments from files
+        moments = self._discover_moments_in_modality(modality_path, 'temp')
+        
+        for moment in moments:
+            signal_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-temp.tsv"
+            metadata_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-temp.json"
+            
+            if signal_file.exists():
+                temp_data['signals'][moment] = pd.read_csv(signal_file, sep='\t')
+                logger.info(f"  Loaded TEMP signals for {moment}: {len(temp_data['signals'][moment])} samples")
+            else:
+                logger.warning(f"  TEMP signal file not found for moment '{moment}': {signal_file}")
+            
+            if metadata_file.exists():
+                with open(metadata_file, 'r') as f:
+                    temp_data['metadata'][moment] = json.load(f)
+        
+        # Load combined metrics (aggregated across moments)
+        metrics_file = modality_path / f"{subject_id}_{session_id}_desc-temp-metrics_physio.tsv"
+        if metrics_file.exists():
+            temp_data['metrics'] = pd.read_csv(metrics_file, sep='\t')
+            logger.info(f"  Loaded TEMP metrics: {len(temp_data['metrics'])} rows")
+        
+        return temp_data
+    
     def list_available_subjects(self) -> List[Tuple[str, str]]:
         """
         List all available subject/session combinations.
@@ -336,7 +371,8 @@ class VisualizationDataLoader:
                 has_data = any([
                     (session_dir / 'bvp').exists(),
                     (session_dir / 'eda').exists(),
-                    (session_dir / 'hr').exists()
+                    (session_dir / 'hr').exists(),
+                    (session_dir / 'temp').exists()
                 ])
                 
                 if has_data:
@@ -362,7 +398,7 @@ class VisualizationDataLoader:
         subject_session_path = self.derivatives_path / subject_id / session_id
         
         modalities = []
-        for modality in ['bvp', 'eda', 'hr']:
+        for modality in ['bvp', 'eda', 'hr', 'temp']:
             if (subject_session_path / modality).exists():
                 modalities.append(modality)
         

@@ -2,8 +2,18 @@
 """
 Visualization Generation Script for TherasyncPipeline.
 
-This script generates the 6 core visualizations for a subject/session or batch processes
+This script generates the 8 core visualizations for a subject/session or batch processes
 multiple subjects.
+
+Visualizations:
+    #1: Multi-Signal Dashboard (BVP, HR, EDA, SCR)
+    #2: Poincaré Plot (HRV)
+    #3: Autonomic Balance (SDNN/RMSSD comparison)
+    #4: EDA Arousal Profile (tonic/phasic)
+    #5: SCR Distribution (histogram + boxplot)
+    #6: HR Dynamics Timeline (with zones)
+    #7: Temperature Timeline (with physiological zones)
+    #8: Temperature Metrics Comparison
 
 Usage:
     # Single subject/session
@@ -41,6 +51,10 @@ from src.visualization.plotters.eda_plots import (
     plot_eda_arousal_profile,
     plot_scr_distribution
 )
+from src.visualization.plotters.temp_plots import (
+    plot_temp_timeline,
+    plot_temp_metrics_comparison
+)
 from src.visualization.config import OUTPUT_CONFIG
 
 logger = logging.getLogger(__name__)
@@ -54,6 +68,8 @@ PLOT_FUNCTIONS = {
     4: ('04_eda_arousal_profile.png', plot_eda_arousal_profile),
     5: ('05_scr_distribution.png', plot_scr_distribution),
     6: ('06_hr_dynamics_timeline.png', plot_hr_dynamics_timeline),
+    7: ('07_temp_timeline.png', plot_temp_timeline),
+    8: ('08_temp_metrics_comparison.png', plot_temp_metrics_comparison),
 }
 
 

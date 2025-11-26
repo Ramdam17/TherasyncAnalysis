@@ -1,16 +1,19 @@
 """
 EDA-specific visualization plots.
 
-Implements visualizations #4, #5, #9:
-- EDA arousal profile (tonic/phasic dual-axis)
-- SCR cascade (waterfall plot by amplitude)
+Implements visualizations #4, #5:
+- EDA arousal profile (tonic/phasic comparison)
 - SCR distribution (histogram + boxplot)
+
+Authors: Lena Adel, Remy Ramadour
+Date: November 2025
 """
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
-from typing import Dict
+from typing import Dict, Optional
+from pathlib import Path
 import pandas as pd
 
 from ..config import (
@@ -20,19 +23,27 @@ from ..config import (
 )
 
 
-def plot_eda_arousal_profile(data: Dict, output_path: str, show: bool = False) -> None:
+def plot_eda_arousal_profile(
+    data: Dict,
+    output_path: Optional[Path] = None,
+    show: bool = False
+) -> plt.Figure:
     """
     Plot EDA baseline arousal comparison between moments.
     
     Visualization #4: Quantitative comparison showing:
-    - Tonic EDA levels: mean, min, max (baseline arousal)
-    - Phasic variability: standard deviation (reactivity)
+    - Tonic EDA levels: boxplot distribution (baseline arousal)
+    - Phasic variability: bar chart of standard deviation (reactivity)
     
     Args:
         data: Dictionary containing EDA signals with structure:
             - 'eda': Dict with 'signals' containing moment DataFrames
                      Each should have: 'EDA_Tonic', 'EDA_Phasic'
-        output_path: Path to save the PNG figure
+        output_path: Where to save the figure (optional)
+        show: Whether to display the figure
+    
+    Returns:
+        Figure object
     """
     apply_plot_style()
     
@@ -155,22 +166,32 @@ def plot_eda_arousal_profile(data: Dict, output_path: str, show: bool = False) -
         plt.show()
     else:
         plt.close(fig)
+    
+    return fig
 
 
-def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> None:
+def plot_scr_distribution(
+    data: Dict,
+    output_path: Optional[Path] = None,
+    show: bool = False
+) -> plt.Figure:
     """
     Plot SCR amplitude distribution with histogram and boxplot per moment.
     
     Visualization #5: Separate histogram + boxplot for each moment:
-    - Top row: Histograms showing amplitude distribution per moment
-    - Bottom row: Boxplots showing statistical summary per moment
-    - One column per moment for clear comparison
+    - Left column: Histograms showing amplitude distribution per moment
+    - Right column: Boxplots showing statistical summary per moment
+    - One row per moment for clear comparison
     
     Args:
         data: Dictionary containing EDA events with key:
             - 'eda': Dict with 'events' sub-dict containing moment DataFrames
                      Each should have 'amplitude' column
-        output_path: Path to save the PNG figure
+        output_path: Where to save the figure (optional)
+        show: Whether to display the figure
+    
+    Returns:
+        Figure object
     """
     apply_plot_style()
     
@@ -188,7 +209,7 @@ def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> N
             plt.show()
         else:
             plt.close(fig)
-        return
+        return fig
     
     available_moments = list(eda_data.get('events', {}).keys())
     
@@ -204,7 +225,7 @@ def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> N
             plt.show()
         else:
             plt.close(fig)
-        return
+        return fig
     
     # Collect amplitude data per moment
     amplitude_data = {}
@@ -229,7 +250,7 @@ def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> N
             plt.show()
         else:
             plt.close(fig)
-        return
+        return fig
     
     # Create figure with N rows x 2 columns (N = number of moments)
     # Column 1: Histogram, Column 2: Boxplot
@@ -262,7 +283,7 @@ def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> N
         ax_hist = axes[idx, 0]
         ax_hist.hist(amplitudes, bins=30, range=(amp_min, amp_max), alpha=0.7, 
                     color=moment_color, edgecolor='black', linewidth=1.2)
-        ax_hist.set_ylabel('Fréquence', fontsize=FONTSIZE['label'], fontweight='bold')
+        ax_hist.set_ylabel('Frequency', fontsize=FONTSIZE['label'], fontweight='bold')
         ax_hist.set_xlabel('Amplitude (µS)', fontsize=FONTSIZE['label'], fontweight='bold')
         ax_hist.set_title(f'{get_moment_label(moment)} - Distribution (n={len(amplitudes)})', 
                          fontsize=FONTSIZE['subtitle'], fontweight='bold')
@@ -289,7 +310,7 @@ def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> N
         bp['boxes'][0].set_alpha(0.7)
         
         ax_box.set_ylabel('Amplitude (µS)', fontsize=FONTSIZE['label'], fontweight='bold')
-        ax_box.set_title(f'{get_moment_label(moment)} - Statistiques', 
+        ax_box.set_title(f'{get_moment_label(moment)} - Statistics', 
                         fontsize=FONTSIZE['subtitle'], fontweight='bold')
         ax_box.set_ylim(amp_min, amp_max)
         ax_box.set_xticklabels([''])  # No x-axis labels needed
@@ -298,7 +319,7 @@ def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> N
     
     # Overall title
     fig.suptitle(
-        f'Distribution des Réponses Cutanées Sympathiques (SCR)\n'
+        f'Skin Conductance Response (SCR) Amplitude Distribution\n'
         f'Subject {data.get("subject", "Unknown")}, Session {data.get("session", "Unknown")}',
         fontsize=FONTSIZE['title'], fontweight='bold', y=0.98)
     
@@ -311,4 +332,5 @@ def plot_scr_distribution(data: Dict, output_path: str, show: bool = False) -> N
         plt.show()
     else:
         plt.close(fig)
-
+    
+    return fig

@@ -2,12 +2,14 @@
 Visualization Configuration Module.
 
 Defines plotting styles, colors, and parameters for consistent visualizations.
+Inspired by modern data visualization best practices with soft pastel colors.
 
 Authors: Lena Adel, Remy Ramadour
 Date: November 2025
 """
 
-from typing import Dict
+from typing import Dict, Optional
+from pathlib import Path
 import matplotlib.pyplot as plt
 from src.core.config_loader import ConfigLoader
 
@@ -21,47 +23,74 @@ MOMENT_LABELS = {
     for moment in _config.get('moments', [])
 }
 
-# Color Schemes
-COLORS = {
-    # Moment colors (legacy support for named moments)
-    'restingstate': '#3498db',  # Blue
-    'therapy': '#e74c3c',  # Red
+# =============================================================================
+# COLOR PALETTE - Soft Pastels for Professional Visualizations
+# =============================================================================
+
+COLORS: Dict[str, str] = {
+    # -------------------------------------------------------------------------
+    # Primary Signal Colors (soft pastels)
+    # -------------------------------------------------------------------------
+    'bvp': '#C4A8D4',       # Lavender - Blood Volume Pulse
+    'eda': '#B8D4A8',       # Sage Green - Electrodermal Activity
+    'hr': '#F4A4B8',        # Rose Pink - Heart Rate
+    'temp': '#E8C87A',      # Golden - Temperature
     
-    # Signal colors
-    'bvp': '#9b59b6',  # Purple
-    'eda': '#2ecc71',  # Green
-    'hr': '#e67e22',  # Orange
+    # -------------------------------------------------------------------------
+    # Moment Colors (contrasting but harmonious)
+    # -------------------------------------------------------------------------
+    'restingstate': '#7EB8DA',  # Sky Blue - Calm state
+    'therapy': '#F4A4B8',       # Rose Pink - Active state
     
-    # EDA components
-    'tonic': '#3498db',  # Blue
-    'phasic': '#2ecc71',  # Green
-    'scr': '#e74c3c',  # Red
+    # -------------------------------------------------------------------------
+    # EDA Components
+    # -------------------------------------------------------------------------
+    'tonic': '#7EB8DA',     # Sky Blue - Baseline arousal
+    'phasic': '#B8D4A8',    # Sage Green - Phasic responses
+    'scr': '#E17055',       # Coral - SCR events
     
-    # HRV components
-    'lf': '#2ecc71',  # Green (sympathetic + parasympathetic)
-    'hf': '#3498db',  # Blue (parasympathetic)
+    # -------------------------------------------------------------------------
+    # HRV Components
+    # -------------------------------------------------------------------------
+    'lf': '#E8C87A',        # Golden - Low frequency (sympathetic)
+    'hf': '#7EB8DA',        # Sky Blue - High frequency (parasympathetic)
+    'vlf': '#C4A8D4',       # Lavender - Very low frequency
     
-    # Quality indicators
-    'good': '#2ecc71',  # Green
-    'medium': '#f39c12',  # Yellow
-    'poor': '#e74c3c',  # Red
+    # -------------------------------------------------------------------------
+    # Quality Indicators
+    # -------------------------------------------------------------------------
+    'good': '#6DD47E',      # Fresh Green - Good quality
+    'medium': '#F8B500',    # Amber - Medium quality
+    'poor': '#E17055',      # Coral - Poor quality
     
-    # Neutral colors
-    'gray': '#95a5a6',
-    'dark_gray': '#34495e',
-    'light_gray': '#ecg0f1',
+    # -------------------------------------------------------------------------
+    # Utility Colors
+    # -------------------------------------------------------------------------
+    'grid': '#CCCCCC',      # Light gray grid
+    'text': '#2C3E50',      # Dark blue-gray text
+    'background': '#FFFFFF', # White background
+    'gray': '#95A5A6',      # Neutral gray
+    'dark_gray': '#2C3E50', # Dark blue-gray
+    'light_gray': '#ECF0F1', # Very light gray
+    
+    # -------------------------------------------------------------------------
+    # Diverging Colors (for correlations, differences)
+    # -------------------------------------------------------------------------
+    'negative': '#E17055',  # Coral - Negative values
+    'zero': '#FFFFFF',      # White - Zero/neutral
+    'positive': '#00CEC9',  # Teal - Positive values
 }
 
-# Moment color palette (supports up to 8 distinct moments, with modulo fallback)
+# Moment color palette (supports multiple moments with modulo fallback)
 MOMENT_COLORS = [
-    '#3498db',  # Blue
-    '#e74c3c',  # Red
-    '#2ecc71',  # Green
-    '#f39c12',  # Orange
-    '#9b59b6',  # Purple
-    '#1abc9c',  # Teal
-    '#e67e22',  # Dark orange
-    '#34495e',  # Dark gray
+    '#7EB8DA',  # Sky Blue
+    '#F4A4B8',  # Rose Pink
+    '#B8D4A8',  # Sage Green
+    '#E8C87A',  # Golden
+    '#C4A8D4',  # Lavender
+    '#A8D4D0',  # Soft Teal
+    '#F5B7B1',  # Blush
+    '#AED6F1',  # Light Blue
 ]
 
 # Map known moment names to indices for backward compatibility
@@ -70,28 +99,38 @@ MOMENT_NAME_TO_INDEX = {
     'therapy': 1,
 }
 
-# Transparency levels
+# =============================================================================
+# TRANSPARENCY LEVELS
+# =============================================================================
+
 ALPHA = {
     'low': 0.2,
     'medium': 0.4,
     'high': 0.7,
-    'fill': 0.3,
+    'fill': 0.25,       # Background fills
     'overlay': 0.5,
     'scatter': 0.6,
-    'line': 0.8,
-    'solid': 1.0
+    'line': 0.85,       # Line plots
+    'solid': 1.0,
 }
 
-# Figure sizes (width, height in inches)
+# =============================================================================
+# FIGURE SIZES (width, height in inches)
+# =============================================================================
+
 FIGSIZE = {
     'small': (8, 6),
     'medium': (12, 8),
     'large': (16, 10),
     'dashboard': (16, 12),
     'wide': (14, 6),
+    'square': (10, 10),
 }
 
-# Font sizes
+# =============================================================================
+# TYPOGRAPHY
+# =============================================================================
+
 FONTSIZE = {
     'title': 16,
     'subtitle': 14,
@@ -102,17 +141,23 @@ FONTSIZE = {
     'small': 8,
 }
 
-# Line widths
+# =============================================================================
+# LINE WIDTHS
+# =============================================================================
+
 LINEWIDTH = {
     'thin': 0.5,
     'normal': 1.0,
-    'signal': 1.2,
+    'signal': 1.5,
     'medium': 1.5,
     'thick': 2.0,
-    'extra_thick': 3.0,
+    'extra_thick': 2.5,
 }
 
-# Marker sizes
+# =============================================================================
+# MARKER SIZES
+# =============================================================================
+
 MARKERSIZE = {
     'tiny': 2,
     'small': 4,
@@ -121,42 +166,53 @@ MARKERSIZE = {
     'extra_large': 10,
 }
 
-# Plot Style Configuration
-PLOT_STYLE = {
-    'style': 'seaborn-v0_8-darkgrid',  # Matplotlib style
-    'context': 'notebook',  # Seaborn context
-    'palette': 'deep',  # Seaborn palette
-    'grid': True,
-    'grid_alpha': 0.3,
-}
+# =============================================================================
+# DPI SETTINGS
+# =============================================================================
 
-# DPI settings
 DPI = {
     'screen': 100,
-    'print': 300,
     'presentation': 150,
+    'print': 300,
 }
 
-# Export formats
+# =============================================================================
+# EXPORT SETTINGS
+# =============================================================================
+
 EXPORT_FORMATS = ['png', 'pdf', 'svg']
 
-# Metric labels and units
+# =============================================================================
+# METRIC LABELS AND UNITS
+# =============================================================================
+
 METRIC_LABELS = {
-    # BVP/HRV metrics
+    # -------------------------------------------------------------------------
+    # BVP/HRV Time-Domain Metrics
+    # -------------------------------------------------------------------------
     'HRV_MeanNN': 'Mean NN Interval (ms)',
     'HRV_SDNN': 'SDNN (ms)',
     'HRV_RMSSD': 'RMSSD (ms)',
     'HRV_pNN50': 'pNN50 (%)',
     'HRV_CVNN': 'CV of NN Intervals',
-    'HRV_LF': 'LF Power (ms²)',
-    'HRV_HF': 'HF Power (ms²)',
-    'HRV_TP': 'Total Power (ms²)',
-    'HRV_LFHF': 'LF/HF Ratio',
-    'HRV_SD1': 'SD1 (ms)',
-    'HRV_SD2': 'SD2 (ms)',
+    'HRV_SD1': 'Poincaré SD1 (ms)',
+    'HRV_SD2': 'Poincaré SD2 (ms)',
     'HRV_SampEn': 'Sample Entropy',
     
-    # EDA metrics
+    # -------------------------------------------------------------------------
+    # BVP/HRV Frequency-Domain Metrics
+    # -------------------------------------------------------------------------
+    'HRV_LF': 'LF Power (ms²)',
+    'HRV_HF': 'HF Power (ms²)',
+    'HRV_VLF': 'VLF Power (ms²)',
+    'HRV_TP': 'Total Power (ms²)',
+    'HRV_LFHF': 'LF/HF Ratio',
+    'HRV_LFn': 'Normalized LF (%)',
+    'HRV_HFn': 'Normalized HF (%)',
+    
+    # -------------------------------------------------------------------------
+    # EDA Metrics
+    # -------------------------------------------------------------------------
     'SCR_Peaks_N': 'Number of SCRs',
     'SCR_Peaks_Rate': 'SCR Rate (per min)',
     'SCR_Peaks_Amplitude_Mean': 'Mean SCR Amplitude (µS)',
@@ -169,31 +225,98 @@ METRIC_LABELS = {
     'EDA_Phasic_Mean': 'Mean Phasic EDA (µS)',
     'EDA_Phasic_SD': 'Phasic EDA SD (µS)',
     
-    # HR metrics
-    'HR_Mean': 'Mean HR (BPM)',
-    'HR_SD': 'HR SD (BPM)',
-    'HR_Min': 'Min HR (BPM)',
-    'HR_Max': 'Max HR (BPM)',
-    'HR_Range': 'HR Range (BPM)',
-    'HR_Slope': 'HR Slope (BPM/min)',
+    # -------------------------------------------------------------------------
+    # HR Metrics
+    # -------------------------------------------------------------------------
+    'HR_Mean': 'Mean Heart Rate (BPM)',
+    'HR_SD': 'Heart Rate SD (BPM)',
+    'HR_Min': 'Min Heart Rate (BPM)',
+    'HR_Max': 'Max Heart Rate (BPM)',
+    'HR_Range': 'Heart Rate Range (BPM)',
+    'HR_Slope': 'Heart Rate Slope (BPM/min)',
+    'HR_CV': 'Heart Rate CV (%)',
+    
+    # -------------------------------------------------------------------------
+    # TEMP Metrics
+    # -------------------------------------------------------------------------
+    'TEMP_Mean': 'Mean Temperature (°C)',
+    'TEMP_SD': 'Temperature SD (°C)',
+    'TEMP_Min': 'Min Temperature (°C)',
+    'TEMP_Max': 'Max Temperature (°C)',
+    'TEMP_Range': 'Temperature Range (°C)',
+    'TEMP_Slope': 'Temperature Slope (°C/min)',
+    'TEMP_CV': 'Temperature CV (%)',
 }
 
 
-def apply_plot_style():
-    """Apply consistent plotting style to matplotlib."""
-    plt.style.use('seaborn-v0_8-whitegrid')
-    plt.rcParams['figure.facecolor'] = 'white'
-    plt.rcParams['axes.facecolor'] = 'white'
-    plt.rcParams['axes.edgecolor'] = COLORS['dark_gray']
-    plt.rcParams['axes.linewidth'] = 1.0
-    plt.rcParams['grid.color'] = COLORS['gray']
-    plt.rcParams['grid.alpha'] = PLOT_STYLE['grid_alpha']
-    plt.rcParams['font.size'] = FONTSIZE['label']
-    plt.rcParams['axes.titlesize'] = FONTSIZE['title']
-    plt.rcParams['axes.labelsize'] = FONTSIZE['label']
-    plt.rcParams['xtick.labelsize'] = FONTSIZE['tick']
-    plt.rcParams['ytick.labelsize'] = FONTSIZE['tick']
-    plt.rcParams['legend.fontsize'] = FONTSIZE['legend']
+# =============================================================================
+# MATPLOTLIB CONFIGURATION
+# =============================================================================
+
+def configure_matplotlib() -> None:
+    """
+    Configure matplotlib defaults for consistent professional visualizations.
+    
+    Sets font sizes, figure aesthetics, and other defaults according
+    to the project style guide. Call once at the start of visualization.
+    """
+    plt.rcParams.update({
+        # Figure
+        'figure.facecolor': COLORS['background'],
+        'figure.dpi': DPI['presentation'],
+        'figure.figsize': FIGSIZE['medium'],
+        
+        # Axes
+        'axes.facecolor': COLORS['background'],
+        'axes.edgecolor': COLORS['text'],
+        'axes.labelcolor': COLORS['text'],
+        'axes.titlesize': FONTSIZE['title'],
+        'axes.labelsize': FONTSIZE['label'],
+        'axes.linewidth': 0.8,
+        'axes.spines.top': False,
+        'axes.spines.right': False,
+        
+        # Ticks
+        'xtick.labelsize': FONTSIZE['tick'],
+        'ytick.labelsize': FONTSIZE['tick'],
+        'xtick.color': COLORS['text'],
+        'ytick.color': COLORS['text'],
+        
+        # Legend
+        'legend.fontsize': FONTSIZE['legend'],
+        'legend.frameon': False,
+        'legend.loc': 'best',
+        
+        # Grid
+        'grid.alpha': 0.3,
+        'grid.color': COLORS['grid'],
+        'grid.linestyle': '--',
+        'grid.linewidth': 0.5,
+        
+        # Lines
+        'lines.linewidth': LINEWIDTH['signal'],
+        'lines.markersize': MARKERSIZE['medium'],
+        
+        # Font
+        'font.family': 'sans-serif',
+        'font.size': FONTSIZE['label'],
+        
+        # Saving
+        'savefig.dpi': DPI['print'],
+        'savefig.bbox': 'tight',
+        'savefig.facecolor': COLORS['background'],
+        'savefig.edgecolor': 'none',
+    })
+
+
+def apply_plot_style() -> None:
+    """
+    Apply consistent plotting style to matplotlib.
+    
+    This is the main function to call before creating visualizations.
+    It configures all matplotlib settings for professional output.
+    """
+    configure_matplotlib()
 
 
 def get_moment_color(moment) -> str:
@@ -211,21 +334,18 @@ def get_moment_color(moment) -> str:
         Hex color code
     
     Examples:
-        get_moment_color('restingstate')  # '#3498db' (blue)
-        get_moment_color('therapy')       # '#e74c3c' (red)
-        get_moment_color(0)               # '#3498db' (blue)
-        get_moment_color(5)               # '#1abc9c' (teal)
-        get_moment_color(10)              # '#2ecc71' (green, wraps around)
-        get_moment_color('baseline')      # Stable color based on hash
+        >>> get_moment_color('restingstate')
+        '#7EB8DA'
+        >>> get_moment_color('therapy')
+        '#F4A4B8'
+        >>> get_moment_color(0)
+        '#7EB8DA'
     """
     if isinstance(moment, int):
-        # Direct index access with modulo fallback
         return MOMENT_COLORS[moment % len(MOMENT_COLORS)]
     elif isinstance(moment, str):
-        # Try named moment first (backward compatibility)
         if moment in MOMENT_NAME_TO_INDEX:
             return MOMENT_COLORS[MOMENT_NAME_TO_INDEX[moment]]
-        # For unknown names, use hash to get stable color index
         moment_hash = hash(moment)
         color_index = moment_hash % len(MOMENT_COLORS)
         return MOMENT_COLORS[color_index]
@@ -233,7 +353,7 @@ def get_moment_color(moment) -> str:
         return COLORS['gray']
 
 
-def get_moment_label(moment: str, config: dict | None = None) -> str:
+def get_moment_label(moment: str, config: Optional[dict] = None) -> str:
     """
     Get display label for a moment.
     
@@ -241,16 +361,11 @@ def get_moment_label(moment: str, config: dict | None = None) -> str:
     Falls back to moment name if not found.
     
     Args:
-        moment: Moment name (e.g., 'restingstate', 'baseline', 'intervention')
+        moment: Moment name (e.g., 'restingstate', 'therapy')
         config: Unused (kept for backward compatibility)
     
     Returns:
         Display label from config's displayname field, or moment name if not found
-    
-    Examples:
-        get_moment_label('restingstate')  # 'Resting State' (from config.yaml)
-        get_moment_label('therapy')       # 'Therapy Session' (from config.yaml)
-        get_moment_label('unknown')       # 'unknown' (fallback to name)
     """
     return MOMENT_LABELS.get(moment, moment)
 
@@ -259,20 +374,12 @@ def get_moment_order(moment: str, moments_list: list) -> int:
     """
     Get the index/order of a moment in a list.
     
-    This ensures consistent ordering across visualizations.
-    
     Args:
         moment: Moment name
         moments_list: List of all available moments (sorted)
     
     Returns:
-        Index of the moment in the list (0-based)
-        Returns -1 if moment not found
-    
-    Examples:
-        moments = ['baseline', 'restingstate', 'therapy']
-        get_moment_order('restingstate', moments)  # 1
-        get_moment_order('therapy', moments)       # 2
+        Index of the moment in the list (0-based), or -1 if not found
     """
     try:
         return moments_list.index(moment)
@@ -281,8 +388,29 @@ def get_moment_order(moment: str, moments_list: list) -> int:
 
 
 def get_modality_color(modality: str) -> str:
-    """Get color for a specific modality."""
+    """
+    Get color for a specific physiological modality.
+    
+    Args:
+        modality: One of 'bvp', 'eda', 'hr', 'temp'
+    
+    Returns:
+        Hex color code
+    """
     return COLORS.get(modality, COLORS['gray'])
+
+
+def get_metric_label(metric: str) -> str:
+    """
+    Get display label for a metric.
+    
+    Args:
+        metric: Metric name (e.g., 'HRV_SDNN', 'SCR_Peaks_N')
+    
+    Returns:
+        Human-readable label with units, or metric name if not found
+    """
+    return METRIC_LABELS.get(metric, metric)
 
 
 def format_duration(seconds: float) -> str:
@@ -307,7 +435,10 @@ def format_duration(seconds: float) -> str:
         return f"{hours:.0f}h {minutes:.0f}m"
 
 
-# Visualization output configuration
+# =============================================================================
+# OUTPUT CONFIGURATION
+# =============================================================================
+
 OUTPUT_CONFIG = {
     'base_path': 'data/derivatives/visualization/preprocessing',
     'figures_subdir': 'figures',
