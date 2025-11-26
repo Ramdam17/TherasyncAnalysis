@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
 from src.core.config_loader import ConfigLoader
+from src.visualization.config import COLORS, apply_plot_style
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +36,15 @@ class MOIVisualizer:
         self.derivatives_path = Path(self.config['paths']['derivatives'])
         self.alliance_dir = self.config['output']['alliance_dir']
         
-        # Color schemes
+        # Apply project-wide plot style
+        apply_plot_style()
+        
+        # Color schemes from project visualization config
         self.colors = {
-            'positive': '#2ecc71',  # Green
-            'negative': '#e74c3c',  # Red
-            'mixed': '#f39c12',     # Orange
-            'none': '#95a5a6'       # Gray
+            'positive': COLORS['positive'],  # Teal
+            'negative': COLORS['negative'],  # Coral
+            'mixed': COLORS['medium'],       # Amber (warning color)
+            'none': COLORS['gray']           # Neutral gray
         }
     
     def load_epoched_moi(self, group_id: str, session_id: str) -> pd.DataFrame:
@@ -378,17 +382,17 @@ class MOIVisualizer:
         # Load data
         df = self.load_epoched_moi(group_id, session_id)
         
-        # Create output directory
+        # Create output directory (centralized in visualization/alliance/)
         subject_dir = f"sub-{group_id}shared"
         session_dir = f"ses-{session_id}"
-        figures_subdir = self.config['output']['alliance_subdirs']['figures']
         
         output_dir = (
             self.derivatives_path /
-            self.alliance_dir /
+            'visualization' /
+            'alliance' /
             subject_dir /
             session_dir /
-            figures_subdir
+            'figures'
         )
         output_dir.mkdir(parents=True, exist_ok=True)
         

@@ -145,13 +145,14 @@ def create_moi_sidecar(
     return sidecar
 
 
-def process_moi_files(data_root: Path, dry_run: bool = False) -> Dict[str, int]:
+def process_moi_files(data_root: Path, dry_run: bool = False, force: bool = False) -> Dict[str, int]:
     """
     Process all MOI annotation files and create sidecars.
     
     Args:
         data_root: Root directory of raw data
         dry_run: If True, only show what would be done
+        force: If True, overwrite existing sidecars
     
     Returns:
         Dictionary with processing statistics
@@ -189,7 +190,7 @@ def process_moi_files(data_root: Path, dry_run: bool = False) -> Dict[str, int]:
         
         # Check if sidecar already exists
         json_file = tsv_file.with_suffix('.json')
-        if json_file.exists() and not dry_run:
+        if json_file.exists() and not dry_run and not force:
             logger.info(f"  Sidecar already exists: {json_file.name}")
             stats['skipped'] += 1
             continue
@@ -232,6 +233,11 @@ def main():
         help="Show what would be done without creating files"
     )
     parser.add_argument(
+        '--force', '-f',
+        action='store_true',
+        help="Overwrite existing sidecar files"
+    )
+    parser.add_argument(
         '--verbose', '-v',
         action='store_true',
         help="Enable verbose logging"
@@ -253,8 +259,11 @@ def main():
     if args.dry_run:
         logger.info("DRY RUN MODE - No files will be created")
     
+    if args.force:
+        logger.info("FORCE MODE - Overwriting existing sidecars")
+    
     # Process files
-    stats = process_moi_files(args.data_root, args.dry_run)
+    stats = process_moi_files(args.data_root, args.dry_run, args.force)
     
     # Summary
     logger.info("\n" + "=" * 80)
