@@ -232,6 +232,8 @@ Examples:
     parser.add_argument('--batch', action='store_true', help='Process all available dyads')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be processed')
     parser.add_argument('--config', type=str, default='config/config.yaml', help='Path to config file')
+    parser.add_argument('--dyad-config', type=str, default='config/dppa_dyads_real.yaml',
+                        help='Path to dyad config file for real/pseudo dyad distinction')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
     
     args = parser.parse_args()
@@ -255,12 +257,13 @@ Examples:
     logger.info(f"Task: {args.task}")
     logger.info(f"Batch: {args.batch}")
     logger.info(f"Dry run: {args.dry_run}")
+    logger.info(f"Dyad config: {args.dyad_config}")
     
     # Initialize components
     loader = CentroidLoader(args.config)
-    dyad_loader = DyadConfigLoader()
+    dyad_loader = DyadConfigLoader(args.dyad_config)
     calculator = ICDCalculator()
-    writer = DPPAWriter(args.config)
+    writer = DPPAWriter(args.config, dyad_config_path=args.dyad_config)
     
     # Determine tasks to process
     if args.task == 'all':

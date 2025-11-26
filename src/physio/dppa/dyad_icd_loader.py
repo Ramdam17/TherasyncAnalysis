@@ -100,7 +100,8 @@ class DyadICDLoader:
             )
 
     def load_icd(
-        self, dyad_pair: str, task: str, method: str
+        self, dyad_pair: str, task: str, method: str,
+        dyad_type: Optional[str] = None
     ) -> pd.DataFrame:
         """
         Load ICD time series for a specific dyad and task.
@@ -109,6 +110,8 @@ class DyadICDLoader:
             dyad_pair: Dyad identifier (e.g., "g01p01_ses-01_vs_g01p02_ses-01")
             task: Task name ('restingstate' or 'therapy')
             method: Epoching method (e.g., 'nsplit120', 'sliding_duration30s_step5s')
+            dyad_type: Type of dyad comparison ('inter_session' or 'intra_family').
+                      If None, auto-detects based on session comparison.
 
         Returns:
             DataFrame with columns: ['epoch_id', 'icd_value']
@@ -127,11 +130,17 @@ class DyadICDLoader:
             0         0      50.23
             1         1      48.91
         """
-        # Determine dyad type (inter_session or intra_family)
+        # Parse dyad info
         dyad_info = self.parse_dyad_info(dyad_pair)
         
-        # For now, assume inter_session (can be enhanced later)
-        dyad_type = "inter_session"
+        # Auto-detect dyad type if not provided
+        if dyad_type is None:
+            # If same session, likely intra_family; if different sessions, inter_session
+            if dyad_info['ses1'] == dyad_info['ses2']:
+                # Same session - could be either, try intra_family first for real dyads
+                dyad_type = "intra_family"
+            else:
+                dyad_type = "inter_session"
         
         # Construct file path
         icd_file = (
@@ -140,6 +149,16 @@ class DyadICDLoader:
             / dyad_type
             / f"{dyad_type}_icd_task-{task}_method-{method}.csv"
         )
+        
+        # If file not found with intra_family, try inter_session as fallback
+        if not icd_file.exists() and dyad_type == "intra_family":
+            dyad_type = "inter_session"
+            icd_file = (
+                self.derivatives_path
+                / "dppa"
+                / dyad_type
+                / f"{dyad_type}_icd_task-{task}_method-{method}.csv"
+            )
 
         if not icd_file.exists():
             raise FileNotFoundError(
