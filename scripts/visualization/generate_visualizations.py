@@ -2,27 +2,38 @@
 """
 Visualization Generation Script for TherasyncPipeline.
 
-This script generates the 8 core visualizations for a subject/session or batch processes
-multiple subjects.
+This script generates publication-ready visualizations in two modes:
+- COMPOSITE (default): 5 comprehensive multi-panel figures for reports
+- INDIVIDUAL: 8 individual plots for detailed analysis
 
-Visualizations:
-    #1: Multi-Signal Dashboard (BVP, HR, EDA, SCR)
+Composite Figures (default):
+    #1: Multi-Signal Dashboard (Overview of all modalities)
+    #2: HRV Analysis (Poincaré + Autonomic Balance + Frequency Domain)
+    #3: EDA Analysis (Arousal Profile + SCR Distribution + SCR Timeline)
+    #4: Temperature Analysis (Timeline + Metrics + Correlation with EDA)
+    #5: Quality Report (Signal quality heatmap + Coverage statistics)
+
+Individual Figures (--individual mode):
+    #1: Multi-Signal Dashboard
     #2: Poincaré Plot (HRV)
-    #3: Autonomic Balance (SDNN/RMSSD comparison)
-    #4: EDA Arousal Profile (tonic/phasic)
-    #5: SCR Distribution (histogram + boxplot)
-    #6: HR Dynamics Timeline (with zones)
-    #7: Temperature Timeline (with physiological zones)
-    #8: Temperature Metrics Comparison
+    #3: Autonomic Balance
+    #4: EDA Arousal Profile
+    #5: SCR Distribution
+    #6: HR Dynamics Timeline
+    #7: Temperature Timeline
+    #8: Temperature Metrics
 
 Usage:
-    # Single subject/session
+    # Default: Generate composite figures
     python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01
     
-    # All available subjects
+    # Generate individual plots
+    python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01 --individual
+    
+    # All available subjects (composite mode)
     python scripts/visualization/generate_visualizations.py --all
     
-    # Specific visualizations only
+    # Specific composite figures only
     python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01 --plots 1 2 3
 
 Authors: Lena Adel, Remy Ramadour
@@ -55,13 +66,28 @@ from src.visualization.plotters.temp_plots import (
     plot_temp_timeline,
     plot_temp_metrics_comparison
 )
+from src.visualization.plotters.composite_plots import (
+    plot_hrv_analysis,
+    plot_eda_analysis,
+    plot_temp_analysis,
+    plot_quality_report
+)
 from src.visualization.config import OUTPUT_CONFIG
 
 logger = logging.getLogger(__name__)
 
 
-# Mapping of plot numbers to (filename, function) pairs
-PLOT_FUNCTIONS = {
+# COMPOSITE MODE: 5 comprehensive multi-panel figures
+COMPOSITE_FUNCTIONS = {
+    1: ('01_overview_physiological.png', plot_multisignal_dashboard),
+    2: ('02_hrv_analysis.png', plot_hrv_analysis),
+    3: ('03_eda_analysis.png', plot_eda_analysis),
+    4: ('04_temp_analysis.png', plot_temp_analysis),
+    5: ('05_quality_report.png', plot_quality_report),
+}
+
+# INDIVIDUAL MODE: 8 separate detailed figures
+INDIVIDUAL_FUNCTIONS = {
     1: ('01_dashboard_multisignals.png', plot_multisignal_dashboard),
     2: ('02_poincare_hrv.png', plot_poincare_hrv),
     3: ('03_autonomic_balance.png', plot_autonomic_balance),
@@ -71,6 +97,9 @@ PLOT_FUNCTIONS = {
     7: ('07_temp_timeline.png', plot_temp_timeline),
     8: ('08_temp_metrics_comparison.png', plot_temp_metrics_comparison),
 }
+
+# Default mode
+PLOT_FUNCTIONS = COMPOSITE_FUNCTIONS
 
 
 def setup_logging(verbose: bool = False):
@@ -89,7 +118,8 @@ def generate_visualizations_for_subject(
     subject: str,
     session: str,
     plots: Optional[List[int]] = None,
-    output_base: Optional[Path] = None
+    output_base: Optional[Path] = None,
+    individual_mode: bool = False
 ) -> bool:
     """
     Generate all visualizations for a single subject/session.
@@ -99,11 +129,17 @@ def generate_visualizations_for_subject(
         session: Session ID (e.g., '01')
         plots: List of plot numbers to generate (None = all)
         output_base: Base output directory
+        individual_mode: If True, generate individual plots instead of composite
     
     Returns:
         True if successful, False otherwise
     """
     logger.info(f"Processing subject {subject}, session {session}")
+    mode_str = "individual" if individual_mode else "composite"
+    logger.info(f"Mode: {mode_str}")
+    
+    # Select appropriate plot functions
+    plot_functions = INDIVIDUAL_FUNCTIONS if individual_mode else COMPOSITE_FUNCTIONS
     
     try:
         # Load data
@@ -127,16 +163,16 @@ def generate_visualizations_for_subject(
         logger.info(f"Output directory: {figures_dir}")
         
         # Determine which plots to generate
-        plots_to_generate = plots if plots else list(PLOT_FUNCTIONS.keys())
+        plots_to_generate = plots if plots else list(plot_functions.keys())
         
         # Generate each visualization
         success_count = 0
         for plot_num in plots_to_generate:
-            if plot_num not in PLOT_FUNCTIONS:
-                logger.warning(f"Plot #{plot_num} not implemented yet, skipping")
+            if plot_num not in plot_functions:
+                logger.warning(f"Plot #{plot_num} not available in {mode_str} mode, skipping")
                 continue
             
-            filename, plot_func = PLOT_FUNCTIONS[plot_num]
+            filename, plot_func = plot_functions[plot_num]
             output_path = figures_dir / filename
             
             logger.info(f"Generating visualization #{plot_num}: {filename}")
@@ -161,7 +197,8 @@ def generate_visualizations_for_subject(
 
 def batch_process_all_subjects(
     plots: Optional[List[int]] = None,
-    output_base: Optional[Path] = None
+    output_base: Optional[Path] = None,
+    individual_mode: bool = False
 ) -> dict:
     """
     Process all available subjects/sessions.
@@ -169,11 +206,13 @@ def batch_process_all_subjects(
     Args:
         plots: List of plot numbers to generate (None = all)
         output_base: Base output directory
+        individual_mode: If True, generate individual plots instead of composite
     
     Returns:
         Dictionary with processing statistics
     """
-    logger.info("Starting batch processing of all subjects/sessions")
+    mode_str = "individual" if individual_mode else "composite"
+    logger.info(f"Starting batch processing of all subjects/sessions ({mode_str} mode)")
     
     loader = VisualizationDataLoader()
     subjects_sessions = loader.list_available_subjects()
@@ -190,7 +229,7 @@ def batch_process_all_subjects(
         logger.info(f"[{i}/{len(subjects_sessions)}] Processing {subject}/{session}")
         
         success = generate_visualizations_for_subject(
-            subject, session, plots, output_base
+            subject, session, plots, output_base, individual_mode
         )
         
         if success:
@@ -209,14 +248,27 @@ def main():
         description="Generate visualizations for TherasyncPipeline preprocessed data",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Visualization Modes:
+  COMPOSITE (default): 5 comprehensive multi-panel figures for reports
+    #1: Overview - Multi-signal dashboard
+    #2: HRV Analysis - Poincaré + Autonomic Balance + Frequency Domain
+    #3: EDA Analysis - Arousal + SCR Distribution + SCR Timeline
+    #4: Temperature Analysis - Timeline + Metrics + Correlation
+    #5: Quality Report - Signal quality overview
+  
+  INDIVIDUAL (--individual): 8 separate detailed figures
+
 Examples:
-  # Generate all visualizations for one subject/session
+  # Generate composite figures (default)
   python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01
   
-  # Generate specific visualizations only
+  # Generate individual plots
+  python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01 --individual
+  
+  # Generate specific composite figures only
   python scripts/visualization/generate_visualizations.py --subject g01p01 --session 01 --plots 1 2 3
   
-  # Process all available subjects
+  # Process all subjects (composite mode)
   python scripts/visualization/generate_visualizations.py --all
   
   # Custom output directory
@@ -241,12 +293,19 @@ Examples:
         help='Process all available subjects/sessions'
     )
     
+    # Visualization mode
+    parser.add_argument(
+        '--individual',
+        action='store_true',
+        help='Generate individual plots instead of composite figures (default: composite)'
+    )
+    
     # Visualization options
     parser.add_argument(
         '--plots',
         type=int,
         nargs='+',
-        help='Specific plot numbers to generate (default: all implemented plots)'
+        help='Specific plot numbers to generate (default: all available)'
     )
     parser.add_argument(
         '--output',
@@ -275,11 +334,11 @@ Examples:
     
     # Execute
     if args.all:
-        stats = batch_process_all_subjects(args.plots, output_base)
+        stats = batch_process_all_subjects(args.plots, output_base, args.individual)
         sys.exit(0 if stats['success'] > 0 else 1)
     else:
         success = generate_visualizations_for_subject(
-            args.subject, args.session, args.plots, output_base
+            args.subject, args.session, args.plots, output_base, args.individual
         )
         sys.exit(0 if success else 1)
 

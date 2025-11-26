@@ -345,10 +345,24 @@ class VisualizationDataLoader:
                     temp_data['metadata'][moment] = json.load(f)
         
         # Load combined metrics (aggregated across moments)
+        # First try consolidated file, then try per-moment files
         metrics_file = modality_path / f"{subject_id}_{session_id}_desc-temp-metrics_physio.tsv"
         if metrics_file.exists():
             temp_data['metrics'] = pd.read_csv(metrics_file, sep='\t')
             logger.info(f"  Loaded TEMP metrics: {len(temp_data['metrics'])} rows")
+        else:
+            # Load per-moment metrics and consolidate
+            metrics_list = []
+            for moment in moments:
+                moment_metrics_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-temp-metrics.tsv"
+                if moment_metrics_file.exists():
+                    moment_df = pd.read_csv(moment_metrics_file, sep='\t')
+                    moment_df['moment'] = moment
+                    metrics_list.append(moment_df)
+            
+            if metrics_list:
+                temp_data['metrics'] = pd.concat(metrics_list, ignore_index=True)
+                logger.info(f"  Loaded TEMP metrics from {len(metrics_list)} moments: {len(temp_data['metrics'])} rows")
         
         return temp_data
     

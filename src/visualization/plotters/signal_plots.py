@@ -50,8 +50,8 @@ def plot_multisignal_dashboard(
     """
     apply_plot_style()
     
-    # Create figure with 4 subplots
-    fig = plt.figure(figsize=FIGSIZE['dashboard'])
+    # Create figure with 4 subplots - extra width for legends on the right
+    fig = plt.figure(figsize=(FIGSIZE['dashboard'][0] + 2, FIGSIZE['dashboard'][1]))
     gs = GridSpec(4, 1, height_ratios=[1, 1, 1, 0.8], hspace=0.3)
     
     # Collect all moments for x-axis alignment
@@ -85,15 +85,15 @@ def plot_multisignal_dashboard(
     add_moment_separators(ax1, moment_boundaries, label_position='top')
     ax1.set_title('Blood Volume Pulse (BVP)', fontsize=FONTSIZE['title'], fontweight='bold')
     ax1.set_ylabel('BVP (a.u.)', fontsize=FONTSIZE['label'])
-    ax1.legend(loc='upper right', fontsize=FONTSIZE['legend'])
+    ax1.legend(loc='upper left', bbox_to_anchor=(1.01, 1), fontsize=FONTSIZE['legend'], framealpha=0.95)
     
     # ========== Panel 2: Heart Rate ==========
     ax2 = fig.add_subplot(gs[1, 0], sharex=ax1)
     plot_hr_signal(ax2, data.get('hr', {}), moments, moment_boundaries)
     add_moment_separators(ax2, moment_boundaries)
-    ax2.set_title('Instantaneous Heart Rate', fontsize=FONTSIZE['title'], fontweight='bold')
+    ax2.set_title('Heart Rate', fontsize=FONTSIZE['title'], fontweight='bold')
     ax2.set_ylabel('HR (BPM)', fontsize=FONTSIZE['label'])
-    ax2.legend(loc='upper right', fontsize=FONTSIZE['legend'])
+    ax2.legend(loc='upper left', bbox_to_anchor=(1.01, 1), fontsize=FONTSIZE['legend'], framealpha=0.95)
     
     # ========== Panel 3: EDA Tonic + Phasic ==========
     ax3 = fig.add_subplot(gs[2, 0], sharex=ax1)
@@ -101,7 +101,7 @@ def plot_multisignal_dashboard(
     add_moment_separators(ax3, moment_boundaries)
     ax3.set_title('Electrodermal Activity (EDA)', fontsize=FONTSIZE['title'], fontweight='bold')
     ax3.set_ylabel('EDA (µS)', fontsize=FONTSIZE['label'])
-    ax3.legend(loc='upper right', fontsize=FONTSIZE['legend'])
+    ax3.legend(loc='upper left', bbox_to_anchor=(1.01, 1), fontsize=FONTSIZE['legend'], framealpha=0.95)
     
     # ========== Panel 4: SCR Events ==========
     ax4 = fig.add_subplot(gs[3, 0], sharex=ax1)
@@ -121,7 +121,7 @@ def plot_multisignal_dashboard(
         y=0.995
     )
     
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 0.88, 0.98])  # Leave space for legends on right
     
     if output_path:
         fig.savefig(output_path, dpi=300, bbox_inches='tight')
@@ -182,13 +182,13 @@ def plot_bvp_signal(ax: plt.Axes, bvp_data: Dict, moments: list, moment_boundari
                    color=color, linewidth=LINEWIDTH['normal'],
                    label=get_moment_label(moment), alpha=ALPHA['line'])
         
-        # Mark detected peaks
+        # Mark detected peaks - use same color as moment signal
         if 'PPG_Peaks' in signals.columns:
             peaks = signals[signals['PPG_Peaks'] == 1]
             if len(peaks) > 0:
                 ax.scatter(peaks['time'].values + offset, peaks['PPG_Clean'].values,
-                          color=COLORS['scr'], s=MARKERSIZE['small'], 
-                          marker='o', zorder=5)
+                          color=color, s=MARKERSIZE['small'], 
+                          marker='o', zorder=5, alpha=0.7, edgecolors='white', linewidths=0.3)
     
     ax.grid(True, alpha=ALPHA['fill'])
 
@@ -321,7 +321,7 @@ def plot_scr_events(ax: plt.Axes, eda_data: Dict, moments: list, moment_boundari
     
     ax.set_ylim(bottom=0)
     ax.grid(True, alpha=ALPHA['fill'])
-    ax.legend(loc='upper right', fontsize=FONTSIZE['legend'])
+    ax.legend(loc='upper left', bbox_to_anchor=(1.01, 1), fontsize=FONTSIZE['legend'], framealpha=0.95)
 
 
 def plot_hr_dynamics_timeline(

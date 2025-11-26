@@ -436,6 +436,30 @@ def format_duration(seconds: float) -> str:
 
 
 # =============================================================================
+# AXIS LIMITS FOR CROSS-SESSION COMPARISON
+# Set to None for auto-scaling, or (min, max) for fixed limits
+# =============================================================================
+
+AXIS_LIMITS = {
+    # HRV Figure
+    'poincare_rr': (400, 1200),      # RR intervals in ms (typical: 500-1200)
+    'sdnn': (0, 500),                 # SDNN in ms
+    'rmssd': (0, 600),                # RMSSD in ms
+    'lf_hf_power': (0, 0.3),          # Normalized power
+    'lfhf_ratio': (0, 3),             # LF/HF ratio
+    
+    # Signal Figures
+    'hr': (40, 120),                  # Heart rate in BPM
+    'eda': None,                      # Auto-scale (varies widely)
+    'temp': (28, 38),                 # Temperature in °C
+    
+    # EDA Figure
+    'scr_amplitude': (0, 1.5),        # SCR amplitude in µS
+    'tonic_eda': None,                # Auto-scale
+}
+
+
+# =============================================================================
 # OUTPUT CONFIGURATION
 # =============================================================================
 
