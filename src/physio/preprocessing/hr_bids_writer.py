@@ -152,8 +152,14 @@ class HRBIDSWriter(PhysioBIDSWriter):
                 all_file_paths['events_json'].append(events_json)
                 
                 # Extract moment-specific metrics if session_metrics provided
-                if session_metrics is not None and moment in session_metrics.index:
-                    moment_metrics = session_metrics.loc[moment].to_dict()
+                if session_metrics is not None:
+                    # Handle both Dict and DataFrame formats
+                    if isinstance(session_metrics, dict) and moment in session_metrics:
+                        moment_metrics = session_metrics[moment]
+                    elif isinstance(session_metrics, pd.DataFrame) and moment in session_metrics.index:
+                        moment_metrics = session_metrics.loc[moment].to_dict()
+                    else:
+                        moment_metrics = self._extract_basic_metrics(moment_data, moment)
                 else:
                     # Fallback: extract basic metrics from data
                     moment_metrics = self._extract_basic_metrics(moment_data, moment)

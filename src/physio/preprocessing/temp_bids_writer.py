@@ -263,6 +263,9 @@ class TEMPBIDSWriter(PhysioBIDSWriter):
         
         output_data = data[output_columns].copy()
         
+        # Add epoch columns if epoching is enabled in preprocessing mode
+        output_data = self._add_epoch_columns(output_data, moment, time_column='time')
+        
         # Convert boolean/flag columns to int
         if 'TEMP_Outliers' in output_data.columns:
             output_data['TEMP_Outliers'] = output_data['TEMP_Outliers'].astype(int)
