@@ -175,15 +175,32 @@ class DyadICDLoader:
         if "epoch_id" not in df.columns:
             raise ValueError(f"Missing 'epoch_id' column in {icd_file}")
 
+        # Try original dyad_pair, then try reversed order (ICD is symmetric)
+        actual_dyad_pair = dyad_pair
         if dyad_pair not in df.columns:
-            raise ValueError(
-                f"Dyad pair '{dyad_pair}' not found in {icd_file}. "
-                f"Available columns: {list(df.columns)}"
-            )
+            # Try reversed order: "A_vs_B" -> "B_vs_A"
+            if "_vs_" in dyad_pair:
+                parts = dyad_pair.split("_vs_")
+                reversed_pair = f"{parts[1]}_vs_{parts[0]}"
+                if reversed_pair in df.columns:
+                    actual_dyad_pair = reversed_pair
+                    logger.debug(
+                        f"Dyad pair '{dyad_pair}' not found, using reversed: '{reversed_pair}'"
+                    )
+                else:
+                    raise ValueError(
+                        f"Dyad pair '{dyad_pair}' (nor reversed '{reversed_pair}') not found in {icd_file}. "
+                        f"Available columns: {list(df.columns)}"
+                    )
+            else:
+                raise ValueError(
+                    f"Dyad pair '{dyad_pair}' not found in {icd_file}. "
+                    f"Available columns: {list(df.columns)}"
+                )
 
         # Extract relevant columns and rename
-        result = df[["epoch_id", dyad_pair]].copy()
-        result.rename(columns={dyad_pair: "icd_value"}, inplace=True)
+        result = df[["epoch_id", actual_dyad_pair]].copy()
+        result.rename(columns={actual_dyad_pair: "icd_value"}, inplace=True)
 
         logger.info(
             f"Loaded {len(result)} epochs for dyad {dyad_pair} "

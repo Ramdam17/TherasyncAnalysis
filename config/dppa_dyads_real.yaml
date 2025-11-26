@@ -1,5 +1,6 @@
 description: DPPA Dyad Configuration - Auto-generated from participants.tsv
 generated_from: data/raw/participants.tsv
+generated_at: '2025-11-26T01:10:08.738729'
 roles:
   therapist: The therapist conducting the session
   mother: Mother of the family
@@ -12,15 +13,15 @@ epoching:
     method: sliding_duration30s_step5s
     description: Sliding window for comparing dyads within same session (same epoch
       count)
-    tasks:
+    tasks: &id001
     - restingstate
     - therapy
   inter_session:
-    method: nsplit120
-    description: Fixed 120 epochs for comparing across all sessions
-    tasks:
-    - restingstate
-    - therapy
+    methods:
+      restingstate: nsplit1
+      therapy: nsplit120
+    description: Per-task epoching for comparing across all sessions
+    tasks: *id001
 families:
   g01:
     therapist: sub-g01p01

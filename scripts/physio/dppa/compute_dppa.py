@@ -80,9 +80,9 @@ def compute_inter_session(
     """
     logger.info(f"Computing inter-session ICD for task: {task}")
     
-    # Get dyad pairs and method
+    # Get dyad pairs and method for this specific task
     pairs = dyad_loader.get_inter_session_pairs(task=task)
-    method = dyad_loader.get_inter_session_method()
+    method = dyad_loader.get_inter_session_method(task=task)
     
     logger.info(f"Processing {len(pairs)} inter-session pairs with method: {method}")
     
