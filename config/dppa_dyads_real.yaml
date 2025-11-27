@@ -10,9 +10,8 @@ roles:
   child3: Third child
 epoching:
   intra_session:
-    method: sliding_duration30s_step5s
-    description: Sliding window for comparing dyads within same session (same epoch
-      count)
+    method: nsplit120
+    description: N-split epoching for comparing dyads within same session (aligned with MOI annotations)
     tasks: &id001
     - restingstate
     - therapy
