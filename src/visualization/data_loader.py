@@ -167,21 +167,13 @@ class VisualizationDataLoader:
         # Load each modality
         for modality in modalities:
             modality_path = subject_session_path / modality
-            
+
             if not modality_path.exists():
                 logger.warning(f"Modality {modality} not found for {subject_id}/{session_id}")
                 continue
-            
+
             logger.info(f"Loading {modality} data...")
-            
-            if modality == 'bvp':
-                data['bvp'] = self._load_bvp_data(modality_path, subject_id, session_id)
-            elif modality == 'eda':
-                data['eda'] = self._load_eda_data(modality_path, subject_id, session_id)
-            elif modality == 'hr':
-                data['hr'] = self._load_hr_data(modality_path, subject_id, session_id)
-            elif modality == 'temp':
-                data['temp'] = self._load_temp_data(modality_path, subject_id, session_id)
+            data[modality] = self._load_modality_data(modality, modality_path, subject_id, session_id)
         
         return data
     
@@ -206,166 +198,95 @@ class VisualizationDataLoader:
         
         return sorted(moments)
     
-    def _load_bvp_data(self, modality_path: Path, subject_id: str, session_id: str) -> Dict:
-        """Load BVP processed signals and metrics."""
-        bvp_data = {
-            'signals': {},
-            'metrics': None,
-            'metadata': {}
-        }
-        
-        # Discover available moments from files
-        moments = self._discover_moments_in_modality(modality_path, 'bvp')
-        
-        # Load processed signals for each moment
-        for moment in moments:
-            signal_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-bvp.tsv"
-            metadata_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-bvp.json"
-            
-            if signal_file.exists():
-                # Load TSV (not compressed)
-                bvp_data['signals'][moment] = pd.read_csv(signal_file, sep='\t')
-                logger.info(f"  Loaded BVP signals for {moment}: {len(bvp_data['signals'][moment])} samples")
-            else:
-                logger.warning(f"  BVP signal file not found for moment '{moment}': {signal_file}")
-            
-            if metadata_file.exists():
-                with open(metadata_file, 'r') as f:
-                    bvp_data['metadata'][moment] = json.load(f)
-        
-        # Load metrics
-        metrics_file = modality_path / f"{subject_id}_{session_id}_desc-bvp-metrics_physio.tsv"
-        if metrics_file.exists():
-            bvp_data['metrics'] = pd.read_csv(metrics_file, sep='\t')
-            logger.info(f"  Loaded BVP metrics: {len(bvp_data['metrics'])} rows")
-        
-        return bvp_data
-    
-    def _load_eda_data(self, modality_path: Path, subject_id: str, session_id: str) -> Dict:
-        """Load EDA processed signals, SCR events, and metrics."""
-        eda_data = {
-            'signals': {},
-            'events': {},
-            'metrics': None,
-            'metadata': {}
-        }
-        
-        # Discover available moments from files
-        moments = self._discover_moments_in_modality(modality_path, 'eda')
-        
-        # Load processed signals and events for each moment
+    def _load_modality_data(
+        self, modality: str, modality_path: Path, subject_id: str, session_id: str
+    ) -> Dict:
+        """
+        Load processed signals, metadata, and metrics for a single modality.
+
+        Args:
+            modality: Modality name ('bvp', 'eda', 'hr', 'temp')
+            modality_path: Path to modality directory
+            subject_id: BIDS subject ID (e.g., 'sub-g01p01')
+            session_id: BIDS session ID (e.g., 'ses-01')
+
+        Returns:
+            Dictionary with 'signals', 'metrics', 'metadata' (and 'events' for EDA)
+        """
+        prefix = f"{subject_id}_{session_id}"
+        mod_upper = modality.upper()
+        data: Dict = {'signals': {}, 'metrics': None, 'metadata': {}}
+
+        if modality == 'eda':
+            data['events'] = {}
+
+        moments = self._discover_moments_in_modality(modality_path, modality)
+
         for moment in moments:
             # Signals
-            signal_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-eda.tsv"
+            signal_file = modality_path / f"{prefix}_task-{moment}_desc-processed_recording-{modality}.tsv"
             if signal_file.exists():
-                eda_data['signals'][moment] = pd.read_csv(signal_file, sep='\t')
-                logger.info(f"  Loaded EDA signals for {moment}: {len(eda_data['signals'][moment])} samples")
+                data['signals'][moment] = pd.read_csv(signal_file, sep='\t')
+                logger.info(f"  Loaded {mod_upper} signals for {moment}: {len(data['signals'][moment])} samples")
             else:
-                logger.warning(f"  EDA signal file not found for moment '{moment}': {signal_file}")
-            
-            # SCR Events
-            events_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-scr_events.tsv"
-            if events_file.exists():
-                eda_data['events'][moment] = pd.read_csv(events_file, sep='\t')
-                logger.info(f"  Loaded SCR events for {moment}: {len(eda_data['events'][moment])} events")
-            
+                logger.warning(f"  {mod_upper} signal file not found for moment '{moment}': {signal_file}")
+
             # Metadata
-            metadata_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-eda.json"
+            metadata_file = signal_file.with_suffix('.json')
             if metadata_file.exists():
                 with open(metadata_file, 'r') as f:
-                    eda_data['metadata'][moment] = json.load(f)
-        
-        # Load metrics
-        metrics_file = modality_path / f"{subject_id}_{session_id}_desc-eda-metrics_physio.tsv"
+                    data['metadata'][moment] = json.load(f)
+
+            # EDA-specific: SCR events
+            if modality == 'eda':
+                events_file = modality_path / f"{prefix}_task-{moment}_desc-scr_events.tsv"
+                if events_file.exists():
+                    data['events'][moment] = pd.read_csv(events_file, sep='\t')
+                    logger.info(f"  Loaded SCR events for {moment}: {len(data['events'][moment])} events")
+
+        # Load metrics (modality-specific patterns)
+        data['metrics'] = self._load_modality_metrics(modality, modality_path, prefix, moments)
+
+        return data
+
+    def _load_modality_metrics(
+        self, modality: str, modality_path: Path, prefix: str, moments: list[str]
+    ) -> pd.DataFrame | None:
+        """Load metrics for a modality, handling different file formats per modality."""
+        mod_upper = modality.upper()
+
+        if modality == 'hr':
+            # HR uses a JSON summary
+            metrics_file = modality_path / f"{prefix}_desc-hr-summary.json"
+            if metrics_file.exists():
+                with open(metrics_file, 'r') as f:
+                    logger.info(f"  Loaded HR summary metrics")
+                    return pd.DataFrame([json.load(f)])
+            return None
+
+        # TSV metrics (bvp, eda, temp)
+        metrics_file = modality_path / f"{prefix}_desc-{modality}-metrics_physio.tsv"
         if metrics_file.exists():
-            eda_data['metrics'] = pd.read_csv(metrics_file, sep='\t')
-            logger.info(f"  Loaded EDA metrics: {len(eda_data['metrics'])} rows")
-        
-        return eda_data
-    
-    def _load_hr_data(self, modality_path: Path, subject_id: str, session_id: str) -> Dict:
-        """Load HR processed signals and metrics."""
-        hr_data = {
-            'signals': {},
-            'metrics': None,
-            'metadata': {}
-        }
-        
-        # Discover available moments from files
-        moments = self._discover_moments_in_modality(modality_path, 'hr')
-        
-        for moment in moments:
-            signal_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-hr.tsv"
-            metadata_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-hr.json"
-            
-            if signal_file.exists():
-                hr_data['signals'][moment] = pd.read_csv(signal_file, sep='\t')
-                logger.info(f"  Loaded HR signals for {moment}: {len(hr_data['signals'][moment])} samples")
-            else:
-                logger.warning(f"  HR signal file not found for moment '{moment}': {signal_file}")
-            
-            if metadata_file.exists():
-                with open(metadata_file, 'r') as f:
-                    hr_data['metadata'][moment] = json.load(f)
-        
-        # Load combined metrics (aggregated across moments)
-        metrics_file = modality_path / f"{subject_id}_{session_id}_desc-hr-summary.json"
-        if metrics_file.exists():
-            with open(metrics_file, 'r') as f:
-                summary_data = json.load(f)
-                # Convert summary to DataFrame for compatibility
-                hr_data['metrics'] = pd.DataFrame([summary_data])
-                logger.info(f"  Loaded HR summary metrics")
-        
-        return hr_data
-    
-    def _load_temp_data(self, modality_path: Path, subject_id: str, session_id: str) -> Dict:
-        """Load TEMP processed signals and metrics."""
-        temp_data = {
-            'signals': {},
-            'metrics': None,
-            'metadata': {}
-        }
-        
-        # Discover available moments from files
-        moments = self._discover_moments_in_modality(modality_path, 'temp')
-        
-        for moment in moments:
-            signal_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-temp.tsv"
-            metadata_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-processed_recording-temp.json"
-            
-            if signal_file.exists():
-                temp_data['signals'][moment] = pd.read_csv(signal_file, sep='\t')
-                logger.info(f"  Loaded TEMP signals for {moment}: {len(temp_data['signals'][moment])} samples")
-            else:
-                logger.warning(f"  TEMP signal file not found for moment '{moment}': {signal_file}")
-            
-            if metadata_file.exists():
-                with open(metadata_file, 'r') as f:
-                    temp_data['metadata'][moment] = json.load(f)
-        
-        # Load combined metrics (aggregated across moments)
-        # First try consolidated file, then try per-moment files
-        metrics_file = modality_path / f"{subject_id}_{session_id}_desc-temp-metrics_physio.tsv"
-        if metrics_file.exists():
-            temp_data['metrics'] = pd.read_csv(metrics_file, sep='\t')
-            logger.info(f"  Loaded TEMP metrics: {len(temp_data['metrics'])} rows")
-        else:
-            # Load per-moment metrics and consolidate
+            df = pd.read_csv(metrics_file, sep='\t')
+            logger.info(f"  Loaded {mod_upper} metrics: {len(df)} rows")
+            return df
+
+        # TEMP fallback: per-moment metrics files
+        if modality == 'temp':
             metrics_list = []
             for moment in moments:
-                moment_metrics_file = modality_path / f"{subject_id}_{session_id}_task-{moment}_desc-temp-metrics.tsv"
-                if moment_metrics_file.exists():
-                    moment_df = pd.read_csv(moment_metrics_file, sep='\t')
+                moment_file = modality_path / f"{prefix}_task-{moment}_desc-temp-metrics.tsv"
+                if moment_file.exists():
+                    moment_df = pd.read_csv(moment_file, sep='\t')
                     moment_df['moment'] = moment
                     metrics_list.append(moment_df)
-            
             if metrics_list:
-                temp_data['metrics'] = pd.concat(metrics_list, ignore_index=True)
-                logger.info(f"  Loaded TEMP metrics from {len(metrics_list)} moments: {len(temp_data['metrics'])} rows")
-        
-        return temp_data
-    
+                combined = pd.concat(metrics_list, ignore_index=True)
+                logger.info(f"  Loaded TEMP metrics from {len(metrics_list)} moments: {len(combined)} rows")
+                return combined
+
+        return None
+
     def list_available_subjects(self) -> List[Tuple[str, str]]:
         """
         List all available subject/session combinations.

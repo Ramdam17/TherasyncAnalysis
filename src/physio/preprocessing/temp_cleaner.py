@@ -14,7 +14,6 @@ from typing import Dict, Tuple, Optional, Union
 
 import pandas as pd
 import numpy as np
-from scipy import interpolate
 
 from src.core.config_loader import ConfigLoader
 
@@ -339,48 +338,6 @@ class TEMPCleaner:
         quality_scores.loc[low_edge | high_edge] *= 0.8
         
         return quality_scores
-    
-    def calculate_quality(self, data: pd.DataFrame) -> pd.Series:
-        """
-        Public method to calculate quality scores for temperature data.
-        
-        This method is called after cleaning to assess signal quality.
-        
-        Args:
-            data: DataFrame with TEMP_Clean column
-        
-        Returns:
-            Series of quality scores (0-1) for each sample
-        """
-        quality = pd.Series(1.0, index=data.index)
-        
-        # Use TEMP_Clean column name if available (post-cleaning format)
-        clean_col = 'TEMP_Clean' if 'TEMP_Clean' in data.columns else 'temp_clean'
-        outlier_col = 'TEMP_Outliers' if 'TEMP_Outliers' in data.columns else 'temp_outliers'
-        interp_col = 'TEMP_Interpolated' if 'TEMP_Interpolated' in data.columns else 'temp_interpolated'
-        
-        if clean_col not in data.columns:
-            logger.warning("No clean temperature column found, returning default quality")
-            return quality
-        
-        # NaN values = 0 quality
-        quality.loc[data[clean_col].isna()] = 0.0
-        
-        # Interpolated samples = reduced quality
-        if interp_col in data.columns:
-            quality.loc[data[interp_col] == True] = 0.7
-        
-        # Edge values = reduced quality
-        min_temp, max_temp = self.outlier_threshold
-        edge_threshold = 2.0
-        
-        valid_data = ~data[clean_col].isna()
-        low_edge = valid_data & (data[clean_col] < min_temp + edge_threshold)
-        high_edge = valid_data & (data[clean_col] > max_temp - edge_threshold)
-        
-        quality.loc[low_edge | high_edge] *= 0.8
-        
-        return quality
     
     def _calculate_cleaning_metadata(self, data: pd.DataFrame, moment: str) -> Dict:
         """
