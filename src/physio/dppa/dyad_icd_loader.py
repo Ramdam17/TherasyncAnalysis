@@ -38,7 +38,9 @@ class DyadICDLoader:
                         If None, uses default config.yaml.
         """
         self.config = ConfigLoader(config_path)
-        self.derivatives_path = Path(self.config.get("paths.derivatives", "data/derivatives"))
+        self.derivatives_path = Path(
+            self.config.get("paths.derivatives", "data/derivatives")
+        )
         logger.info("DyadICDLoader initialized")
 
     def parse_dyad_info(self, dyad_pair: str) -> Dict[str, str]:
@@ -100,8 +102,7 @@ class DyadICDLoader:
             )
 
     def load_icd(
-        self, dyad_pair: str, task: str, method: str,
-        dyad_type: Optional[str] = None
+        self, dyad_pair: str, task: str, method: str, dyad_type: Optional[str] = None
     ) -> pd.DataFrame:
         """
         Load ICD time series for a specific dyad and task.
@@ -132,16 +133,16 @@ class DyadICDLoader:
         """
         # Parse dyad info
         dyad_info = self.parse_dyad_info(dyad_pair)
-        
+
         # Auto-detect dyad type if not provided
         if dyad_type is None:
             # If same session, likely intra_family; if different sessions, inter_session
-            if dyad_info['ses1'] == dyad_info['ses2']:
+            if dyad_info["ses1"] == dyad_info["ses2"]:
                 # Same session - could be either, try intra_family first for real dyads
                 dyad_type = "intra_family"
             else:
                 dyad_type = "inter_session"
-        
+
         # Construct file path
         icd_file = (
             self.derivatives_path
@@ -149,7 +150,7 @@ class DyadICDLoader:
             / dyad_type
             / f"{dyad_type}_icd_task-{task}_method-{method}.csv"
         )
-        
+
         # If file not found with intra_family, try inter_session as fallback
         if not icd_file.exists() and dyad_type == "intra_family":
             dyad_type = "inter_session"
@@ -237,10 +238,10 @@ class DyadICDLoader:
         """
         # Normalize methods to dict format
         if isinstance(methods, str):
-            methods_dict = {'restingstate': methods, 'therapy': methods}
+            methods_dict = {"restingstate": methods, "therapy": methods}
         else:
             methods_dict = methods
-        
+
         logger.info(f"Loading both tasks for dyad: {dyad_pair}")
         for task, method in methods_dict.items():
             logger.debug(f"  {task}: {method}")
@@ -256,8 +257,8 @@ class DyadICDLoader:
                     raise
 
         logger.info(
-            f"Successfully loaded tasks: " +
-            ", ".join(f"{t}={len(df)} epochs" for t, df in result.items())
+            "Successfully loaded tasks: "
+            + ", ".join(f"{t}={len(df)} epochs" for t, df in result.items())
         )
 
         return result
