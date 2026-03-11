@@ -387,8 +387,18 @@ class AllianceICDAnalyzer:
         lines.append("-" * 40)
         test_result = self.test_alliance_effect(data)
         lines.append(f"Test: {test_result.get('test', 'N/A')}")
-        lines.append(f"Statistic: {test_result.get('statistic', 'N/A'):.4f}")
-        lines.append(f"p-value: {test_result.get('p_value', 'N/A'):.6f}")
+        stat_val = test_result.get("statistic", "N/A")
+        lines.append(
+            f"Statistic: {stat_val:.4f}"
+            if isinstance(stat_val, (int, float))
+            else f"Statistic: {stat_val}"
+        )
+        p_val = test_result.get("p_value", "N/A")
+        lines.append(
+            f"p-value: {p_val:.6f}"
+            if isinstance(p_val, (int, float))
+            else f"p-value: {p_val}"
+        )
         lines.append(f"Significant (α=0.05): {test_result.get('significant', 'N/A')}")
         lines.append("")
 

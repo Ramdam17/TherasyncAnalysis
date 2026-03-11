@@ -64,17 +64,17 @@ def identify_worst_cases(
 
     cases = []
 
-    # Top N worst LF/HF ratios
-    logger.info(f"Finding top {top_n} worst LF/HF ratios...")
-    top_lfhf = df.nlargest(top_n, "BVP_HRV_LFHF_max")
-    for idx, row in top_lfhf.iterrows():
+    # Top N worst HRV CVNN (coefficient of variation) — proxy for HRV quality
+    logger.info(f"Finding top {top_n} worst HRV CVNN values...")
+    top_cvnn = df.nlargest(top_n, "BVP_HRV_CVNN_max")
+    for _, row in top_cvnn.iterrows():
         cases.append(
             {
                 "subject": row["subject"],
                 "session": row["session"],
-                "issue_type": "HIGH_LFHF",
-                "lfhf_max": row["BVP_HRV_LFHF_max"],
-                "lfhf_mean": row["BVP_HRV_LFHF_mean"],
+                "issue_type": "HIGH_CVNN",
+                "cvnn_max": row["BVP_HRV_CVNN_max"],
+                "cvnn_mean": row["BVP_HRV_CVNN_mean"],
                 "priority": "HIGH",
             }
         )
@@ -510,12 +510,11 @@ def generate_case_report(
 
 """
 
-    if case["issue_type"] in ["HIGH_LFHF", "BOTH"]:
-        report += f"""### HRV Frequency Domain Issue
-- **LF/HF Ratio (max)**: {case.get("lfhf_max", "N/A"):.2f} ⚠️
-- **LF/HF Ratio (mean)**: {case.get("lfhf_mean", "N/A"):.2f}
-- **Normal range**: 0.5 - 10 (typically 1-3)
-- **Status**: ABERRANT (>{case.get("lfhf_max", 0):.0f}x normal upper limit)
+    if case["issue_type"] in ["HIGH_CVNN", "BOTH"]:
+        report += f"""### HRV Variability Issue
+- **CVNN (max)**: {case.get("cvnn_max", "N/A"):.4f} ⚠️
+- **CVNN (mean)**: {case.get("cvnn_mean", "N/A"):.4f}
+- **Status**: High coefficient of variation in NN intervals
 
 """
 
@@ -543,12 +542,13 @@ def generate_case_report(
             moment_metrics = metrics[metrics["moment"] == moment]
             if len(moment_metrics) > 0:
                 row = moment_metrics.iloc[0]
+                rmssd = row.get("HRV_RMSSD", None)
+                sdnn = row.get("HRV_SDNN", None)
+                cvnn = row.get("HRV_CVNN", None)
                 report += f"""#### {moment.capitalize()} Moment
-- **HRV_LF**: {row.get("HRV_LF", "N/A"):.6f} ms²
-- **HRV_HF**: {row.get("HRV_HF", "N/A"):.6f} ms²
-- **HRV_LFHF**: {row.get("HRV_LFHF", "N/A"):.4f}
-- **RMSSD**: {row.get("HRV_RMSSD", "N/A"):.2f} ms
-- **SDNN**: {row.get("HRV_SDNN", "N/A"):.2f} ms
+- **RMSSD**: {f"{rmssd:.2f} ms" if isinstance(rmssd, (int, float)) else "N/A"}
+- **SDNN**: {f"{sdnn:.2f} ms" if isinstance(sdnn, (int, float)) else "N/A"}
+- **CVNN**: {f"{cvnn:.4f}" if isinstance(cvnn, (int, float)) else "N/A"}
 
 """
 
