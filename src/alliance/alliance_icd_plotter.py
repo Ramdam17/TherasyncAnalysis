@@ -218,7 +218,16 @@ class AllianceICDStatsPlotter:
         # Create pivot table with explicit column order
         pivot = data.groupby(["alliance_label", "dyad_type"])["icd"].mean().unstack()
         pivot = pivot.reindex(["neutral", "positive", "negative", "split"])
-        pivot = pivot[["real", "pseudo"]]  # Force column order to match labels
+        # Only keep columns that exist in the data
+        col_order = [c for c in ["real", "pseudo"] if c in pivot.columns]
+        if not col_order:
+            logger.warning("No dyad type columns found in pivot table")
+            fig, ax = plt.subplots(figsize=(8, 6))
+            ax.text(0.5, 0.5, "No data available", ha="center", va="center")
+            return fig, None
+        pivot = pivot[col_order]
+
+        col_labels = {"real": "Real Dyads", "pseudo": "Pseudo-Dyads"}
 
         fig, ax = plt.subplots(figsize=(8, 6))
 
@@ -226,7 +235,9 @@ class AllianceICDStatsPlotter:
 
         ax.set_xticks(np.arange(len(pivot.columns)))
         ax.set_yticks(np.arange(len(pivot.index)))
-        ax.set_xticklabels(["Real Dyads", "Pseudo-Dyads"], fontsize=FONTSIZE["label"])
+        ax.set_xticklabels(
+            [col_labels[c] for c in pivot.columns], fontsize=FONTSIZE["label"]
+        )
         ax.set_yticklabels(
             [s.capitalize() for s in pivot.index], fontsize=FONTSIZE["label"]
         )
