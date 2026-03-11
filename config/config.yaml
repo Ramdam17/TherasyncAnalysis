@@ -60,6 +60,7 @@ physio:
       highcut_freq: 8.0  # Hz - for additional filtering if needed
       quality_threshold: 0.8  # Minimum quality for accepting peaks (0-1 scale)
                               # Note: Longer recordings (>30 min) often have lower scores (0.65-0.75) but remain usable
+      min_duration: 10       # seconds - minimum signal duration for meaningful analysis
     
     # RR Intervals extraction configuration
     rr_intervals:
@@ -106,6 +107,8 @@ physio:
       highcut_freq: 1.0   # Hz - low-pass filter for noise
       scr_threshold: 0.01  # Minimum SCR amplitude (μS)
       scr_min_amplitude: 0.01  # Minimum amplitude for valid SCR (μS)
+      min_duration: 5          # seconds - minimum signal duration for decomposition
+      quality_window: 4        # seconds - sliding window size for quality calculation
     metrics:
       extract_all: false
       selected_metrics:
@@ -124,24 +127,16 @@ physio:
           - "EDA_Phasic_SD"      # Phasic variability
           - "EDA_Phasic_Rate"    # Rate of phasic responses (per minute)
         min_peaks_per_epoch: 20  # minimum beats for valid HRV
-    
-  # EDA (Electrodermal Activity) processing  
-  eda:
-    sampling_rate: 4   # Hz, from Empatica E4
-    cleaning:
-      method: "neurokit"  # Method to be selected during decision phase
-      parameters:
-        # Parameters will be added after method selection
-    metrics:
-      # Metrics list will be populated after decision phase
-      extract_all: false
-      selected_metrics: []
-  
+
   # HR (Heart Rate) processing
   hr:
+    sampling_rate: 1  # Hz, from Empatica E4 (1 sample/second)
     source: "bvp"  # Derived from BVP signal
     processing:
       method: "neurokit"  # Method to be selected during decision phase (e.g., template_matching)
+      outlier_threshold: [40, 180]  # BPM - physiological HR range
+      interpolation_max_gap: 5      # seconds - max gap to interpolate
+      quality_min_samples: 30       # minimum samples for valid processing
       parameters:
         # Parameters will be added after method selection
     metrics:
